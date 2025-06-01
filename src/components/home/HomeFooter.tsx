@@ -18,7 +18,7 @@ export function HomeFooter() {
           spacing={{ base: 2, md: 0 }}
         >
           <Text fontSize="sm" color="gray.500">
-            © 2024 BiblioTech - Sistema de Gestión Bibliotecaria
+            © 2025 Biblioteca Escolar - Sistema de Gestión Bibliotecaria
           </Text>
           <Text fontSize="sm" color="gray.400">
             Versión 1.0.0

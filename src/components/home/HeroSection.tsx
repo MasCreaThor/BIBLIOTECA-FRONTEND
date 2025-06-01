@@ -24,7 +24,7 @@ export function HeroSection() {
             fontWeight="bold"
             letterSpacing="tight"
           >
-            BiblioTech
+            Biblioteca Escolar
           </Heading>
         </HStack>
         
