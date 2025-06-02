@@ -1,6 +1,7 @@
+// src/components/layout/DashboardLayout.tsx
 'use client';
 
-import { ReactNode, useState } from 'react';
+import { ReactNode, useState, useEffect } from 'react';
 import {
   Box,
   Flex,
@@ -20,6 +21,10 @@ import {
   Breadcrumb,
   BreadcrumbItem,
   BreadcrumbLink,
+  Badge,
+  Tooltip,
+  Skeleton,
+  useBreakpointValue,
 } from '@chakra-ui/react';
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
@@ -33,11 +38,15 @@ import {
   FiBarChart,
   FiSettings,
   FiChevronRight,
+  FiWifi,
+  FiWifiOff,
 } from 'react-icons/fi';
 import { AuthenticatedRoute } from '@/components/auth/ProtectedRoute';
 import { UserProfile } from '@/components/auth/UserProfile';
 import { DebugInfo } from '@/components/ui/DebugInfo';
 import { useRole } from '@/hooks/useAuth';
+import { useSystemHealth } from '@/hooks/useDashboard';
+import { SafeLink } from '@/components/ui/SafeLink';
 
 interface NavigationItem {
   name: string;
@@ -45,6 +54,8 @@ interface NavigationItem {
   icon: any;
   adminOnly?: boolean;
   description?: string;
+  badge?: string;
+  badgeColor?: string;
 }
 
 const navigation: NavigationItem[] = [
@@ -71,18 +82,24 @@ const navigation: NavigationItem[] = [
     href: '/loans',
     icon: FiBookOpen,
     description: 'Gestionar préstamos y devoluciones',
+    badge: 'Próximamente',
+    badgeColor: 'orange',
   },
   {
     name: 'Solicitudes',
     href: '/requests',
     icon: FiFileText,
     description: 'Recursos solicitados',
+    badge: 'Próximamente',
+    badgeColor: 'orange',
   },
   {
     name: 'Reportes',
     href: '/reports',
     icon: FiBarChart,
     description: 'Estadísticas e informes',
+    badge: 'Próximamente',
+    badgeColor: 'orange',
   },
   {
     name: 'Administración',
@@ -90,17 +107,65 @@ const navigation: NavigationItem[] = [
     icon: FiSettings,
     adminOnly: true,
     description: 'Gestión de usuarios del sistema',
+    badge: 'Próximamente',
+    badgeColor: 'orange',
   },
-].filter(item => item.href);
+];
 
 interface DashboardLayoutProps {
   children: ReactNode;
+}
+
+function ConnectionStatus() {
+  const { data: health, isLoading } = useSystemHealth();
+  const [showStatus, setShowStatus] = useState(false);
+
+  useEffect(() => {
+    // Mostrar estado de conexión solo si hay problemas o durante la carga inicial
+    if (isLoading || (health && !health.backend)) {
+      setShowStatus(true);
+    } else {
+      // Ocultar después de 3 segundos si todo está bien
+      const timer = setTimeout(() => setShowStatus(false), 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [health, isLoading]);
+
+  if (!showStatus) return null;
+
+  if (isLoading) {
+    return (
+      <Tooltip label="Verificando conexión...">
+        <Box>
+          <Skeleton height="20px" width="20px" borderRadius="full" />
+        </Box>
+      </Tooltip>
+    );
+  }
+
+  return (
+    <Tooltip 
+      label={health?.backend ? 'Conectado al servidor' : 'Sin conexión al servidor'}
+    >
+      <Box
+        w={3}
+        h={3}
+        borderRadius="full"
+        bg={health?.backend ? 'green.500' : 'red.500'}
+        shadow="sm"
+      />
+    </Tooltip>
+  );
 }
 
 export function DashboardLayout({ children }: DashboardLayoutProps) {
   const { isOpen, onOpen, onClose } = useDisclosure();
   const pathname = usePathname();
   const { isAdmin } = useRole();
+
+  // Responsive values
+  const sidebarWidth = useBreakpointValue({ base: 'full', lg: '280px' });
+  const showSidebarOnDesktop = useBreakpointValue({ base: false, lg: true });
 
   // Colores del tema
   const sidebarBg = useColorModeValue('white', 'gray.800');
@@ -130,7 +195,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
 
   const breadcrumbs = generateBreadcrumbs();
 
-  const SidebarContent = () => (
+  const SidebarContent = ({ onItemClick }: { onItemClick?: () => void }) => (
     <VStack spacing={0} align="stretch" h="full">
       {/* Logo */}
       <Box p={6} borderBottom="1px" borderColor={borderColor}>
@@ -150,9 +215,12 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
             <Text fontWeight="bold" fontSize="lg" color="gray.800">
               Biblioteca Escolar
             </Text>
-            <Text fontSize="sm" color="gray.600">
-              Sistema de Biblioteca
-            </Text>
+            <HStack spacing={2}>
+              <Text fontSize="sm" color="gray.600">
+                Sistema de Biblioteca
+              </Text>
+              <ConnectionStatus />
+            </HStack>
           </VStack>
         </HStack>
       </Box>
@@ -160,7 +228,6 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
       {/* Navegación */}
       <VStack spacing={2} p={4} flex={1}>
         {filteredNavigation.map((item) => {
-          // Verificar que el item tenga href válido
           if (!item.href || typeof item.href !== 'string' || item.href.trim() === '') {
             console.warn(`Navigation item "${item.name}" has invalid href:`, item.href);
             return null;
@@ -170,9 +237,8 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
 
           return (
             <Box key={item.name} w="full">
-              <Link href={item.href} passHref>
+              <SafeLink href={item.href}>
                 <Box
-                  as="a"
                   display="block"
                   w="full"
                   p={3}
@@ -186,39 +252,58 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
                   }}
                   transition="all 0.2s"
                   textDecoration="none"
+                  onClick={onItemClick}
                 >
-                  <HStack spacing={3}>
-                    <Box
-                      p={2}
-                      borderRadius="md"
-                      bg={isActive ? 'blue.500' : 'gray.100'}
-                    >
-                      <item.icon
-                        size={16}
-                        color={isActive ? 'white' : '#4A5568'}
-                      />
-                    </Box>
-                    <VStack spacing={0} align="start" flex={1}>
-                      <Text
-                        fontWeight={isActive ? 'semibold' : 'medium'}
-                        color={isActive ? 'blue.700' : 'gray.700'}
-                        fontSize="sm"
+                  <HStack spacing={3} justify="space-between">
+                    <HStack spacing={3} flex={1}>
+                      <Box
+                        p={2}
+                        borderRadius="md"
+                        bg={isActive ? 'blue.500' : 'gray.100'}
                       >
-                        {item.name}
-                      </Text>
-                      {item.description && (
-                        <Text fontSize="xs" color="gray.500" noOfLines={1}>
-                          {item.description}
+                        <item.icon
+                          size={16}
+                          color={isActive ? 'white' : '#4A5568'}
+                        />
+                      </Box>
+                      <VStack spacing={0} align="start" flex={1}>
+                        <Text
+                          fontWeight={isActive ? 'semibold' : 'medium'}
+                          color={isActive ? 'blue.700' : 'gray.700'}
+                          fontSize="sm"
+                        >
+                          {item.name}
                         </Text>
-                      )}
-                    </VStack>
+                        {item.description && (
+                          <Text fontSize="xs" color="gray.500" noOfLines={1}>
+                            {item.description}
+                          </Text>
+                        )}
+                      </VStack>
+                    </HStack>
+                    {item.badge && (
+                      <Badge 
+                        size="sm" 
+                        colorScheme={item.badgeColor || 'gray'}
+                        fontSize="2xs"
+                      >
+                        {item.badge}
+                      </Badge>
+                    )}
                   </HStack>
                 </Box>
-              </Link>
+              </SafeLink>
             </Box>
           );
         })}
       </VStack>
+
+      {/* Footer del sidebar */}
+      <Box p={4} borderTop="1px" borderColor={borderColor}>
+        <Text fontSize="xs" color="gray.500" textAlign="center">
+          Versión 1.0.0
+        </Text>
+      </Box>
     </VStack>
   );
 
@@ -226,18 +311,21 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
     <AuthenticatedRoute>
       <Flex h="100vh" bg="gray.50">
         {/* Sidebar Desktop */}
-        <Box
-          display={{ base: 'none', lg: 'block' }}
-          w="280px"
-          h="full"
-          bg={sidebarBg}
-          borderRight="1px"
-          borderColor={borderColor}
-          position="sticky"
-          top={0}
-        >
-          <SidebarContent />
-        </Box>
+        {showSidebarOnDesktop && (
+          <Box
+            w={sidebarWidth}
+            h="full"
+            bg={sidebarBg}
+            borderRight="1px"
+            borderColor={borderColor}
+            position="sticky"
+            top={0}
+            overflowY="auto"
+            className="scrollbar-thin"
+          >
+            <SidebarContent />
+          </Box>
+        )}
 
         {/* Sidebar Mobile */}
         <Drawer isOpen={isOpen} placement="left" onClose={onClose} size="sm">
@@ -245,7 +333,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
           <DrawerContent>
             <DrawerCloseButton />
             <DrawerBody p={0}>
-              <SidebarContent />
+              <SidebarContent onItemClick={onClose} />
             </DrawerBody>
           </DrawerContent>
         </Drawer>
@@ -265,8 +353,9 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
             position="sticky"
             top={0}
             zIndex={10}
+            shadow="sm"
           >
-            <HStack spacing={4}>
+            <HStack spacing={4} flex={1} minW={0}>
               {/* Botón de menú móvil */}
               <IconButton
                 display={{ base: 'flex', lg: 'none' }}
@@ -280,14 +369,17 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
               {/* Breadcrumbs */}
               <Breadcrumb
                 spacing={2}
-                separator={<FiChevronRight color="gray.500" />}
+                separator={<FiChevronRight color="gray.500" size={14} />}
                 fontSize="sm"
+                overflow="hidden"
+                flex={1}
+                minW={0}
               >
                 {breadcrumbs.map((breadcrumb, index) => {
                   if (!breadcrumb.href || typeof breadcrumb.href !== 'string' || breadcrumb.href.trim() === '') {
                     return (
                       <BreadcrumbItem key={`invalid-${index}`}>
-                        <Text color="gray.600" fontWeight="medium">
+                        <Text color="gray.600" fontWeight="medium" noOfLines={1}>
                           {breadcrumb.name}
                         </Text>
                       </BreadcrumbItem>
@@ -306,16 +398,18 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
                           color="gray.800" 
                           fontWeight="semibold"
                           fontSize="sm"
+                          noOfLines={1}
                         >
                           {breadcrumb.name}
                         </Text>
                       ) : (
                         <BreadcrumbLink
-                          as={Link}
+                          as={SafeLink}
                           href={breadcrumb.href}
                           color="gray.600"
                           fontWeight="medium"
                           fontSize="sm"
+                          noOfLines={1}
                         >
                           {breadcrumb.name}
                         </BreadcrumbLink>
