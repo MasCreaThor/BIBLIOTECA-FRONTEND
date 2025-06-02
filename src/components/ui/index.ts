@@ -5,3 +5,4 @@ export { ConfirmDialog, useConfirmDialog, DeleteConfirmDialog, DeactivateConfirm
 export { ComingSoon } from './ComingSoon';
 export { SafeLink, useValidatedHref } from './SafeLink';
 export { DebugInfo } from './DebugInfo';
+export { ServerStatus, useServerStatus } from './ServerStatus';

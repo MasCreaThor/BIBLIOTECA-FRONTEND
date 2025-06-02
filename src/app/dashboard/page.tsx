@@ -1,3 +1,4 @@
+// src/app/dashboard/page.tsx
 'use client';
 
 import {
@@ -15,6 +16,12 @@ import {
   StatHelpText,
   Button,
   useColorModeValue,
+  Alert,
+  AlertIcon,
+  AlertTitle,
+  AlertDescription,
+  Skeleton,
+  SkeletonText,
 } from '@chakra-ui/react';
 import Link from 'next/link';
 import {
@@ -24,23 +31,15 @@ import {
   FiAlertTriangle,
   FiPlus,
   FiArrowRight,
+  FiRefreshCw,
+  FiWifi,
+  FiWifiOff,
 } from 'react-icons/fi';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { useAuth, useRole } from '@/hooks/useAuth';
+import { useDashboardData, useAdminDashboardData, useSystemHealth } from '@/hooks/useDashboard';
 import { DateUtils } from '@/utils';
-
-// Datos mock para estadísticas (reemplazar con datos reales)
-const mockStats = {
-  totalResources: 245,
-  activeLoans: 23,
-  overdueLoans: 5,
-  totalPeople: 156,
-  recentActivity: {
-    loans: 8,
-    returns: 12,
-    newResources: 3,
-  }
-};
+import { SafeLink } from '@/components/ui/SafeLink';
 
 const quickActions = [
   {
@@ -81,6 +80,7 @@ function StatCard({
   color = 'blue',
   trend,
   href,
+  isLoading = false,
 }: {
   label: string;
   value: string | number;
@@ -89,6 +89,7 @@ function StatCard({
   color?: string;
   trend?: 'up' | 'down' | 'neutral';
   href?: string;
+  isLoading?: boolean;
 }) {
   const bg = useColorModeValue('white', 'gray.800');
   
@@ -112,14 +113,19 @@ function StatCard({
           <StatLabel color="gray.600" fontSize="sm" fontWeight="medium">
             {label}
           </StatLabel>
-          <StatNumber fontSize="2xl" fontWeight="bold" color="gray.800">
-            {value}
-          </StatNumber>
-          {helpText && (
+          {isLoading ? (
+            <Skeleton height="32px" width="80px" />
+          ) : (
+            <StatNumber fontSize="2xl" fontWeight="bold" color="gray.800">
+              {value}
+            </StatNumber>
+          )}
+          {helpText && !isLoading && (
             <StatHelpText color="gray.500" fontSize="sm">
               {helpText}
             </StatHelpText>
           )}
+          {isLoading && <SkeletonText mt={2} noOfLines={1} />}
         </Stat>
         <Box
           p={3}
@@ -132,12 +138,11 @@ function StatCard({
     </Box>
   );
 
-  // Solo renderizar Link si href existe y es válido
   if (href && typeof href === 'string' && href.trim() !== '') {
     return (
-      <Link href={href}>
+      <SafeLink href={href}>
         <CardContent />
-      </Link>
+      </SafeLink>
     );
   }
 
@@ -157,14 +162,8 @@ function QuickActionCard({
   description: string;
   color: string;
 }) {
-  // Validar que href sea válido antes de renderizar el Link
-  if (!href || typeof href !== 'string' || href.trim() === '') {
-    console.warn(`QuickActionCard "${name}" has invalid href:`, href);
-    return null;
-  }
-
   return (
-    <Link href={href}>
+    <SafeLink href={href}>
       <Box
         p={6}
         bg="white"
@@ -209,29 +208,99 @@ function QuickActionCard({
           </Button>
         </VStack>
       </Box>
-    </Link>
+    </SafeLink>
   );
+}
+
+function SystemHealthIndicator() {
+  const { data: health, isLoading, error } = useSystemHealth();
+  
+  if (isLoading) return null;
+  
+  if (error || !health?.backend) {
+    return (
+      <Alert status="warning" borderRadius="md" mb={6}>
+        <AlertIcon />
+        <Box>
+          <AlertTitle>Problemas de conectividad</AlertTitle>
+          <AlertDescription fontSize="sm">
+            Hay problemas de conexión con el servidor. Algunos datos pueden no estar actualizados.
+          </AlertDescription>
+        </Box>
+      </Alert>
+    );
+  }
+  
+  return null;
 }
 
 export default function DashboardPage() {
   const { user } = useAuth();
   const { isAdmin } = useRole();
+  
+  // Usar hooks específicos según el rol
+  const baseDashboardData = useDashboardData();
+  const adminData = useAdminDashboardData();
+  
+  // Seleccionar los datos apropiados según el rol
+  const dashboardData = isAdmin ? adminData : baseDashboardData;
+  
+  const {
+    data,
+    isLoading,
+    isError,
+    error,
+    refetchAll,
+    isStale,
+  } = dashboardData;
 
   return (
     <DashboardLayout>
       <VStack spacing={8} align="stretch">
+        {/* Indicador de salud del sistema */}
+        <SystemHealthIndicator />
+
         {/* Header */}
         <Box>
-          <Heading size="lg" color="gray.800" mb={2}>
-            ¡Bienvenido de nuevo!
-          </Heading>
-          <Text color="gray.600">
-            Aquí tienes un resumen de la actividad de tu biblioteca.
-            {user?.lastLogin && (
-              <> Último acceso: {DateUtils.formatRelative(user.lastLogin)}</>
-            )}
-          </Text>
+          <HStack justify="space-between" align="start" mb={2}>
+            <VStack align="start" spacing={1}>
+              <Heading size="lg" color="gray.800">
+                ¡Bienvenido de nuevo!
+              </Heading>
+              <Text color="gray.600">
+                Aquí tienes un resumen de la actividad de tu biblioteca.
+                {user?.lastLogin && (
+                  <> Último acceso: {DateUtils.formatRelative(user.lastLogin)}</>
+                )}
+              </Text>
+            </VStack>
+            
+            {/* Botón de actualizar */}
+            <Button
+              size="sm"
+              variant="outline"
+              leftIcon={<Icon as={FiRefreshCw} />}
+              onClick={refetchAll}
+              isLoading={isLoading}
+              colorScheme={isStale ? 'orange' : 'gray'}
+            >
+              {isStale ? 'Actualizar' : 'Refrescar'}
+            </Button>
+          </HStack>
         </Box>
+
+        {/* Error state */}
+        {isError && (
+          <Alert status="error" borderRadius="md">
+            <AlertIcon />
+            <Box>
+              <AlertTitle>Error al cargar datos</AlertTitle>
+              <AlertDescription fontSize="sm">
+                {error?.message || 'No se pudieron cargar las estadísticas. Intenta refrescar la página.'}
+              </AlertDescription>
+            </Box>
+          </Alert>
+        )}
 
         {/* Estadísticas principales */}
         <Box>
@@ -241,38 +310,99 @@ export default function DashboardPage() {
           <Grid templateColumns="repeat(auto-fit, minmax(250px, 1fr))" gap={6}>
             <StatCard
               label="Total de Recursos"
-              value={mockStats.totalResources}
+              value={data.stats?.totalResources || 0}
               helpText="Libros, juegos, mapas, etc."
               icon={FiBook}
               color="blue"
               href="/inventory"
+              isLoading={isLoading}
             />
             <StatCard
               label="Préstamos Activos"
-              value={mockStats.activeLoans}
+              value={data.stats?.activeLoans || 0}
               helpText="Recursos actualmente prestados"
               icon={FiBookOpen}
               color="green"
               href="/loans?status=active"
+              isLoading={isLoading}
             />
             <StatCard
               label="Préstamos Vencidos"
-              value={mockStats.overdueLoans}
+              value={data.stats?.overdueLoans || 0}
               helpText="Requieren seguimiento"
               icon={FiAlertTriangle}
               color="red"
               href="/loans?status=overdue"
+              isLoading={isLoading}
             />
             <StatCard
               label="Personas Registradas"
-              value={mockStats.totalPeople}
+              value={data.stats?.totalPeople || 0}
               helpText="Estudiantes y docentes"
               icon={FiUsers}
               color="purple"
               href="/people"
+              isLoading={isLoading}
             />
           </Grid>
         </Box>
+
+        {/* Estadísticas detalladas por tipo */}
+        {data.people && !isLoading && (
+          <Box>
+            <Heading size="md" color="gray.800" mb={4}>
+              Desglose de Personas
+            </Heading>
+            <Grid templateColumns="repeat(auto-fit, minmax(200px, 1fr))" gap={4}>
+              <StatCard
+                label="Estudiantes"
+                value={data.people.students}
+                icon={FiUsers}
+                color="blue"
+                href="/people?personType=student"
+              />
+              <StatCard
+                label="Docentes"
+                value={data.people.teachers}
+                icon={FiUsers}
+                color="green"
+                href="/people?personType=teacher"
+              />
+            </Grid>
+          </Box>
+        )}
+
+        {/* Estadísticas de usuarios (solo admin) */}
+        {isAdmin && adminData.users?.data && (
+          <Box>
+            <Heading size="md" color="gray.800" mb={4}>
+              Gestión de Usuarios
+            </Heading>
+            <Grid templateColumns="repeat(auto-fit, minmax(200px, 1fr))" gap={4}>
+              <StatCard
+                label="Usuarios Activos"
+                value={adminData.users.data.active}
+                icon={FiUsers}
+                color="green"
+                href="/admin/users?status=active"
+              />
+              <StatCard
+                label="Administradores"
+                value={adminData.users.data.admins}
+                icon={FiUsers}
+                color="red"
+                href="/admin/users?role=admin"
+              />
+              <StatCard
+                label="Bibliotecarios"
+                value={adminData.users.data.librarians}
+                icon={FiUsers}
+                color="blue"
+                href="/admin/users?role=librarian"
+              />
+            </Grid>
+          </Box>
+        )}
 
         {/* Acciones rápidas */}
         <Box>
@@ -280,12 +410,9 @@ export default function DashboardPage() {
             Acciones Rápidas
           </Heading>
           <Grid templateColumns="repeat(auto-fit, minmax(280px, 1fr))" gap={6}>
-            {quickActions
-              .filter(action => action.href && typeof action.href === 'string' && action.href.trim() !== '')
-              .map((action) => (
-                <QuickActionCard key={action.name} {...action} />
-              ))
-            }
+            {quickActions.map((action) => (
+              <QuickActionCard key={action.name} {...action} />
+            ))}
           </Grid>
         </Box>
 
@@ -297,21 +424,31 @@ export default function DashboardPage() {
           <Grid templateColumns="repeat(auto-fit, minmax(200px, 1fr))" gap={4}>
             <StatCard
               label="Préstamos del Día"
-              value={mockStats.recentActivity.loans}
+              value={data.stats?.recentActivity?.loans || 0}
               icon={FiBookOpen}
               color="blue"
+              isLoading={isLoading}
             />
             <StatCard
               label="Devoluciones del Día"
-              value={mockStats.recentActivity.returns}
+              value={data.stats?.recentActivity?.returns || 0}
               icon={FiArrowRight}
               color="green"
+              isLoading={isLoading}
             />
             <StatCard
               label="Recursos Agregados"
-              value={mockStats.recentActivity.newResources}
+              value={data.stats?.recentActivity?.newResources || 0}
               icon={FiPlus}
               color="purple"
+              isLoading={isLoading}
+            />
+            <StatCard
+              label="Personas Registradas"
+              value={data.stats?.recentActivity?.newPeople || 0}
+              icon={FiUsers}
+              color="orange"
+              isLoading={isLoading}
             />
           </Grid>
         </Box>
@@ -322,17 +459,16 @@ export default function DashboardPage() {
             <Heading size="md" color="gray.800" mb={4}>
               Administración
             </Heading>
-            <Link href="/admin" passHref>
+            <SafeLink href="/admin">
               <Button
                 colorScheme="red"
                 variant="outline"
                 leftIcon={<Icon as={FiUsers} />}
                 size="lg"
-                as="a"
               >
                 Gestionar Usuarios del Sistema
               </Button>
-            </Link>
+            </SafeLink>
           </Box>
         )}
       </VStack>

@@ -214,20 +214,7 @@ export interface ApiResponse<T = unknown> {
     createdAt: Date;
     updatedAt: Date;
   }
-  
-  // Tipos para estadísticas
-  export interface DashboardStats {
-    totalResources: number;
-    activeLoans: number;
-    overdueLoans: number;
-    totalPeople: number;
-    recentActivity: {
-      loans: number;
-      returns: number;
-      newResources: number;
-    };
-  }
-  
+
   export interface UsageStats {
     period: string;
     loans: number;
@@ -284,4 +271,59 @@ export interface ApiResponse<T = unknown> {
     error: string;
     timestamp: string;
     path: string;
+  }
+
+  export interface DashboardStats {
+    totalResources: number;
+    activeLoans: number;
+    overdueLoans: number;
+    totalPeople: number;
+    recentActivity: {
+      loans: number;
+      returns: number;
+      newResources: number;
+      newPeople: number; // Esta propiedad es la que causaba el conflicto
+    };
+  }
+  
+  // Actualizar interface UsageStats existente (REEMPLAZAR si ya existe)
+  export interface UsageStats {
+    period: string;
+    loans: number;
+    returns: number;
+    newResources: number;
+    newPeople: number;
+  }
+  
+  // AGREGAR estas nuevas interfaces al final del archivo
+  export interface DetailedStats {
+    people: {
+      total: number;
+      students: number;
+      teachers: number;
+      byGrade: Array<{ grade: string; count: number }>;
+    };
+    resources: {
+      total: number;
+      available: number;
+      borrowed: number;
+      byType: Array<{ type: string; count: number }>;
+      byCategory: Array<{ category: string; count: number }>;
+    };
+    users: {
+      total: number;
+      active: number;
+      inactive: number;
+      admins: number;
+      librarians: number;
+    };
+  }
+  
+  export interface SystemHealth {
+    backend: boolean;
+    apis: {
+      people: boolean;
+      resources: boolean;
+      users: boolean;
+    };
   }
