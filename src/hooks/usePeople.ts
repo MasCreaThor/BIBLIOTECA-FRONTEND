@@ -22,6 +22,13 @@ export const PEOPLE_QUERY_KEYS = {
 } as const;
 
 /**
+ * Utilidad para construir nombre completo con fallback
+ */
+const getPersonFullName = (person: { fullName?: string; firstName: string; lastName: string }): string => {
+  return person.fullName || `${person.firstName} ${person.lastName}`;
+};
+
+/**
  * Hook para obtener lista de personas con filtros
  */
 export function usePeople(
@@ -126,7 +133,9 @@ export function useCreatePerson() {
         newPerson
       );
 
-      toast.success(`${newPerson.fullName} registrado exitosamente`);
+      // Construir nombre completo para el toast
+      const fullName = getPersonFullName(newPerson);
+      toast.success(`${fullName} registrado exitosamente`);
     },
     onError: (error: any) => {
       const errorMessage = error?.response?.data?.message || error?.message || 'Error al registrar persona';
@@ -154,7 +163,9 @@ export function useUpdatePerson() {
       // Invalidar listas para refrescar
       queryClient.invalidateQueries({ queryKey: PEOPLE_QUERY_KEYS.people });
       
-      toast.success(`${updatedPerson.fullName} actualizado exitosamente`);
+      // Construir nombre completo para el toast
+      const fullName = getPersonFullName(updatedPerson);
+      toast.success(`${fullName} actualizado exitosamente`);
     },
     onError: (error: any) => {
       const errorMessage = error?.response?.data?.message || error?.message || 'Error al actualizar persona';
@@ -181,7 +192,9 @@ export function useActivatePerson() {
       // Invalidar listas
       queryClient.invalidateQueries({ queryKey: PEOPLE_QUERY_KEYS.people });
       
-      toast.success(`${activatedPerson.fullName} activado exitosamente`);
+      // Construir nombre completo para el toast
+      const fullName = getPersonFullName(activatedPerson);
+      toast.success(`${fullName} activado exitosamente`);
     },
     onError: (error: any) => {
       const errorMessage = error?.response?.data?.message || error?.message || 'Error al activar persona';
@@ -208,7 +221,9 @@ export function useDeactivatePerson() {
       // Invalidar listas
       queryClient.invalidateQueries({ queryKey: PEOPLE_QUERY_KEYS.people });
       
-      toast.success(`${deactivatedPerson.fullName} desactivado exitosamente`);
+      // Construir nombre completo para el toast
+      const fullName = getPersonFullName(deactivatedPerson);
+      toast.success(`${fullName} desactivado exitosamente`);
     },
     onError: (error: any) => {
       const errorMessage = error?.response?.data?.message || error?.message || 'Error al desactivar persona';

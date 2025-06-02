@@ -67,7 +67,6 @@ import {
 import { useConfirmDialog } from '@/components/ui/ConfirmDialog';
 import type { UpdatePersonRequest } from '@/types/api.types';
 import { DateUtils, TextUtils } from '@/utils';
-import { getPersonTypeConfig } from '@/utils/personTypeUtils';
 
 export default function PersonDetailPage() {
   const params = useParams();
@@ -85,6 +84,44 @@ export default function PersonDetailPage() {
     refetch,
   } = usePerson(personId);
 
+  const cardBg = useColorModeValue('white', 'gray.800');
+  const bgColor = useColorModeValue('gray.50', 'gray.900');
+
+  // Construir nombre completo con fallback ANTES de usarlo en hooks
+  const fullName = person ? (person.fullName || `${person.firstName} ${person.lastName}`) : '';
+
+  // Configuración del tipo de persona
+  const personTypeConfig = {
+    student: {
+      label: 'Estudiante',
+      color: 'blue',
+      icon: FiBook,
+      description: 'Estudiante registrado en la institución',
+    },
+    teacher: {
+      label: 'Docente',
+      color: 'green',
+      icon: FiUsers,
+      description: 'Docente de la institución',
+    },
+  };
+
+  // Obtener configuración del tipo, con fallback seguro
+  const getPersonTypeConfig = () => {
+    if (person?.personType?.name && personTypeConfig[person.personType.name as keyof typeof personTypeConfig]) {
+      return personTypeConfig[person.personType.name as keyof typeof personTypeConfig];
+    }
+    return {
+      label: person?.personType?.description || 'Tipo no especificado',
+      color: 'gray',
+      icon: FiUser,
+      description: 'Información del tipo de persona no disponible',
+    };
+  };
+
+  const typeConfig = getPersonTypeConfig();
+
+  // Mutations
   const updateMutation = useUpdatePerson();
   const activateMutation = useActivatePerson();
   const deactivateMutation = useDeactivatePerson();
@@ -93,14 +130,11 @@ export default function PersonDetailPage() {
   const { confirm: confirmStatusChange, dialog: statusChangeDialog } = useConfirmDialog({
     title: person?.active ? 'Desactivar Persona' : 'Activar Persona',
     message: person?.active 
-      ? `¿Estás seguro de que quieres desactivar a ${person?.fullName}? No podrá realizar préstamos.`
-      : `¿Estás seguro de que quieres activar a ${person?.fullName}? Podrá realizar préstamos nuevamente.`,
+      ? `¿Estás seguro de que quieres desactivar a ${fullName}? No podrá realizar préstamos.`
+      : `¿Estás seguro de que quieres activar a ${fullName}? Podrá realizar préstamos nuevamente.`,
     confirmText: person?.active ? 'Desactivar' : 'Activar',
     variant: person?.active ? 'warning' : 'info',
   });
-
-  const cardBg = useColorModeValue('white', 'gray.800');
-  const bgColor = useColorModeValue('gray.50', 'gray.900');
 
   // Handlers
   const handleUpdatePerson = async (data: UpdatePersonRequest) => {
@@ -177,9 +211,6 @@ export default function PersonDetailPage() {
     );
   }
 
-  // Configuración del tipo de persona usando la utilidad
-  const typeConfig = getPersonTypeConfig(person);
-
   return (
     <DashboardLayout>
       <VStack spacing={6} align="stretch" maxW="6xl" mx="auto">
@@ -196,7 +227,7 @@ export default function PersonDetailPage() {
           </BreadcrumbItem>
           <BreadcrumbItem isCurrentPage>
             <Text color="gray.600" fontWeight="medium" noOfLines={1}>
-              {person.fullName}
+              {fullName}
             </Text>
           </BreadcrumbItem>
         </Breadcrumb>
@@ -208,7 +239,7 @@ export default function PersonDetailPage() {
               <HStack spacing={4}>
                 <Avatar
                   size="xl"
-                  name={person.fullName}
+                  name={fullName}
                   bg={`${typeConfig.color}.500`}
                   color="white"
                 />
@@ -216,7 +247,7 @@ export default function PersonDetailPage() {
                 <VStack align="start" spacing={2}>
                   <HStack spacing={3}>
                     <Heading size="lg" color="gray.800">
-                      {person.fullName}
+                      {fullName}
                     </Heading>
                     <Badge
                       colorScheme={person.active ? 'green' : 'red'}
@@ -295,7 +326,7 @@ export default function PersonDetailPage() {
                     <Icon as={FiUser} color="gray.500" />
                     <Text fontWeight="medium" color="gray.700">Nombre completo:</Text>
                   </HStack>
-                  <Text color="gray.600">{person.fullName}</Text>
+                  <Text color="gray.600">{fullName}</Text>
                 </HStack>
 
                 <Divider />
@@ -446,7 +477,7 @@ export default function PersonDetailPage() {
       <Modal isOpen={isEditOpen} onClose={onEditClose} size="xl">
         <ModalOverlay />
         <ModalContent>
-          <ModalHeader>Editar {person.fullName}</ModalHeader>
+          <ModalHeader>Editar {fullName}</ModalHeader>
           <ModalCloseButton />
           <ModalBody pb={6}>
             <PersonForm

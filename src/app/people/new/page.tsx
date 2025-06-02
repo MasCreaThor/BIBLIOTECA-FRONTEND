@@ -45,7 +45,9 @@ export default function NewPersonPage() {
   const handleCreatePerson = async (data: CreatePersonRequest) => {
     try {
       const newPerson = await createMutation.mutateAsync(data);
-      setCreatedPersonName(newPerson.fullName);
+      // Construir nombre completo con fallback
+      const fullName = newPerson.fullName || `${newPerson.firstName} ${newPerson.lastName}`;
+      setCreatedPersonName(fullName);
       setShowSuccess(true);
       
       // Redirigir después de 3 segundos o al hacer clic en "Ver lista"

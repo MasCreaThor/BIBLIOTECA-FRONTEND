@@ -144,13 +144,13 @@ function PersonTableRow({
           <HStack spacing={3}>
             <Avatar
               size={isCompact ? 'sm' : 'md'}
-              name={person.fullName}
+              name={person.fullName || `${person.firstName} ${person.lastName}`}
               bg={`${typeConfig.color}.500`}
               color="white"
             />
             <VStack spacing={0} align="start">
               <Text fontWeight="medium" color="gray.800" fontSize={isCompact ? 'sm' : 'md'}>
-                {person.fullName}
+                {person.fullName || `${person.firstName} ${person.lastName}`}
               </Text>
               {person.documentNumber && (
                 <Text fontSize="xs" color="gray.500">
