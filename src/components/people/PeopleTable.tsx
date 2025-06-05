@@ -113,24 +113,93 @@ function PersonTableRow({
     setSelectedAction(null);
   };
 
-  // Determinar tipo y color
-  const personTypeConfig = {
-    student: {
-      label: 'Estudiante',
-      color: 'blue',
-      icon: FiBook,
-    },
-    teacher: {
-      label: 'Docente',
-      color: 'green',
-      icon: FiUsers,
-    },
+  // Determinar tipo y color con manejo de errores mejorado
+  const getPersonTypeConfig = () => {
+    const personTypeConfig = {
+      student: {
+        label: 'Estudiante',
+        color: 'blue',
+        icon: FiBook,
+        gradeLabel: 'Grado'
+      },
+      teacher: {
+        label: 'Docente',
+        color: 'green',
+        icon: FiUsers,
+        gradeLabel: 'Área'
+      },
+    };
+
+    // Verificar si tiene personType poblado
+    if (person.personType?.name) {
+      return personTypeConfig[person.personType.name as keyof typeof personTypeConfig] || {
+        label: person.personType.description || 'Desconocido',
+        color: 'gray',
+        icon: FiUser,
+        gradeLabel: 'Info'
+      };
+    }
+
+    // Fallback basado en si tiene grado o no
+    if (person.grade) {
+      return personTypeConfig.student;
+    }
+
+    return {
+      label: 'Tipo Desconocido',
+      color: 'gray',
+      icon: FiUser,
+      gradeLabel: 'Info'
+    };
   };
 
-  const typeConfig = personTypeConfig[person.personType?.name as keyof typeof personTypeConfig] || {
-    label: person.personType?.description || 'Desconocido',
-    color: 'gray',
-    icon: FiUser,
+  const typeConfig = getPersonTypeConfig();
+
+  // Función para obtener el nombre completo con fallback
+  const getFullName = () => {
+    return person.fullName || `${person.firstName} ${person.lastName}`;
+  };
+
+  // Función para renderizar el grado/área con mejor UX
+  const renderGradeArea = () => {
+    // Para estudiantes: mostrar grado si existe, sino "No especificado"
+    if (typeConfig.gradeLabel === 'Grado') {
+      if (person.grade && person.grade.trim()) {
+        return (
+          <VStack spacing={0} align="start">
+            <Text fontSize="sm" color="gray.700" fontWeight="medium">
+              {person.grade}
+            </Text>
+            <Text fontSize="xs" color="gray.500">
+              {typeConfig.gradeLabel}
+            </Text>
+          </VStack>
+        );
+      }
+
+      return (
+        <VStack spacing={0} align="start">
+          <Text fontSize="sm" color="gray.400" fontStyle="italic">
+            No especificado
+          </Text>
+          <Text fontSize="xs" color="gray.400">
+            {typeConfig.gradeLabel}
+          </Text>
+        </VStack>
+      );
+    }
+
+    // Para docentes: siempre mostrar "N/A"
+    return (
+      <VStack spacing={0} align="start">
+        <Text fontSize="sm" color="gray.500" fontWeight="medium">
+          N/A
+        </Text>
+        <Text fontSize="xs" color="gray.500">
+          No aplica
+        </Text>
+      </VStack>
+    );
   };
 
   return (
@@ -144,13 +213,13 @@ function PersonTableRow({
           <HStack spacing={3}>
             <Avatar
               size={isCompact ? 'sm' : 'md'}
-              name={person.fullName || `${person.firstName} ${person.lastName}`}
+              name={getFullName()}
               bg={`${typeConfig.color}.500`}
               color="white"
             />
             <VStack spacing={0} align="start">
               <Text fontWeight="medium" color="gray.800" fontSize={isCompact ? 'sm' : 'md'}>
-                {person.fullName || `${person.firstName} ${person.lastName}`}
+                {getFullName()}
               </Text>
               {person.documentNumber && (
                 <Text fontSize="xs" color="gray.500">
@@ -177,17 +246,9 @@ function PersonTableRow({
           </HStack>
         </Td>
 
-        {/* Grado/Área */}
+        {/* Grado/Área - MEJORADO */}
         <Td>
-          {person.grade ? (
-            <Text fontSize="sm" color="gray.700">
-              {person.grade}
-            </Text>
-          ) : (
-            <Text fontSize="sm" color="gray.400" fontStyle="italic">
-              No especificado
-            </Text>
-          )}
+          {renderGradeArea()}
         </Td>
 
         {/* Estado */}
@@ -289,7 +350,7 @@ function PersonTableRow({
         isOpen={isDeactivateOpen}
         onClose={onDeactivateClose}
         onConfirm={handleConfirmDeactivate}
-        itemName={person.fullName}
+        itemName={getFullName()}
         itemType="persona"
       />
 
@@ -297,7 +358,7 @@ function PersonTableRow({
         isOpen={isDeleteOpen}
         onClose={onDeleteClose}
         onConfirm={handleConfirmDelete}
-        itemName={person.fullName}
+        itemName={getFullName()}
         itemType="persona"
       />
     </>
@@ -322,7 +383,10 @@ function LoadingRows({ count = 5, isCompact = false }: { count?: number; isCompa
             <Skeleton height="24px" width="80px" borderRadius="12px" />
           </Td>
           <Td>
-            <Skeleton height="16px" width="60px" />
+            <VStack spacing={1} align="start">
+              <Skeleton height="16px" width="60px" />
+              <Skeleton height="12px" width="40px" />
+            </VStack>
           </Td>
           <Td>
             <Skeleton height="24px" width="60px" borderRadius="12px" />

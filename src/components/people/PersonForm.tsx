@@ -159,7 +159,7 @@ export function PersonForm(props: PersonFormProps) {
     if (personTypes) {
       const selectedType = personTypes.find(type => type._id === watchedPersonTypeId);
       if (selectedType?.name === 'teacher') {
-        setValue('grade', '');
+        setValue('grade', ''); // Limpiar el campo para docentes
       }
     }
   }, [watchedPersonTypeId, personTypes, setValue]);
@@ -348,49 +348,38 @@ export function PersonForm(props: PersonFormProps) {
                 </Box>
               )}
 
-              {/* Campo grado para estudiantes */}
-              {selectedPersonType && (
-                <Box>
-                  {isStudent && (
-                    <FormControl isInvalid={!!errors.grade} isRequired>
-                      <FormLabel>
-                        <HStack spacing={2}>
-                          <Icon as={FiBook} color="blue.500" />
-                          <Text>Grado</Text>
-                        </HStack>
-                      </FormLabel>
-                      <Input
-                        {...register('grade')}
-                        placeholder="Ej: 10A, Jardín, Preescolar"
-                      />
-                      <FormErrorMessage>{errors.grade?.message}</FormErrorMessage>
-                      <FormHelperText>
-                        Especifica el grado o nivel académico del estudiante
-                      </FormHelperText>
-                    </FormControl>
-                  )}
+              {/* Campo grado solo para estudiantes */}
+              {selectedPersonType && isStudent && (
+                <FormControl isInvalid={!!errors.grade} isRequired>
+                  <FormLabel>
+                    <HStack spacing={2}>
+                      <Icon as={FiBook} color="blue.500" />
+                      <Text>Grado</Text>
+                    </HStack>
+                  </FormLabel>
+                  <Input
+                    {...register('grade')}
+                    placeholder="Ej: 10A, Jardín, Preescolar"
+                  />
+                  <FormErrorMessage>{errors.grade?.message}</FormErrorMessage>
+                  <FormHelperText>
+                    Especifica el grado o nivel académico del estudiante
+                  </FormHelperText>
+                </FormControl>
+              )}
 
-                  {isTeacher && (
-                    <FormControl>
-                      <FormLabel>
-                        <HStack spacing={2}>
-                          <Icon as={FiUsers} color="green.500" />
-                          <Text>Área o Asignatura</Text>
-                          <Badge colorScheme="gray" fontSize="xs">
-                            Opcional
-                          </Badge>
-                        </HStack>
-                      </FormLabel>
-                      <Input
-                        {...register('grade')}
-                        placeholder="Ej: Matemáticas, Coordinador, Rector"
-                      />
-                      <FormHelperText>
-                        Puedes especificar el área de enseñanza o cargo del docente
-                      </FormHelperText>
-                    </FormControl>
-                  )}
-                </Box>
+              {/* Información para docentes */}
+              {selectedPersonType && isTeacher && (
+                <Alert status="info" borderRadius="md">
+                  <AlertIcon />
+                  <Box>
+                    <AlertTitle>Información para Docentes</AlertTitle>
+                    <AlertDescription fontSize="sm">
+                      Los docentes no requieren información adicional de área o asignatura. 
+                      Esta información se gestiona a través del sistema académico principal.
+                    </AlertDescription>
+                  </Box>
+                </Alert>
               )}
             </VStack>
 

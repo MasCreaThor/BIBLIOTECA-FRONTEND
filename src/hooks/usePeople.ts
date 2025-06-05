@@ -29,18 +29,78 @@ const getPersonFullName = (person: { fullName?: string; firstName: string; lastN
 };
 
 /**
- * Hook para obtener lista de personas con filtros
+ * Utilidad para enriquecer personas con tipos cuando falla el populate
+ */
+const enrichPeopleWithTypes = (people: Person[], personTypes: PersonType[]): Person[] => {
+  return people.map(person => {
+    // Si ya tiene personType poblado, devolverlo tal como está
+    if (person.personType) return person;
+    
+    // Si no, buscar el tipo por personTypeId
+    if (person.personTypeId && personTypes) {
+      const personType = personTypes.find(type => type._id === person.personTypeId);
+      if (personType) {
+        return { 
+          ...person, 
+          personType
+        };
+      }
+    }
+    
+    return person;
+  });
+};
+
+/**
+ * Hook para obtener lista de personas con filtros y manejo de errores mejorado
  */
 export function usePeople(
   filters: SearchFilters = {},
   options?: Omit<UseQueryOptions<PaginatedResponse<Person>>, 'queryKey' | 'queryFn'>
 ) {
+  const queryClient = useQueryClient();
+  
   return useQuery({
     queryKey: PEOPLE_QUERY_KEYS.peopleList(filters),
-    queryFn: () => PersonService.getPeople(filters),
+    queryFn: async () => {
+      try {
+        return await PersonService.getPeople(filters);
+      } catch (error: any) {
+        // Si hay error de populate, intentar obtener tipos por separado
+        if (error?.response?.status === 500 && 
+            error?.response?.data?.message?.includes('populate')) {
+          
+          console.warn('Error de populate detectado, enriqueciendo datos manualmente...');
+          
+          // Obtener personas sin populate si es posible
+          const basicResponse = await PersonService.getPeople({ ...filters, populate: false } as any);
+          
+          // Obtener tipos de persona por separado
+          const personTypes = queryClient.getQueryData(PEOPLE_QUERY_KEYS.personTypes) as PersonType[];
+          
+          if (personTypes) {
+            const enrichedData = enrichPeopleWithTypes(basicResponse.data, personTypes);
+            return {
+              ...basicResponse,
+              data: enrichedData,
+            };
+          }
+          
+          return basicResponse;
+        }
+        
+        throw error;
+      }
+    },
     staleTime: 5 * 60 * 1000, // 5 minutos
     gcTime: 10 * 60 * 1000, // 10 minutos
-    retry: 2,
+    retry: (failureCount, error: any) => {
+      // No reintentar en errores 400-499 (client errors)
+      if (error?.response?.status >= 400 && error?.response?.status < 500) {
+        return false;
+      }
+      return failureCount < 2;
+    },
     ...options,
   });
 }
@@ -52,9 +112,29 @@ export function usePerson(
   id: string,
   options?: Omit<UseQueryOptions<Person>, 'queryKey' | 'queryFn'>
 ) {
+  const queryClient = useQueryClient();
+  
   return useQuery({
     queryKey: PEOPLE_QUERY_KEYS.person(id),
-    queryFn: () => PersonService.getPersonById(id),
+    queryFn: async () => {
+      try {
+        return await PersonService.getPersonById(id);
+      } catch (error: any) {
+        // Si hay error de populate, intentar enriquecer manualmente
+        if (error?.response?.status === 500) {
+          const personTypes = queryClient.getQueryData(PEOPLE_QUERY_KEYS.personTypes) as PersonType[];
+          
+          if (personTypes) {
+            // Intentar obtener datos básicos de la persona
+            const basicPerson = await PersonService.getPersonById(id);
+            const enrichedPeople = enrichPeopleWithTypes([basicPerson], personTypes);
+            return enrichedPeople[0];
+          }
+        }
+        
+        throw error;
+      }
+    },
     enabled: !!id,
     staleTime: 10 * 60 * 1000,
     gcTime: 15 * 60 * 1000,
@@ -83,7 +163,7 @@ export function usePersonByDocument(
 }
 
 /**
- * Hook para obtener tipos de persona
+ * Hook para obtener tipos de persona con precarga automática
  */
 export function usePersonTypes(
   options?: Omit<UseQueryOptions<PersonType[]>, 'queryKey' | 'queryFn'>
@@ -94,19 +174,64 @@ export function usePersonTypes(
     staleTime: 30 * 60 * 1000, // 30 minutos - datos que cambian poco
     gcTime: 60 * 60 * 1000, // 1 hora
     retry: 2,
+    refetchOnMount: false, // No refetch automático ya que son datos estables
     ...options,
   });
 }
 
 /**
- * Hook para obtener estadísticas de personas
+ * Hook para obtener estadísticas de personas con manejo de errores mejorado
  */
 export function usePersonStats(
   options?: Omit<UseQueryOptions<Awaited<ReturnType<typeof PersonService.getPersonStats>>>, 'queryKey' | 'queryFn'>
 ) {
   return useQuery({
     queryKey: PEOPLE_QUERY_KEYS.personStats,
-    queryFn: PersonService.getPersonStats,
+    queryFn: async () => {
+      try {
+        return await PersonService.getPersonStats();
+      } catch (error: any) {
+        // Si hay error, devolver estadísticas básicas
+        console.error('Error obteniendo estadísticas de personas:', error);
+        
+        // Intentar calcular estadísticas básicas desde el cache
+        const queryClient = useQueryClient();
+        const allPeopleQueries = queryClient.getQueriesData({ 
+          queryKey: ['people', 'list'] 
+        });
+        
+        if (allPeopleQueries.length > 0) {
+          // Usar datos del cache para calcular estadísticas aproximadas
+          const cachedResponse = allPeopleQueries[0][1] as PaginatedResponse<Person> | undefined;
+          if (cachedResponse) {
+            const people = cachedResponse.data;
+            const students = people.filter(p => 
+              p.personType?.name === 'student' || 
+              (!p.personType && p.grade) // Fallback para estudiantes
+            ).length;
+            const teachers = people.filter(p => 
+              p.personType?.name === 'teacher' ||
+              (!p.personType && !p.grade) // Fallback para docentes
+            ).length;
+            
+            return {
+              total: cachedResponse.pagination.total,
+              students,
+              teachers,
+              byGrade: [], // No calculamos byGrade desde cache por simplicidad
+            };
+          }
+        }
+        
+        // Fallback final
+        return {
+          total: 0,
+          students: 0,
+          teachers: 0,
+          byGrade: [],
+        };
+      }
+    },
     staleTime: 10 * 60 * 1000,
     gcTime: 15 * 60 * 1000,
     retry: 2,
