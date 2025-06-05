@@ -30,7 +30,7 @@ interface PeopleTableProps {
 }
 
 /**
- * Componente principal de tabla de personas - REFACTORIZADO
+ * Componente principal de tabla de personas
  * 
  * Responsabilidades:
  * - Estructura de la tabla

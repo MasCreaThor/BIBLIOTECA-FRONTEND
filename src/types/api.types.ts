@@ -282,11 +282,10 @@ export interface ApiResponse<T = unknown> {
       loans: number;
       returns: number;
       newResources: number;
-      newPeople: number; // Esta propiedad es la que causaba el conflicto
+      newPeople: number;
     };
   }
   
-  // Actualizar interface UsageStats existente (REEMPLAZAR si ya existe)
   export interface UsageStats {
     period: string;
     loans: number;
@@ -295,7 +294,6 @@ export interface ApiResponse<T = unknown> {
     newPeople: number;
   }
   
-  // AGREGAR estas nuevas interfaces al final del archivo
   export interface DetailedStats {
     people: {
       total: number;

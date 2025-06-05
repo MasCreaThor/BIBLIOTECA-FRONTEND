@@ -151,7 +151,7 @@ export class PersonTypeManager {
   }
 
   /**
-   * Renderiza información del grado/área según el tipo de persona
+   * Renderiza información del grado según el tipo de persona
    * Devuelve objeto con texto y si es válido
    */
   static getGradeDisplayInfo(person: Person, fallbackTypes?: PersonType[]): {

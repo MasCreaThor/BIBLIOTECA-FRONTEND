@@ -4,11 +4,9 @@
 // Componente principal
 export { PersonForm } from './PersonForm';
 
-// Hook personalizado (exportado para testing si es necesario)
 export { usePersonForm } from './usePersonForm';
 export type { UsePersonFormOptions, UsePersonFormReturn } from './usePersonForm';
 
-// Subcomponentes (exportados para reutilización si es necesario)
 export { PersonBasicFields } from './PersonBasicFields';
 export { PersonTypeSelector } from './PersonTypeSelector';
 export { DocumentValidation } from './DocumentValidation';
