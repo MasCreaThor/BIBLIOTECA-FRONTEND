@@ -187,7 +187,7 @@ export default function NewPersonPage() {
             <AlertDescription fontSize="sm">
               <VStack align="start" spacing={1} mt={2}>
                 <Text>• El número de documento es opcional para estudiantes pero recomendado para docentes</Text>
-                <Text>• El grado es obligatorio para estudiantes y opcional para docentes</Text>
+                <Text>• El grado es obligatorio para estudiantes</Text>
                 <Text>• Una vez registrado, el tipo de persona no se puede cambiar</Text>
                 <Text>• Los nombres y apellidos se guardarán con formato de título (Primera Letra Mayúscula)</Text>
               </VStack>
