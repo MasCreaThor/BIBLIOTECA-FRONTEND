@@ -63,9 +63,10 @@ import {
   useUpdatePerson, 
   useActivatePerson, 
   useDeactivatePerson,
-  usePersonTypes // ← Agregamos este hook
+  usePersonTypes
 } from '@/hooks/usePeople';
 import { useConfirmDialog } from '@/components/ui/ConfirmDialog';
+import { PersonTypeManager } from '@/lib/personType';
 import type { UpdatePersonRequest } from '@/types/api.types';
 import { DateUtils, TextUtils } from '@/utils';
 
@@ -85,85 +86,16 @@ export default function PersonDetailPage() {
     refetch,
   } = usePerson(personId);
 
-  // Agregamos el hook para obtener tipos de persona como fallback
+  // Obtener tipos de persona para fallback
   const { data: personTypes } = usePersonTypes();
 
   const cardBg = useColorModeValue('white', 'gray.800');
   const bgColor = useColorModeValue('gray.50', 'gray.900');
 
-  // Construir nombre completo con fallback ANTES de usarlo en hooks
-  const fullName = person ? (person.fullName || `${person.firstName} ${person.lastName}`) : '';
-
-  // FUNCIÓN MEJORADA para obtener configuración del tipo de persona
-  const getPersonTypeConfig = () => {
-    const personTypeConfig = {
-      student: {
-        label: 'Estudiante',
-        color: 'blue',
-        icon: FiBook,
-        description: 'Estudiante registrado en la institución',
-      },
-      teacher: {
-        label: 'Docente',
-        color: 'green',
-        icon: FiUsers,
-        description: 'Docente de la institución',
-      },
-    };
-
-    // 1. Si tiene personType poblado, usarlo directamente
-    if (person?.personType?.name) {
-      const config = personTypeConfig[person.personType.name as keyof typeof personTypeConfig];
-      if (config) {
-        return config;
-      }
-      // Si el nombre no coincide con los esperados, usar la descripción
-      return {
-        label: person.personType.description || 'Tipo Personalizado',
-        color: 'purple',
-        icon: FiUser,
-        description: person.personType.description || 'Tipo de persona personalizado',
-      };
-    }
-
-    // 2. Si no está poblado pero tenemos personTypeId y la lista de tipos
-    if (person?.personTypeId && personTypes) {
-      const personType = personTypes.find(type => type._id === person.personTypeId);
-      if (personType) {
-        const config = personTypeConfig[personType.name as keyof typeof personTypeConfig];
-        if (config) {
-          return config;
-        }
-        return {
-          label: personType.description || 'Tipo Personalizado',
-          color: 'purple',
-          icon: FiUser,
-          description: personType.description || 'Tipo de persona personalizado',
-        };
-      }
-    }
-
-    // 3. Fallback inteligente basado en si tiene grado o no
-    if (person) {
-      if (person.grade && person.grade.trim()) {
-        // Si tiene grado, probablemente es estudiante
-        return personTypeConfig.student;
-      } else {
-        // Si no tiene grado, probablemente es docente
-        return personTypeConfig.teacher;
-      }
-    }
-
-    // 4. Fallback final
-    return {
-      label: 'Tipo no especificado',
-      color: 'gray',
-      icon: FiUser,
-      description: 'Información del tipo de persona no disponible',
-    };
-  };
-
-  const typeConfig = getPersonTypeConfig();
+  // ✅ REFACTORIZACIÓN: Usar PersonTypeManager en lugar de función duplicada
+  const fullName = person ? PersonTypeManager.getFullName(person) : '';
+  const typeConfig = person ? PersonTypeManager.getConfig(person, personTypes) : null;
+  const gradeInfo = person ? PersonTypeManager.getGradeDisplayInfo(person, personTypes) : null;
 
   // Mutations
   const updateMutation = useUpdatePerson();
@@ -216,15 +148,19 @@ export default function PersonDetailPage() {
     router.push('/people');
   };
 
-  // Función para renderizar el grado/área según el tipo
+  // ✅ REFACTORIZACIÓN: Función simplificada usando PersonTypeManager
   const renderGradeArea = () => {
-    const isStudent = typeConfig.label === 'Estudiante';
+    if (!gradeInfo) return 'Cargando...';
     
-    if (isStudent) {
-      return person?.grade || 'No especificado';
-    } else {
+    if (gradeInfo.text === 'N/A') {
       return 'N/A';
     }
+    
+    if (gradeInfo.isValid) {
+      return gradeInfo.text;
+    }
+    
+    return 'No especificado';
   };
 
   // Loading state
@@ -262,6 +198,15 @@ export default function PersonDetailPage() {
             </Button>
           </HStack>
         </VStack>
+      </DashboardLayout>
+    );
+  }
+
+  // Si no tenemos typeConfig, no renderizar (safety check)
+  if (!typeConfig) {
+    return (
+      <DashboardLayout>
+        <LoadingSpinner message="Procesando información del tipo de persona..." />
       </DashboardLayout>
     );
   }
@@ -414,7 +359,7 @@ export default function PersonDetailPage() {
                   <HStack spacing={2}>
                     <Icon as={FiBook} color="gray.500" />
                     <Text fontWeight="medium" color="gray.700">
-                      {typeConfig.label === 'Estudiante' ? 'Grado:' : 'Área/Cargo:'}
+                      {gradeInfo?.label || 'Grado/Área'}:
                     </Text>
                   </HStack>
                   <Text color="gray.600">
