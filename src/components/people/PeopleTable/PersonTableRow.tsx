@@ -49,7 +49,6 @@ export function PersonTableRow({
   // Obtener tipos de persona para fallback
   const { data: personTypes } = usePersonTypes();
 
-  // ✅ USAR PersonTypeManager centralizado
   const typeConfig = PersonTypeManager.getConfig(person, personTypes);
   const fullName = PersonTypeManager.getFullName(person);
   const gradeInfo = PersonTypeManager.getGradeDisplayInfo(person, personTypes);

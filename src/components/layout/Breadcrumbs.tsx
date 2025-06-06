@@ -37,8 +37,6 @@ function generateBreadcrumbs(pathname: string): BreadcrumbData[] {
         if (parentItem && breadcrumbs[breadcrumbs.length - 1]?.href !== parentItem.href) {
           breadcrumbs.push({ name: parentItem.name, href: parentItem.href });
         }
-        
-        // Para IDs específicos, no agregar breadcrumb adicional por ahora
         // Se puede personalizar según la necesidad
         if (segment.match(/^[a-f\d]{24}$/i)) {
           // Es un ObjectId de MongoDB, podría ser personalizado

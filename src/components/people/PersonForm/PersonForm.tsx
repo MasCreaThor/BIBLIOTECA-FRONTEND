@@ -31,7 +31,7 @@ interface PersonFormCreateProps {
   onSubmit: (data: CreatePersonRequest) => void;
   onCancel: () => void;
   isLoading?: boolean;
-  isEdit?: false; // ✅ VERIFICADO: Específicamente false para create
+  isEdit?: false;
 }
 
 interface PersonFormEditProps {
@@ -39,13 +39,13 @@ interface PersonFormEditProps {
   onSubmit: (data: UpdatePersonRequest) => void;
   onCancel: () => void;
   isLoading?: boolean;
-  isEdit: true; // ✅ VERIFICADO: Específicamente true para edit
+  isEdit: true;
 }
 
 type PersonFormProps = PersonFormCreateProps | PersonFormEditProps;
 
 /**
- * Componente principal del formulario de personas - REFACTORIZADO
+ * Componente principal del formulario de personas
  * 
  * Responsabilidades:
  * - Coordinación de subcomponentes
@@ -65,15 +65,14 @@ export function PersonForm(props: PersonFormProps) {
   } = props;
   
   const person = 'person' in props ? props.person : undefined;
-  const isEdit = 'isEdit' in props ? !!props.isEdit : false; // ✅ CORREGIDO: Asegurar que siempre sea boolean
+  const isEdit = 'isEdit' in props ? !!props.isEdit : false;
 
-  // ✅ REFACTORIZACIÓN: Toda la lógica movida al custom hook
   const {
     form,
     selectedPersonType,
     isStudent,
     isTeacher,
-    personTypes, // ✅ CORREGIDO: Obtener personTypes del hook
+    personTypes,
     documentValidation,
     isLoadingTypes,
     handleSubmit,
@@ -135,10 +134,8 @@ export function PersonForm(props: PersonFormProps) {
                 Información Personal
               </Text>
 
-              {/* ✅ SUBCOMPONENTE: Campos básicos */}
               <PersonBasicFields form={form} />
 
-              {/* ✅ SUBCOMPONENTE: Selector de tipo y validación de documento */}
               <HStack spacing={4} align="start">
                 <PersonTypeSelector
                   form={form}
@@ -153,7 +150,6 @@ export function PersonForm(props: PersonFormProps) {
                 />
               </HStack>
 
-              {/* ✅ SUBCOMPONENTE: Campo de grado */}
               <GradeField
                 form={form}
                 isStudent={isStudent}

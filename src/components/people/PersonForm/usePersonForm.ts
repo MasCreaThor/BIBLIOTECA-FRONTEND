@@ -50,7 +50,6 @@ export interface UsePersonFormReturn {
 
 /**
  * Custom hook que maneja toda la lógica del formulario de personas
- * Separa la lógica de negocio del componente UI
  */
 export function usePersonForm({
   person,
@@ -151,14 +150,14 @@ export function usePersonForm({
     }
   }, [person, reset]);
 
-  // Validar reglas de negocio
+  // Validar reglas
   const validateBusinessRules = useCallback(() => {
     const formData = form.getValues();
     const validation = PersonBusinessRules.validateAllRules(formData, isStudent);
     setBusinessRulesErrors(validation.errors);
   }, [form, isStudent]);
 
-  // Ejecutar validación de reglas de negocio cuando cambian los datos
+  // Ejecutar validación de reglas
   useEffect(() => {
     const subscription = form.watch(() => {
       validateBusinessRules();
