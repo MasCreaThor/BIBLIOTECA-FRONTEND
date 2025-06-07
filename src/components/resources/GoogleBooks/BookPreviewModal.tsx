@@ -18,13 +18,9 @@ import {
   Badge,
   Divider,
   SimpleGrid,
-  Alert,
-  AlertIcon,
-  Skeleton,
 } from '@chakra-ui/react';
-import { FiBook, FiPlus, FiExternalLink, FiCalendar, FiUser, FiHash } from 'react-icons/fi';
+import { FiBook, FiPlus, FiExternalLink } from 'react-icons/fi';
 import { GoogleBooksUtils, useCreateResourceFromGoogleBooks } from '@/hooks/useGoogleBooks';
-import { useCategories, useLocations } from '@/hooks/useResources';
 import type { GoogleBooksVolume } from '@/types/resource.types';
 
 interface BookPreviewModalProps {
@@ -44,8 +40,6 @@ export function BookPreviewModal({
   categoryId,
   locationId,
 }: BookPreviewModalProps) {
-  const { data: categories = [] } = useCategories();
-  const { data: locations = [] } = useLocations();
   const createFromGoogleBooksMutation = useCreateResourceFromGoogleBooks();
 
   // Datos del libro
@@ -54,10 +48,6 @@ export function BookPreviewModal({
   const isbn = GoogleBooksUtils.getAnyISBN(volume);
   const year = GoogleBooksUtils.getPublicationYear(volume);
   const description = GoogleBooksUtils.truncateDescription(volume, 300);
-
-  // Datos de categoría y ubicación seleccionadas
-  const selectedCategory = categories.find(cat => cat._id === categoryId);
-  const selectedLocation = locations.find(loc => loc._id === locationId);
 
   const canCreateResource = categoryId && locationId;
 
@@ -137,10 +127,7 @@ export function BookPreviewModal({
                   {volume.title}
                 </Text>
                 
-                <HStack spacing={2}>
-                  <FiUser size={14} />
-                  <Text color="gray.600">{authors}</Text>
-                </HStack>
+                <Text color="gray.600">{authors}</Text>
 
                 {volume.publisher && (
                   <Text color="gray.600" fontSize="sm">
@@ -150,12 +137,9 @@ export function BookPreviewModal({
                 )}
 
                 {isbn && (
-                  <HStack spacing={2}>
-                    <FiHash size={14} />
-                    <Badge colorScheme="blue" variant="outline">
-                      ISBN: {isbn}
-                    </Badge>
-                  </HStack>
+                  <Badge colorScheme="blue" variant="outline">
+                    ISBN: {isbn}
+                  </Badge>
                 )}
 
                 {volume.pageCount && (
@@ -210,36 +194,6 @@ export function BookPreviewModal({
                 </Box>
               )}
             </SimpleGrid>
-
-            <Divider />
-
-            {/* Información de destino para creación */}
-            {canCreateResource ? (
-              <Alert status="success" borderRadius="md">
-                <AlertIcon />
-                <Box>
-                  <Text fontSize="sm" fontWeight="medium">
-                    Listo para crear recurso
-                  </Text>
-                  <Text fontSize="xs" color="gray.600" mt={1}>
-                    Categoría: {selectedCategory?.name} • 
-                    Ubicación: {selectedLocation?.name}
-                  </Text>
-                </Box>
-              </Alert>
-            ) : (
-              <Alert status="warning" borderRadius="md">
-                <AlertIcon />
-                <Box>
-                  <Text fontSize="sm" fontWeight="medium">
-                    Selecciona categoría y ubicación
-                  </Text>
-                  <Text fontSize="xs" color="gray.600" mt={1}>
-                    Para crear automáticamente el recurso, primero selecciona una categoría y ubicación en la página anterior.
-                  </Text>
-                </Box>
-              </Alert>
-            )}
           </VStack>
         </ModalBody>
 

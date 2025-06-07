@@ -1,4 +1,4 @@
-// src/components/resources/ResourceForm/AuthorsSection.tsx
+// src/components/resources/ResourceForm/AuthorsSection.tsx - CORREGIDO
 'use client';
 
 import {
@@ -6,7 +6,6 @@ import {
   HStack,
   FormControl,
   FormLabel,
-  FormHelperText,
   Input,
   Button,
   Box,
@@ -150,22 +149,24 @@ export function AuthorsSection({ form }: AuthorsSectionProps) {
         {/* Autores seleccionados */}
         {selectedAuthors.length > 0 ? (
           <Box>
-            <FormLabel fontSize="sm" color="gray.600" mb={2}>
-              Autores seleccionados ({selectedAuthors.length})
-            </FormLabel>
-            <SimpleGrid columns={{ base: 1, md: 2, lg: 3 }} spacing={2}>
-              {selectedAuthors.map((author) => (
-                <Tag
-                  key={author._id}
-                  size="lg"
-                  variant="solid"
-                  colorScheme="blue"
-                >
-                  <TagLabel>{author.name}</TagLabel>
-                  <TagCloseButton onClick={() => handleRemoveAuthor(author._id)} />
-                </Tag>
-              ))}
-            </SimpleGrid>
+            <FormControl>
+              <FormLabel fontSize="sm" color="gray.600" mb={2}>
+                Autores seleccionados ({selectedAuthors.length})
+              </FormLabel>
+              <SimpleGrid columns={{ base: 1, md: 2, lg: 3 }} spacing={2}>
+                {selectedAuthors.map((author) => (
+                  <Tag
+                    key={author._id}
+                    size="lg"
+                    variant="solid"
+                    colorScheme="blue"
+                  >
+                    <TagLabel>{author.name}</TagLabel>
+                    <TagCloseButton onClick={() => handleRemoveAuthor(author._id)} />
+                  </Tag>
+                ))}
+              </SimpleGrid>
+            </FormControl>
           </Box>
         ) : (
           <Alert status="info" borderRadius="md">
@@ -178,10 +179,10 @@ export function AuthorsSection({ form }: AuthorsSectionProps) {
           </Alert>
         )}
 
-        <FormHelperText>
+        <Text fontSize="sm" color="gray.600">
           Los autores son opcionales para juegos, mapas y otros recursos no bibliográficos.
           Haz clic en "Gestionar Autores" para buscar o agregar nuevos autores.
-        </FormHelperText>
+        </Text>
       </VStack>
 
       {/* Modal de gestión de autores */}
@@ -194,20 +195,22 @@ export function AuthorsSection({ form }: AuthorsSectionProps) {
             <VStack spacing={6} align="stretch">
               {/* Búsqueda de autores existentes */}
               <Box>
-                <FormLabel>Buscar Autores Existentes</FormLabel>
-                <InputGroup>
-                  <Input
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    placeholder="Buscar por nombre del autor..."
-                  />
-                  <InputRightElement>
-                    <FiSearch color="gray.400" />
-                  </InputRightElement>
-                </InputGroup>
-                <FormHelperText>
-                  Busca y selecciona autores ya registrados en el sistema
-                </FormHelperText>
+                <FormControl>
+                  <FormLabel>Buscar Autores Existentes</FormLabel>
+                  <InputGroup>
+                    <Input
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      placeholder="Buscar por nombre del autor..."
+                    />
+                    <InputRightElement>
+                      <FiSearch color="gray.400" />
+                    </InputRightElement>
+                  </InputGroup>
+                  <Text fontSize="xs" color="gray.600" mt={1}>
+                    Busca y selecciona autores ya registrados en el sistema
+                  </Text>
+                </FormControl>
               </Box>
 
               {/* Resultados de búsqueda */}
@@ -264,43 +267,45 @@ export function AuthorsSection({ form }: AuthorsSectionProps) {
 
               {/* Crear nuevo autor */}
               <Box>
-                <FormLabel>Crear Nuevo Autor</FormLabel>
-                <VStack spacing={3} align="stretch">
-                  <Input
-                    value={newAuthorName}
-                    onChange={(e) => setNewAuthorName(e.target.value)}
-                    placeholder="Nombre del nuevo autor o lista separada por comas"
-                  />
-                  
-                  <HStack spacing={2}>
-                    <Button
-                      onClick={handleCreateNewAuthor}
-                      disabled={!newAuthorName.trim() || newAuthorName.includes(',') || newAuthorName.includes('\n')}
-                      isLoading={createAuthorMutation.isPending}
-                      colorScheme="green"
-                      variant="outline"
-                      leftIcon={<FiUserPlus />}
-                      size="sm"
-                    >
-                      Crear Un Autor
-                    </Button>
+                <FormControl>
+                  <FormLabel>Crear Nuevo Autor</FormLabel>
+                  <VStack spacing={3} align="stretch">
+                    <Input
+                      value={newAuthorName}
+                      onChange={(e) => setNewAuthorName(e.target.value)}
+                      placeholder="Nombre del nuevo autor o lista separada por comas"
+                    />
                     
-                    <Button
-                      onClick={handleBulkCreateAuthors}
-                      disabled={!newAuthorName.includes(',') && !newAuthorName.includes('\n')}
-                      isLoading={bulkCreateMutation.isPending}
-                      colorScheme="green"
-                      leftIcon={<FiUsers />}
-                      size="sm"
-                    >
-                      Crear Múltiples
-                    </Button>
-                  </HStack>
-                  
-                  <FormHelperText>
-                    Para crear múltiples autores, sepáralos con comas o saltos de línea
-                  </FormHelperText>
-                </VStack>
+                    <HStack spacing={2}>
+                      <Button
+                        onClick={handleCreateNewAuthor}
+                        disabled={!newAuthorName.trim() || newAuthorName.includes(',') || newAuthorName.includes('\n')}
+                        isLoading={createAuthorMutation.isPending}
+                        colorScheme="green"
+                        variant="outline"
+                        leftIcon={<FiUserPlus />}
+                        size="sm"
+                      >
+                        Crear Un Autor
+                      </Button>
+                      
+                      <Button
+                        onClick={handleBulkCreateAuthors}
+                        disabled={!newAuthorName.includes(',') && !newAuthorName.includes('\n')}
+                        isLoading={bulkCreateMutation.isPending}
+                        colorScheme="green"
+                        leftIcon={<FiUsers />}
+                        size="sm"
+                      >
+                        Crear Múltiples
+                      </Button>
+                    </HStack>
+                    
+                    <Text fontSize="xs" color="gray.600">
+                      Para crear múltiples autores, sepáralos con comas o saltos de línea
+                    </Text>
+                  </VStack>
+                </FormControl>
               </Box>
 
               {/* Resumen de selección actual */}

@@ -1,4 +1,4 @@
-// src/app/inventory/page.tsx
+// src/app/inventory/page.tsx - VERSIÓN ACTUALIZADA
 'use client';
 
 import {
@@ -17,12 +17,19 @@ import {
   ModalCloseButton,
   Badge,
   Icon,
+  Tabs,
+  TabList,
+  TabPanels,
+  Tab,
+  TabPanel,
+  useBreakpointValue,
 } from '@chakra-ui/react';
 import { useRouter } from 'next/navigation';
-import { FiBook, FiPlus, FiDownload, FiSearch } from 'react-icons/fi';
+import { FiBook, FiPlus, FiDownload, FiSearch, FiGrid, FiSettings } from 'react-icons/fi';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { ResourceList } from '@/components/resources/ResourceList/ResourceList';
 import { ResourceForm } from '@/components/resources/ResourceForm/ResourceForm';
+import { InventoryNavigation } from '@/components/inventory/InventoryNavigation';
 import { useCreateResource, useUpdateResource, useResourceTypes } from '@/hooks/useResources';
 import type { Resource, CreateResourceRequest, UpdateResourceRequest } from '@/types/resource.types';
 import { useState } from 'react';
@@ -30,6 +37,7 @@ import { useState } from 'react';
 export default function InventoryPage() {
   const router = useRouter();
   const [editingResource, setEditingResource] = useState<Resource | null>(null);
+  const [activeTab, setActiveTab] = useState(0);
   
   // Modales
   const { isOpen: isCreateOpen, onOpen: onCreateOpen, onClose: onCreateClose } = useDisclosure();
@@ -42,10 +50,12 @@ export default function InventoryPage() {
   // Datos para estadísticas rápidas
   const { data: resourceTypes } = useResourceTypes();
 
+  // Determinar si mostrar vista compacta en móvil
+  const isMobile = useBreakpointValue({ base: true, md: false });
+
   // Handler para crear recursos - ahora maneja ambos tipos
   const handleCreateResource = async (data: CreateResourceRequest | UpdateResourceRequest) => {
     try {
-      // Como está en modo creación, sabemos que es CreateResourceRequest
       await createMutation.mutateAsync(data as CreateResourceRequest);
       onCreateClose();
     } catch (error) {
@@ -53,12 +63,11 @@ export default function InventoryPage() {
     }
   };
 
-  // Handler para actualizar recursos - ahora maneja ambos tipos
+  // Handler para actualizar recursos
   const handleUpdateResource = async (data: CreateResourceRequest | UpdateResourceRequest) => {
     if (!editingResource) return;
     
     try {
-      // Como está en modo edición, sabemos que es UpdateResourceRequest
       await updateMutation.mutateAsync({
         id: editingResource._id,
         data: data as UpdateResourceRequest,
@@ -73,14 +82,6 @@ export default function InventoryPage() {
   const handleResourceEdit = (resource: Resource) => {
     setEditingResource(resource);
     onEditOpen();
-  };
-
-  const handleNavigateToNew = () => {
-    router.push('/inventory/new');
-  };
-
-  const handleNavigateToGoogleBooks = () => {
-    router.push('/inventory/google-books');
   };
 
   const isMutating = createMutation.isPending || updateMutation.isPending;
@@ -112,7 +113,7 @@ export default function InventoryPage() {
 
               {/* Estadísticas rápidas */}
               {resourceTypes && resourceTypes.length > 0 && (
-                <HStack spacing={3} pt={2}>
+                <HStack spacing={3} pt={2} wrap="wrap">
                   <Text fontSize="sm" color="gray.600">Tipos disponibles:</Text>
                   {resourceTypes.map((type) => (
                     <Badge key={type._id} colorScheme="blue" variant="subtle" px={2} py={1}>
@@ -123,46 +124,118 @@ export default function InventoryPage() {
               )}
             </VStack>
 
-            <VStack spacing={2} align="end">
-              <HStack spacing={3}>
-                <Button
-                  leftIcon={<FiSearch />}
-                  colorScheme="green"
-                  variant="outline"
-                  onClick={handleNavigateToGoogleBooks}
-                >
-                  Buscar en Google Books
-                </Button>
-                
-                <Button
-                  leftIcon={<FiPlus />}
-                  colorScheme="blue"
-                  size="lg"
-                  onClick={handleNavigateToNew}
-                >
-                  Agregar Recurso
-                </Button>
-              </HStack>
-              
-              {/* Acción secundaria */}
-              <Button
-                size="sm"
-                variant="ghost"
-                leftIcon={<FiDownload />}
-                disabled
-              >
-                Exportar Inventario
-              </Button>
-            </VStack>
+            {/* Acciones rápidas en escritorio */}
+            {!isMobile && (
+              <VStack spacing={2} align="end">
+                <HStack spacing={3}>
+                  <Button
+                    leftIcon={<FiSearch />}
+                    colorScheme="green"
+                    variant="outline"
+                    onClick={() => router.push('/inventory/google-books')}
+                  >
+                    Google Books
+                  </Button>
+                  
+                  <Button
+                    leftIcon={<FiPlus />}
+                    colorScheme="blue"
+                    size="lg"
+                    onClick={() => router.push('/inventory/new')}
+                  >
+                    Agregar Recurso
+                  </Button>
+                </HStack>
+              </VStack>
+            )}
           </HStack>
         </Box>
 
-        {/* Lista de recursos */}
-        <ResourceList
-          onResourceEdit={handleResourceEdit}
-          onCreate={handleNavigateToNew}
-          showActions={true}
-        />
+        {/* Contenido principal con tabs */}
+        <Tabs 
+          index={activeTab} 
+          onChange={setActiveTab} 
+          colorScheme="blue"
+          variant="enclosed"
+        >
+          <TabList>
+            <Tab>
+              <HStack spacing={2}>
+                <Icon as={FiGrid} boxSize={4} />
+                <Text fontSize="sm">Inventario</Text>
+              </HStack>
+            </Tab>
+            <Tab>
+              <HStack spacing={2}>
+                <Icon as={FiPlus} boxSize={4} />
+                <Text fontSize="sm">Acciones Rápidas</Text>
+              </HStack>
+            </Tab>
+            {/* Futuras funcionalidades */}
+            <Tab isDisabled>
+              <HStack spacing={2}>
+                <Icon as={FiSettings} boxSize={4} />
+                <Text fontSize="sm">Configuración</Text>
+              </HStack>
+            </Tab>
+          </TabList>
+
+          <TabPanels>
+            {/* Tab 1: Lista de recursos */}
+            <TabPanel px={0}>
+              <ResourceList
+                onResourceEdit={handleResourceEdit}
+                onCreate={() => router.push('/inventory/new')}
+                showActions={true}
+              />
+            </TabPanel>
+
+            {/* Tab 2: Navegación y acciones rápidas */}
+            <TabPanel px={0}>
+              <InventoryNavigation 
+                showSecondaryActions={true}
+              />
+            </TabPanel>
+
+            {/* Tab 3: Configuración (futuro) */}
+            <TabPanel px={0}>
+              <VStack spacing={4} py={8} textAlign="center">
+                <Icon as={FiSettings} boxSize={12} color="gray.400" />
+                <Text color="gray.600">
+                  Las opciones de configuración estarán disponibles próximamente
+                </Text>
+              </VStack>
+            </TabPanel>
+          </TabPanels>
+        </Tabs>
+
+        {/* Navegación móvil */}
+        {isMobile && activeTab === 0 && (
+          <Box position="fixed" bottom={4} left={4} right={4} zIndex={10}>
+            <HStack spacing={2} justify="center">
+              <Button
+                leftIcon={<FiPlus />}
+                colorScheme="blue"
+                size="md"
+                onClick={() => router.push('/inventory/new')}
+                shadow="lg"
+              >
+                Agregar
+              </Button>
+              <Button
+                leftIcon={<FiSearch />}
+                colorScheme="green"
+                variant="outline"
+                size="md"
+                onClick={() => router.push('/inventory/google-books')}
+                shadow="lg"
+                bg="white"
+              >
+                Google Books
+              </Button>
+            </HStack>
+          </Box>
+        )}
       </VStack>
 
       {/* Modal de creación rápida */}
