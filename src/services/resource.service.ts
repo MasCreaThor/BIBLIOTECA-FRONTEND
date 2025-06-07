@@ -1,284 +1,345 @@
+// src/services/resource.service.ts
 import axiosInstance from '@/lib/axios';
-import {
-  ApiResponse,
-  PaginatedResponse,
+import type {
   Resource,
-  ResourceType,
+  CreateResourceRequest,
+  UpdateResourceRequest,
+  ResourceFilters,
   Category,
+  Author,
+  Publisher,
   Location,
+  ResourceType,
   ResourceState,
-  SearchFilters,
-  GoogleBooksResponse,
-} from '@/types/api.types';
+  GoogleBooksVolume,
+  CreateResourceFromGoogleBooksRequest,
+  ResourceResponse,
+  ResourceListResponse,
+  CategoryListResponse,
+  AuthorListResponse,
+  PublisherListResponse,
+  LocationListResponse,
+  ResourceTypeListResponse,
+  ResourceStateListResponse,
+  GoogleBooksSearchResponse,
+} from '@/types/resource.types';
+
+// Importar ApiResponse para respuestas específicas
+import type { ApiResponse } from '@/types/api.types';
 
 const RESOURCE_ENDPOINTS = {
   RESOURCES: '/resources',
   RESOURCE_BY_ID: (id: string) => `/resources/${id}`,
-  RESOURCE_TYPES: '/resources/types',
-  CATEGORIES: '/resources/categories',
-  LOCATIONS: '/resources/locations',
-  RESOURCE_STATES: '/resources/states',
-  SEARCH: '/resources/search',
-  GOOGLE_BOOKS: '/resources/google-books/search',
+  RESOURCE_BY_ISBN: (isbn: string) => `/resources/isbn/${isbn}`,
+  AVAILABILITY: (id: string) => `/resources/${id}/availability`,
+  
+  // Entidades auxiliares
+  CATEGORIES: '/categories',
+  CATEGORY_BY_ID: (id: string) => `/categories/${id}`,
+  AUTHORS: '/authors',
+  AUTHOR_BY_ID: (id: string) => `/authors/${id}`,
+  AUTHOR_SEARCH: '/authors/search',
+  AUTHOR_BULK_CREATE: '/authors/bulk-create',
+  PUBLISHERS: '/publishers',
+  PUBLISHER_BY_ID: (id: string) => `/publishers/${id}`,
+  PUBLISHER_FIND_OR_CREATE: '/publishers/find-or-create',
+  LOCATIONS: '/locations',
+  LOCATION_BY_ID: (id: string) => `/locations/${id}`,
+  RESOURCE_TYPES: '/resource-types',
+  RESOURCE_STATES: '/resource-states',
+  
+  // Google Books
+  GOOGLE_BOOKS_SEARCH: '/google-books/search',
+  GOOGLE_BOOKS_ISBN: (isbn: string) => `/google-books/isbn/${isbn}`,
+  GOOGLE_BOOKS_VOLUME: (id: string) => `/google-books/volume/${id}`,
+  GOOGLE_BOOKS_STATUS: '/google-books/status',
+  GOOGLE_BOOKS_CREATE: '/resources/google-books',
+  GOOGLE_BOOKS_PREVIEW: (volumeId: string) => `/resources/google-books/preview/${volumeId}`,
+  GOOGLE_BOOKS_CHECK: (volumeId: string) => `/resources/google-books/check/${volumeId}`,
 } as const;
 
-export interface CreateResourceRequest {
-  typeId: string;
-  categoryId: string;
-  title: string;
-  authorIds?: string[];
-  publisherId?: string;
-  volumes?: number;
-  stateId: string;
-  locationId: string;
-  notes?: string;
-  isbn?: string;
-  googleBooksId?: string;
-}
-
-export interface UpdateResourceRequest {
-  typeId?: string;
-  categoryId?: string;
-  title?: string;
-  authorIds?: string[];
-  publisherId?: string;
-  volumes?: number;
-  stateId?: string;
-  locationId?: string;
-  notes?: string;
-  isbn?: string;
-  available?: boolean;
-}
-
 export class ResourceService {
-  /**
-   * Crear un nuevo recurso
-   */
-  static async createResource(resourceData: CreateResourceRequest): Promise<Resource> {
-    const response = await axiosInstance.post<ApiResponse<Resource>>(
-      RESOURCE_ENDPOINTS.RESOURCES,
-      resourceData
-    );
-
-    if (response.data.success && response.data.data) {
-      return response.data.data;
-    }
-
-    throw new Error(response.data.message || 'Error al crear recurso');
-  }
-
-  /**
-   * Obtener todos los recursos con filtros
-   */
-  static async getResources(filters: SearchFilters = {}): Promise<PaginatedResponse<Resource>> {
+  // ===== RECURSOS PRINCIPALES =====
+  static async getResources(filters: ResourceFilters = {}): Promise<ResourceListResponse> {
     const params = new URLSearchParams();
-
-    // Agregar parámetros de filtro
-    if (filters.search) params.append('search', filters.search);
-    if (filters.category) params.append('category', filters.category);
-    if (filters.resourceType) params.append('type', filters.resourceType);
-    if (filters.status) params.append('status', filters.status);
+    
     if (filters.page) params.append('page', filters.page.toString());
     if (filters.limit) params.append('limit', filters.limit.toString());
+    if (filters.search) params.append('search', filters.search);
+    if (filters.categoryId) params.append('categoryId', filters.categoryId);
+    if (filters.typeId) params.append('typeId', filters.typeId);
+    if (filters.locationId) params.append('locationId', filters.locationId);
+    if (filters.availability) params.append('availability', filters.availability);
+    if (filters.authorId) params.append('authorId', filters.authorId);
     if (filters.sortBy) params.append('sortBy', filters.sortBy);
     if (filters.sortOrder) params.append('sortOrder', filters.sortOrder);
-
-    const response = await axiosInstance.get<ApiResponse<PaginatedResponse<Resource>>>(
+    
+    const response = await axiosInstance.get<ResourceListResponse>(
       `${RESOURCE_ENDPOINTS.RESOURCES}?${params.toString()}`
     );
-
+    
     if (response.data.success && response.data.data) {
-      return response.data.data;
+      return response.data;
     }
-
+    
     throw new Error(response.data.message || 'Error al obtener recursos');
   }
-
-  /**
-   * Obtener recurso por ID
-   */
+  
   static async getResourceById(id: string): Promise<Resource> {
-    const response = await axiosInstance.get<ApiResponse<Resource>>(
+    const response = await axiosInstance.get<ResourceResponse>(
       RESOURCE_ENDPOINTS.RESOURCE_BY_ID(id)
     );
-
+    
     if (response.data.success && response.data.data) {
       return response.data.data;
     }
-
+    
     throw new Error(response.data.message || 'Error al obtener recurso');
   }
-
-  /**
-   * Actualizar recurso
-   */
-  static async updateResource(id: string, resourceData: UpdateResourceRequest): Promise<Resource> {
-    const response = await axiosInstance.put<ApiResponse<Resource>>(
-      RESOURCE_ENDPOINTS.RESOURCE_BY_ID(id),
-      resourceData
+  
+  static async getResourceByISBN(isbn: string): Promise<Resource> {
+    const response = await axiosInstance.get<ResourceResponse>(
+      RESOURCE_ENDPOINTS.RESOURCE_BY_ISBN(isbn)
     );
-
+    
     if (response.data.success && response.data.data) {
       return response.data.data;
     }
-
+    
+    throw new Error(response.data.message || 'Error al buscar por ISBN');
+  }
+  
+  static async createResource(data: CreateResourceRequest): Promise<Resource> {
+    const response = await axiosInstance.post<ResourceResponse>(
+      RESOURCE_ENDPOINTS.RESOURCES,
+      data
+    );
+    
+    if (response.data.success && response.data.data) {
+      return response.data.data;
+    }
+    
+    throw new Error(response.data.message || 'Error al crear recurso');
+  }
+  
+  static async updateResource(id: string, data: UpdateResourceRequest): Promise<Resource> {
+    const response = await axiosInstance.put<ResourceResponse>(
+      RESOURCE_ENDPOINTS.RESOURCE_BY_ID(id),
+      data
+    );
+    
+    if (response.data.success && response.data.data) {
+      return response.data.data;
+    }
+    
     throw new Error(response.data.message || 'Error al actualizar recurso');
   }
-
-  /**
-   * Eliminar recurso
-   */
-  static async deleteResource(id: string): Promise<void> {
-    const response = await axiosInstance.delete<ApiResponse<null>>(
-      RESOURCE_ENDPOINTS.RESOURCE_BY_ID(id)
+  
+  static async updateResourceAvailability(id: string, available: boolean): Promise<Resource> {
+    const response = await axiosInstance.put<ResourceResponse>(
+      RESOURCE_ENDPOINTS.AVAILABILITY(id),
+      { available }
     );
-
+    
+    if (response.data.success && response.data.data) {
+      return response.data.data;
+    }
+    
+    throw new Error(response.data.message || 'Error al actualizar disponibilidad');
+  }
+  
+  static async deleteResource(id: string): Promise<void> {
+    const response = await axiosInstance.delete(RESOURCE_ENDPOINTS.RESOURCE_BY_ID(id));
+    
     if (!response.data.success) {
       throw new Error(response.data.message || 'Error al eliminar recurso');
     }
   }
-
-  /**
-   * Buscar recursos (búsqueda simple)
-   */
-  static async searchResources(query: string, limit = 10): Promise<Resource[]> {
-    const response = await this.getResources({
-      search: query,
-      limit,
-      page: 1,
-    });
-
-    return response.data;
-  }
-
-  /**
-   * Obtener tipos de recursos
-   */
-  static async getResourceTypes(): Promise<ResourceType[]> {
-    const response = await axiosInstance.get<ApiResponse<ResourceType[]>>(
-      RESOURCE_ENDPOINTS.RESOURCE_TYPES
-    );
-
-    if (response.data.success && response.data.data) {
-      return response.data.data;
-    }
-
-    throw new Error(response.data.message || 'Error al obtener tipos de recursos');
-  }
-
-  /**
-   * Obtener categorías
-   */
+  
+  // ===== CATEGORÍAS =====
   static async getCategories(): Promise<Category[]> {
-    const response = await axiosInstance.get<ApiResponse<Category[]>>(
+    const response = await axiosInstance.get<CategoryListResponse>(
       RESOURCE_ENDPOINTS.CATEGORIES
     );
-
+    
     if (response.data.success && response.data.data) {
       return response.data.data;
     }
-
+    
     throw new Error(response.data.message || 'Error al obtener categorías');
   }
-
-  /**
-   * Obtener ubicaciones
-   */
+  
+  static async createCategory(data: { name: string; description: string; color?: string }): Promise<Category> {
+    const response = await axiosInstance.post<ApiResponse<Category>>(
+      RESOURCE_ENDPOINTS.CATEGORIES,
+      data
+    );
+    
+    if (response.data.success && response.data.data) {
+      return response.data.data;
+    }
+    
+    throw new Error(response.data.message || 'Error al crear categoría');
+  }
+  
+  // ===== AUTORES =====
+  static async getAuthors(): Promise<Author[]> {
+    const response = await axiosInstance.get<AuthorListResponse>(
+      RESOURCE_ENDPOINTS.AUTHORS
+    );
+    
+    if (response.data.success && response.data.data) {
+      return response.data.data;
+    }
+    
+    throw new Error(response.data.message || 'Error al obtener autores');
+  }
+  
+  static async searchAuthors(query: string, limit = 20): Promise<Author[]> {
+    const params = new URLSearchParams({
+      q: query,
+      limit: limit.toString(),
+    });
+    
+    const response = await axiosInstance.get<AuthorListResponse>(
+      `${RESOURCE_ENDPOINTS.AUTHOR_SEARCH}?${params.toString()}`
+    );
+    
+    if (response.data.success && response.data.data) {
+      return response.data.data;
+    }
+    
+    throw new Error(response.data.message || 'Error al buscar autores');
+  }
+  
+  static async createAuthor(data: { name: string; biography?: string }): Promise<Author> {
+    const response = await axiosInstance.post<ApiResponse<Author>>(
+      RESOURCE_ENDPOINTS.AUTHORS,
+      data
+    );
+    
+    if (response.data.success && response.data.data) {
+      return response.data.data;
+    }
+    
+    throw new Error(response.data.message || 'Error al crear autor');
+  }
+  
+  static async bulkCreateAuthors(names: string[]): Promise<Author[]> {
+    const response = await axiosInstance.post<AuthorListResponse>(
+      RESOURCE_ENDPOINTS.AUTHOR_BULK_CREATE,
+      { names }
+    );
+    
+    if (response.data.success && response.data.data) {
+      return response.data.data;
+    }
+    
+    throw new Error(response.data.message || 'Error al crear autores');
+  }
+  
+  // ===== EDITORIALES =====
+  static async getPublishers(): Promise<Publisher[]> {
+    const response = await axiosInstance.get<PublisherListResponse>(
+      RESOURCE_ENDPOINTS.PUBLISHERS
+    );
+    
+    if (response.data.success && response.data.data) {
+      return response.data.data;
+    }
+    
+    throw new Error(response.data.message || 'Error al obtener editoriales');
+  }
+  
+  static async findOrCreatePublisher(name: string): Promise<Publisher> {
+    const response = await axiosInstance.post<ApiResponse<Publisher>>(
+      RESOURCE_ENDPOINTS.PUBLISHER_FIND_OR_CREATE,
+      { name }
+    );
+    
+    if (response.data.success && response.data.data) {
+      return response.data.data;
+    }
+    
+    throw new Error(response.data.message || 'Error al crear editorial');
+  }
+  
+  // ===== UBICACIONES =====
   static async getLocations(): Promise<Location[]> {
-    const response = await axiosInstance.get<ApiResponse<Location[]>>(
+    const response = await axiosInstance.get<LocationListResponse>(
       RESOURCE_ENDPOINTS.LOCATIONS
     );
-
+    
     if (response.data.success && response.data.data) {
       return response.data.data;
     }
-
+    
     throw new Error(response.data.message || 'Error al obtener ubicaciones');
   }
-
-  /**
-   * Obtener estados de recursos
-   */
+  
+  // ===== TIPOS Y ESTADOS =====
+  static async getResourceTypes(): Promise<ResourceType[]> {
+    const response = await axiosInstance.get<ResourceTypeListResponse>(
+      RESOURCE_ENDPOINTS.RESOURCE_TYPES
+    );
+    
+    if (response.data.success && response.data.data) {
+      return response.data.data;
+    }
+    
+    throw new Error(response.data.message || 'Error al obtener tipos de recursos');
+  }
+  
   static async getResourceStates(): Promise<ResourceState[]> {
-    const response = await axiosInstance.get<ApiResponse<ResourceState[]>>(
+    const response = await axiosInstance.get<ResourceStateListResponse>(
       RESOURCE_ENDPOINTS.RESOURCE_STATES
     );
-
+    
     if (response.data.success && response.data.data) {
       return response.data.data;
     }
-
+    
     throw new Error(response.data.message || 'Error al obtener estados de recursos');
   }
-
-  /**
-   * Buscar en Google Books
-   */
-  static async searchGoogleBooks(query: string): Promise<GoogleBooksResponse> {
-    const response = await axiosInstance.get<ApiResponse<GoogleBooksResponse>>(
-      `${RESOURCE_ENDPOINTS.GOOGLE_BOOKS}?q=${encodeURIComponent(query)}`
+  
+  // ===== GOOGLE BOOKS =====
+  static async searchGoogleBooks(query: string, maxResults = 10): Promise<GoogleBooksVolume[]> {
+    const params = new URLSearchParams({
+      q: query,
+      maxResults: maxResults.toString(),
+    });
+    
+    const response = await axiosInstance.get<GoogleBooksSearchResponse>(
+      `${RESOURCE_ENDPOINTS.GOOGLE_BOOKS_SEARCH}?${params.toString()}`
     );
-
+    
     if (response.data.success && response.data.data) {
       return response.data.data;
     }
-
+    
     throw new Error(response.data.message || 'Error al buscar en Google Books');
   }
-
-  /**
-   * Verificar disponibilidad de recurso
-   */
-  static async checkResourceAvailability(id: string): Promise<boolean> {
-    try {
-      const resource = await this.getResourceById(id);
-      return resource.available;
-    } catch (error) {
-      return false;
+  
+  static async createResourceFromGoogleBooks(data: CreateResourceFromGoogleBooksRequest): Promise<Resource> {
+    const response = await axiosInstance.post<ResourceResponse>(
+      RESOURCE_ENDPOINTS.GOOGLE_BOOKS_CREATE,
+      data
+    );
+    
+    if (response.data.success && response.data.data) {
+      return response.data.data;
     }
+    
+    throw new Error(response.data.message || 'Error al crear recurso desde Google Books');
   }
-
-  /**
-   * Obtener recursos disponibles para préstamo
-   */
-  static async getAvailableResources(filters: SearchFilters = {}): Promise<PaginatedResponse<Resource>> {
-    return this.getResources({
-      ...filters,
-      status: 'available',
-    });
-  }
-
-  /**
-   * Obtener recursos por categoría
-   */
-  static async getResourcesByCategory(categoryId: string, filters: SearchFilters = {}): Promise<PaginatedResponse<Resource>> {
-    return this.getResources({
-      ...filters,
-      category: categoryId,
-    });
-  }
-
-  /**
-   * Obtener recursos por tipo
-   */
-  static async getResourcesByType(type: string, filters: SearchFilters = {}): Promise<PaginatedResponse<Resource>> {
-    return this.getResources({
-      ...filters,
-      resourceType: type as any,
-    });
-  }
-
-  /**
-   * Obtener recursos populares (más prestados)
-   */
-  static async getPopularResources(limit = 10): Promise<Resource[]> {
-    // Esto se implementará cuando tengamos el endpoint de estadísticas
-    const response = await this.getResources({
-      limit,
-      sortBy: 'popularity',
-      sortOrder: 'desc',
-    });
-
-    return response.data;
+  
+  static async checkGoogleBooksStatus(): Promise<{ apiAvailable: boolean; lastCheck: Date }> {
+    const response = await axiosInstance.get(RESOURCE_ENDPOINTS.GOOGLE_BOOKS_STATUS);
+    
+    if (response.data.success && response.data.data) {
+      return response.data.data;
+    }
+    
+    return { apiAvailable: false, lastCheck: new Date() };
   }
 }
