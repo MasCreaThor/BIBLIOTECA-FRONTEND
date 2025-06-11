@@ -15,7 +15,7 @@ export const CATEGORY_QUERY_KEYS = {
   categories: ['categories'] as const,
   categoriesList: (filters: CategoryFilters) => ['categories', 'list', filters] as const,
   category: (id: string) => ['categories', 'detail', id] as const,
-  categoryStats: ['categories', 'stats'] as const,
+  // Eliminado: categoryStats
 } as const;
 
 /**
@@ -85,35 +85,7 @@ export function useCategory(
   });
 }
 
-/**
- * Hook para obtener estadísticas de categorías
- */
-export function useCategoryStats(
-  options?: Omit<UseQueryOptions<Awaited<ReturnType<typeof CategoryService.getCategoryStats>>>, 'queryKey' | 'queryFn'>
-) {
-  return useQuery({
-    queryKey: CATEGORY_QUERY_KEYS.categoryStats,
-    queryFn: async () => {
-      return await CategoryService.getCategoryStats();
-    },
-    staleTime: 10 * 60 * 1000,
-    gcTime: 15 * 60 * 1000,
-    retry: 1, // Menos reintentos para estadísticas
-    
-    // Configuración para manejar errores de manera más robusta
-    retryOnMount: false,
-    refetchOnWindowFocus: false,
-    
-    // Datos por defecto en caso de error
-    placeholderData: {
-      total: 0,
-      active: 0,
-      inactive: 0,
-      resourceCount: {},
-    },
-    ...options,
-  });
-}
+// ELIMINADO: Hook useCategoryStats que causaba el error 500
 
 /**
  * Hook para crear una categoría
@@ -126,7 +98,6 @@ export function useCreateCategory() {
     onSuccess: (newCategory) => {
       // Invalidar queries relacionadas
       queryClient.invalidateQueries({ queryKey: CATEGORY_QUERY_KEYS.categories });
-      queryClient.invalidateQueries({ queryKey: CATEGORY_QUERY_KEYS.categoryStats });
       
       // Agregar al cache
       queryClient.setQueryData(
@@ -180,13 +151,12 @@ export function useDeleteCategory() {
   return useMutation({
     mutationFn: (id: string) => CategoryService.deleteCategory(id),
     onSuccess: (_, deletedId) => {
-      // Remover del cache
-      queryClient.removeQueries({ queryKey: CATEGORY_QUERY_KEYS.category(deletedId) });
-      
-      // Invalidar listas y estadísticas
+      // Invalidar queries
       queryClient.invalidateQueries({ queryKey: CATEGORY_QUERY_KEYS.categories });
-      queryClient.invalidateQueries({ queryKey: CATEGORY_QUERY_KEYS.categoryStats });
       
+      // Remover del cache específico
+      queryClient.removeQueries({ queryKey: CATEGORY_QUERY_KEYS.category(deletedId) });
+
       toast.success('Categoría eliminada exitosamente');
     },
     onError: (error: any) => {

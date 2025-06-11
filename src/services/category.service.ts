@@ -37,23 +37,11 @@ export interface CategoryFilters {
 const CATEGORY_ENDPOINTS = {
   CATEGORIES: '/categories',
   CATEGORY_BY_ID: (id: string) => `/categories/${id}`,
-  CATEGORY_STATS: '/categories/stats', // Añadido para claridad
+  // ELIMINADO: CATEGORY_STATS endpoint que causaba errores
 } as const;
 
 export class CategoryService {
-  /**
-   * Verificar si el endpoint de estadísticas está disponible
-   */
-  private static async isStatsEndpointAvailable(): Promise<boolean> {
-    try {
-      // Usar HEAD request para verificar sin obtener datos
-      const response = await axiosInstance.head(CATEGORY_ENDPOINTS.CATEGORY_STATS);
-      return response.status === 200;
-    } catch (error: any) {
-      // Si retorna 404, 500, etc., el endpoint no está disponible
-      return false;
-    }
-  }
+  // ELIMINADO: Método isStatsEndpointAvailable que causaba problemas
 
   /**
    * Obtener todas las categorías
@@ -150,87 +138,8 @@ export class CategoryService {
     }
   }
 
-  /**
-   * Calcular estadísticas desde la lista de categorías (método local)
-   */
-  private static async calculateStatsFromCategories(): Promise<{
-    total: number;
-    active: number;
-    inactive: number;
-    resourceCount: Record<string, number>;
-  }> {
-    try {
-      console.log('📊 Calculando estadísticas de categorías desde datos locales...');
-      
-      const categoriesResponse = await this.getCategories({ limit: 1000 });
-      
-      // Normalizar la respuesta (puede ser array directo o paginado)
-      let categories: Category[];
-      if (Array.isArray(categoriesResponse)) {
-        categories = categoriesResponse;
-      } else if (categoriesResponse.data && Array.isArray(categoriesResponse.data)) {
-        categories = categoriesResponse.data;
-      } else {
-        categories = [];
-      }
-      
-      const total = categories.length;
-      const active = categories.filter(cat => cat.active !== false).length; // Por defecto, consideramos activo
-      const inactive = total - active;
-      
-      // Por ahora, resourceCount será vacío ya que requiere consultar la relación con recursos
-      const resourceCount: Record<string, number> = {};
-      
-      return {
-        total,
-        active,
-        inactive,
-        resourceCount,
-      };
-    } catch (error) {
-      console.error('❌ Error calculando estadísticas locales:', error);
-      
-      // Último fallback: estadísticas vacías
-      return {
-        total: 0,
-        active: 0,
-        inactive: 0,
-        resourceCount: {},
-      };
-    }
-  }
-
-  /**
-   * Obtener estadísticas de categorías con fallback robusto
-   */
-  static async getCategoryStats(): Promise<{
-    total: number;
-    active: number;
-    inactive: number;
-    resourceCount: Record<string, number>;
-  }> {
-    // Intentar primero verificar si el endpoint está disponible
-    const isStatsAvailable = await this.isStatsEndpointAvailable();
-    
-    if (isStatsAvailable) {
-      try {
-        console.log('📊 Obteniendo estadísticas desde endpoint dedicado...');
-        
-        const response = await axiosInstance.get<ApiResponse<any>>(
-          CATEGORY_ENDPOINTS.CATEGORY_STATS
-        );
-
-        if (response.data.success && response.data.data) {
-          return response.data.data;
-        }
-      } catch (error: any) {
-        console.warn('⚠️ Endpoint de estadísticas falló, usando fallback...');
-      }
-    } else {
-      console.log('🔄 Endpoint de estadísticas no disponible, calculando localmente...');
-    }
-
-    // Fallback: calcular estadísticas desde la lista de categorías
-    return await this.calculateStatsFromCategories();
-  }
+  // ELIMINADOS: Todos los métodos relacionados con estadísticas:
+  // - calculateStatsFromCategories()
+  // - getCategoryStats()
+  // Estos métodos estaban causando el error 500 al intentar acceder a endpoints inexistentes
 }

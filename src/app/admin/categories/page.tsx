@@ -1,4 +1,4 @@
-// src/app/admin/categories/page.tsx
+// src/app/admin/categories/page.tsx - VERSIÓN CORREGIDA
 'use client';
 
 import {
@@ -15,27 +15,18 @@ import {
   ModalHeader,
   ModalBody,
   ModalCloseButton,
-  Badge,
-  Icon,
-  SimpleGrid,
-  Card,
-  CardBody,
-  Stat,
-  StatLabel,
-  StatNumber,
-  StatHelpText,
 } from '@chakra-ui/react';
 import { useState } from 'react';
-import { FiGrid, FiPlus, FiBarChart } from 'react-icons/fi';
-import { MdPalette } from 'react-icons/md';
+import { FiGrid, FiPlus } from 'react-icons/fi';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { CategoryList, CategoryForm } from '@/components/admin/categories';
 import { AdminRoute } from '@/components/auth/ProtectedRoute';
-import { useCreateCategory, useUpdateCategory, useCategoryStats } from '@/hooks/useCategories';
+import { useCreateCategory, useUpdateCategory } from '@/hooks/useCategories';
 import type { Category, CreateCategoryRequest, UpdateCategoryRequest } from '@/services/category.service';
 
 export default function CategoriesPage() {
-  const [editingCategory, setEditingCategory] = useState<Category | null>(null);
+  // ✅ CORREGIDO: Cambiar de Category | null a Category | undefined
+  const [editingCategory, setEditingCategory] = useState<Category | undefined>(undefined);
   
   // Modales
   const { isOpen: isCreateOpen, onOpen: onCreateOpen, onClose: onCreateClose } = useDisclosure();
@@ -44,9 +35,6 @@ export default function CategoriesPage() {
   // Mutations
   const createMutation = useCreateCategory();
   const updateMutation = useUpdateCategory();
-
-  // Estadísticas
-  const { data: stats } = useCategoryStats();
 
   const handleCreateCategory = async (data: CreateCategoryRequest) => {
     try {
@@ -65,7 +53,8 @@ export default function CategoriesPage() {
         id: editingCategory._id,
         data,
       });
-      setEditingCategory(null);
+      // ✅ CORREGIDO: Usar undefined en lugar de null
+      setEditingCategory(undefined);
       onEditClose();
     } catch (error) {
       // Error manejado por el hook
@@ -78,7 +67,8 @@ export default function CategoriesPage() {
   };
 
   const handleCloseEdit = () => {
-    setEditingCategory(null);
+    // ✅ CORREGIDO: Usar undefined en lugar de null
+    setEditingCategory(undefined);
     onEditClose();
   };
 
@@ -119,116 +109,51 @@ export default function CategoriesPage() {
             </HStack>
           </Box>
 
-          {/* Estadísticas */}
-          {stats && (
-            <Box>
-              <HStack justify="space-between" align="center" mb={4}>
-                <Text fontWeight="medium" color="gray.700">
-                  Estadísticas de Categorías
-                </Text>
-                <Icon as={FiBarChart} color="gray.500" />
-              </HStack>
-              
-              <SimpleGrid columns={{ base: 2, md: 4 }} spacing={4}>
-                <Card size="sm">
-                  <CardBody>
-                    <Stat>
-                      <StatLabel fontSize="xs">Total</StatLabel>
-                      <StatNumber fontSize="2xl">{stats.total}</StatNumber>
-                      <StatHelpText fontSize="xs">categorías registradas</StatHelpText>
-                    </Stat>
-                  </CardBody>
-                </Card>
+          {/* Lista de Categorías */}
+          <Box>
+            <CategoryList
+              showActions={true}
+              onCategoryEdit={handleCategoryEdit}
+            />
+          </Box>
 
-                <Card size="sm">
-                  <CardBody>
-                    <Stat>
-                      <StatLabel fontSize="xs">Activas</StatLabel>
-                      <StatNumber fontSize="2xl" color="green.600">{stats.active}</StatNumber>
-                      <StatHelpText fontSize="xs">en uso</StatHelpText>
-                    </Stat>
-                  </CardBody>
-                </Card>
-
-                <Card size="sm">
-                  <CardBody>
-                    <Stat>
-                      <StatLabel fontSize="xs">Inactivas</StatLabel>
-                      <StatNumber fontSize="2xl" color="gray.500">{stats.inactive}</StatNumber>
-                      <StatHelpText fontSize="xs">deshabilitadas</StatHelpText>
-                    </Stat>
-                  </CardBody>
-                </Card>
-
-                <Card size="sm">
-                  <CardBody>
-                    <Stat>
-                      <StatLabel fontSize="xs">Con Recursos</StatLabel>
-                      <StatNumber fontSize="2xl" color="blue.600">
-                        {Object.keys(stats.resourceCount).length}
-                      </StatNumber>
-                      <StatHelpText fontSize="xs">tienen recursos</StatHelpText>
-                    </Stat>
-                  </CardBody>
-                </Card>
-              </SimpleGrid>
-            </Box>
-          )}
-
-          {/* Lista de categorías */}
-          <CategoryList
-            onCategoryEdit={handleCategoryEdit}
-            onCreate={onCreateOpen}
-            showActions={true}
-          />
-        </VStack>
-
-        {/* Modal de creación */}
-        <Modal isOpen={isCreateOpen} onClose={onCreateClose} size="xl">
-          <ModalOverlay />
-          <ModalContent>
-            <ModalHeader>
-              <HStack spacing={2}>
-                <Icon as={MdPalette} color="blue.500" />
-                <Text>Nueva Categoría</Text>
-              </HStack>
-            </ModalHeader>
-            <ModalCloseButton />
-            <ModalBody pb={6}>
-              <CategoryForm
-                onSubmit={handleCreateCategory}
-                onCancel={onCreateClose}
-                isLoading={createMutation.isPending}
-                isEdit={false}
-              />
-            </ModalBody>
-          </ModalContent>
-        </Modal>
-
-        {/* Modal de edición */}
-        <Modal isOpen={isEditOpen} onClose={handleCloseEdit} size="xl">
-          <ModalOverlay />
-          <ModalContent>
-            <ModalHeader>
-              <HStack spacing={2}>
-                <Icon as={MdPalette} color="blue.500" />
-                <Text>Editar Categoría</Text>
-              </HStack>
-            </ModalHeader>
-            <ModalCloseButton />
-            <ModalBody pb={6}>
-              {editingCategory && (
+          {/* Modal para crear categoría */}
+          <Modal isOpen={isCreateOpen} onClose={onCreateClose} size="md">
+            <ModalOverlay />
+            <ModalContent>
+              <ModalHeader>Nueva Categoría</ModalHeader>
+              <ModalCloseButton />
+              <ModalBody pb={6}>
                 <CategoryForm
-                  category={editingCategory}
-                  onSubmit={handleUpdateCategory}
-                  onCancel={handleCloseEdit}
-                  isLoading={updateMutation.isPending}
-                  isEdit={true}
+                  onSubmit={handleCreateCategory}
+                  onCancel={onCreateClose}
+                  isLoading={createMutation.isPending}
                 />
-              )}
-            </ModalBody>
-          </ModalContent>
-        </Modal>
+              </ModalBody>
+            </ModalContent>
+          </Modal>
+
+          {/* Modal para editar categoría */}
+          {/* ✅ CORREGIDO: Agregar conditional rendering para mayor seguridad */}
+          {editingCategory && (
+            <Modal isOpen={isEditOpen} onClose={handleCloseEdit} size="md">
+              <ModalOverlay />
+              <ModalContent>
+                <ModalHeader>Editar Categoría</ModalHeader>
+                <ModalCloseButton />
+                <ModalBody pb={6}>
+                  <CategoryForm
+                    category={editingCategory} // ✅ Ahora editingCategory es Category | undefined
+                    onSubmit={handleUpdateCategory}
+                    onCancel={handleCloseEdit}
+                    isLoading={updateMutation.isPending}
+                    isEdit={true}
+                  />
+                </ModalBody>
+              </ModalContent>
+            </Modal>
+          )}
+        </VStack>
       </DashboardLayout>
     </AdminRoute>
   );

@@ -5,7 +5,6 @@
 export {
     useCategories,
     useCategory,
-    useCategoryStats,
     useCreateCategory,
     useUpdateCategory,
     useDeleteCategory,

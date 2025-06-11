@@ -1,4 +1,4 @@
-// src/hooks/useLocations.ts - SIMPLIFICADO SIN ESTADÍSTICAS
+// src/hooks/useLocations.ts - VERSIÓN CON DEBUG PARA CAMPO CODE
 import { useQuery, useMutation, useQueryClient, UseQueryOptions } from '@tanstack/react-query';
 import { LocationService } from '@/services/location.service';
 import type {
@@ -10,11 +10,11 @@ import type {
 import type { PaginatedResponse } from '@/types/api.types';
 import toast from 'react-hot-toast';
 
+// Query keys para React Query
 export const LOCATION_QUERY_KEYS = {
   locations: ['locations'] as const,
   locationsList: (filters: LocationFilters) => ['locations', 'list', filters] as const,
   location: (id: string) => ['locations', 'detail', id] as const,
-  // ✅ REMOVIDO: locationStats ya no se usa
 } as const;
 
 /**
@@ -28,7 +28,6 @@ export function useLocations(
     queryKey: LOCATION_QUERY_KEYS.locationsList(filters),
     queryFn: async () => {
       try {
-        // Intentar obtener respuesta paginada
         const response = await LocationService.getLocations(filters);
         return response;
       } catch (error: any) {
@@ -36,7 +35,6 @@ export function useLocations(
         if (error?.response?.status === 404 || error?.message?.includes('pagination')) {
           console.warn('API de ubicaciones no soporta paginación, usando formato simple');
           
-          // Hacer una llamada más simple si existe endpoint alternativo
           try {
             const simpleResponse = await fetch('/api/locations');
             if (simpleResponse.ok) {
@@ -60,7 +58,6 @@ export function useLocations(
       }
       return failureCount < 2;
     },
-    // En caso de error, devolver array vacío
     placeholderData: [] as Location[],
     ...options,
   });
@@ -84,8 +81,6 @@ export function useLocation(
   });
 }
 
-// ✅ REMOVIDO: useLocationStats - Ya no se usa
-
 /**
  * Hook para crear una ubicación
  */
@@ -93,8 +88,13 @@ export function useCreateLocation() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (data: CreateLocationRequest) => LocationService.createLocation(data),
+    mutationFn: (data: CreateLocationRequest) => {
+      console.log('🆕 Creando ubicación con datos:', data);
+      return LocationService.createLocation(data);
+    },
     onSuccess: (newLocation) => {
+      console.log('✅ Ubicación creada exitosamente:', newLocation);
+      
       // Invalidar queries relacionadas
       queryClient.invalidateQueries({ queryKey: LOCATION_QUERY_KEYS.locations });
       
@@ -104,6 +104,7 @@ export function useCreateLocation() {
       toast.success(`Ubicación "${newLocation.name}" creada exitosamente`);
     },
     onError: (error: any) => {
+      console.error('❌ Error creando ubicación:', error);
       const errorMessage = error?.response?.data?.message || error?.message || 'Error al crear ubicación';
       toast.error(Array.isArray(errorMessage) ? errorMessage.join(', ') : errorMessage);
     },
@@ -117,9 +118,24 @@ export function useUpdateLocation() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ id, data }: { id: string; data: UpdateLocationRequest }) => 
-      LocationService.updateLocation(id, data),
+    mutationFn: ({ id, data }: { id: string; data: UpdateLocationRequest }) => {
+      console.log(`🔄 Actualizando ubicación ${id} con datos:`, data);
+      
+      // ✅ DEBUG: Verificar que el campo code se incluye correctamente
+      if (data.hasOwnProperty('code')) {
+        console.log(`📝 Campo code detectado: "${data.code}" (tipo: ${typeof data.code})`);
+      } else {
+        console.log('⚠️ Campo code no presente en los datos de actualización');
+      }
+      
+      return LocationService.updateLocation(id, data);
+    },
     onSuccess: (updatedLocation) => {
+      console.log('✅ Ubicación actualizada exitosamente:', updatedLocation);
+      
+      // ✅ DEBUG: Verificar el valor del código en la respuesta
+      console.log(`📝 Código actualizado: "${updatedLocation.code}" (tipo: ${typeof updatedLocation.code})`);
+      
       // Actualizar cache específico
       queryClient.setQueryData(LOCATION_QUERY_KEYS.location(updatedLocation._id), updatedLocation);
       
@@ -129,6 +145,9 @@ export function useUpdateLocation() {
       toast.success(`Ubicación "${updatedLocation.name}" actualizada exitosamente`);
     },
     onError: (error: any) => {
+      console.error('❌ Error actualizando ubicación:', error);
+      console.error('❌ Detalles del error:', error?.response?.data);
+      
       const errorMessage = error?.response?.data?.message || error?.message || 'Error al actualizar ubicación';
       toast.error(Array.isArray(errorMessage) ? errorMessage.join(', ') : errorMessage);
     },
@@ -142,8 +161,13 @@ export function useDeleteLocation() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (id: string) => LocationService.deleteLocation(id),
+    mutationFn: (id: string) => {
+      console.log(`🗑️ Eliminando ubicación ${id}`);
+      return LocationService.deleteLocation(id);
+    },
     onSuccess: (_, deletedId) => {
+      console.log(`✅ Ubicación ${deletedId} eliminada exitosamente`);
+      
       // Remover del cache
       queryClient.removeQueries({ queryKey: LOCATION_QUERY_KEYS.location(deletedId) });
       
@@ -153,6 +177,7 @@ export function useDeleteLocation() {
       toast.success('Ubicación eliminada exitosamente');
     },
     onError: (error: any) => {
+      console.error('❌ Error eliminando ubicación:', error);
       const errorMessage = error?.response?.data?.message || error?.message || 'Error al eliminar ubicación';
       toast.error(Array.isArray(errorMessage) ? errorMessage.join(', ') : errorMessage);
     },

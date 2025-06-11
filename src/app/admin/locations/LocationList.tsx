@@ -1,4 +1,4 @@
-// src/components/admin/locations/LocationList.tsx
+// src/app/admin/locations/LocationList.tsx - VERSIÓN CORREGIDA CON IMPORTS CORRECTOS
 'use client';
 
 import {
@@ -42,7 +42,7 @@ import {
 import { useLocations, useDeleteLocation } from '@/hooks/useLocations';
 import { DeleteConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { EmptyState } from '@/components/ui/EmptyState';
-import { DateUtils } from '@/utils';
+import { DateUtils, ResponseUtils, useExtractedData } from '@/utils';
 import type { Location, LocationFilters } from '@/services/location.service';
 
 interface LocationListProps {
@@ -87,12 +87,13 @@ function LocationCard({
         size="sm"
         _hover={{ shadow: 'md', transform: 'translateY(-2px)' }}
         transition="all 0.2s"
-        opacity={location.active ? 1 : 0.6}
+        opacity={location.active ? 1 : 0.7}
         border={location.active ? '1px solid' : '2px dashed'}
         borderColor={location.active ? 'gray.200' : 'gray.300'}
       >
         <CardBody p={4}>
           <VStack spacing={3} align="stretch" h="full">
+            {/* Header */}
             <HStack justify="space-between" align="start">
               <HStack spacing={2}>
                 <FiMapPin color="#38A169" size={16} />
@@ -103,77 +104,65 @@ function LocationCard({
                 )}
               </HStack>
               
-              <Badge
-                colorScheme={location.active ? 'green' : 'gray'}
-                variant="subtle"
-                fontSize="xs"
-              >
-                {location.active ? 'Activa' : 'Inactiva'}
-              </Badge>
+              <HStack spacing={2}>
+                <Badge
+                  colorScheme={location.active ? 'green' : 'gray'}
+                  variant="subtle"
+                  fontSize="xs"
+                >
+                  {location.active ? 'Activa' : 'Inactiva'}
+                </Badge>
+                
+                {showActions && (
+                  <Menu>
+                    <MenuButton
+                      as={IconButton}
+                      icon={<FiMoreVertical />}
+                      variant="ghost"
+                      size="sm"
+                      _hover={{ bg: 'gray.100' }}
+                    />
+                    <MenuList>
+                      <MenuItem 
+                        icon={<FiEdit />} 
+                        onClick={() => handleActionClick('edit')}
+                      >
+                        Editar
+                      </MenuItem>
+                      <MenuDivider />
+                      <MenuItem 
+                        icon={<FiTrash2 />} 
+                        onClick={() => handleActionClick('delete')}
+                        color="red.600"
+                      >
+                        Eliminar
+                      </MenuItem>
+                    </MenuList>
+                  </Menu>
+                )}
+              </HStack>
             </HStack>
 
-            <Box flex={1}>
-              <Text
-                fontWeight="semibold"
-                fontSize="md"
-                lineHeight="short"
-                noOfLines={2}
-                color="gray.800"
-                mb={2}
-              >
+            {/* Content */}
+            <VStack align="start" spacing={2} flex={1}>
+              <Text fontWeight="semibold" fontSize="md" color="gray.800">
                 {location.name}
               </Text>
-
-              <Text
-                fontSize="sm"
-                color="gray.600"
-                noOfLines={2}
-                lineHeight="tall"
-                mb={3}
-              >
+              
+              <Text fontSize="sm" color="gray.600" noOfLines={2}>
                 {location.description}
               </Text>
+            </VStack>
 
-              <Text fontSize="xs" color="gray.400">
-                Creada: {DateUtils.formatRelative(location.createdAt)}
-              </Text>
-            </Box>
-
-            {showActions && (
-              <HStack justify="flex-end" pt={2}>
-                <Menu>
-                  <MenuButton
-                    as={IconButton}
-                    aria-label="Acciones"
-                    icon={<FiMoreVertical />}
-                    variant="ghost"
-                    size="sm"
-                  />
-                  <MenuList>
-                    <MenuItem
-                      icon={<FiEdit />}
-                      onClick={() => handleActionClick('edit')}
-                    >
-                      Editar
-                    </MenuItem>
-
-                    <MenuDivider />
-                    
-                    <MenuItem
-                      icon={<FiTrash2 />}
-                      onClick={() => handleActionClick('delete')}
-                      color="red.600"
-                    >
-                      Eliminar
-                    </MenuItem>
-                  </MenuList>
-                </Menu>
-              </HStack>
-            )}
+            {/* Footer */}
+            <Text fontSize="xs" color="gray.500">
+              {DateUtils.formatDate(new Date(location.createdAt))}
+            </Text>
           </VStack>
         </CardBody>
       </Card>
 
+      {/* Delete Confirmation Dialog */}
       <DeleteConfirmDialog
         isOpen={isDeleteOpen}
         onClose={onDeleteClose}
@@ -185,7 +174,7 @@ function LocationCard({
   );
 }
 
-function LoadingGrid({ count = 12 }: { count?: number }) {
+function LoadingGrid({ count = 8 }: { count?: number }) {
   return (
     <SimpleGrid columns={{ base: 1, md: 2, lg: 3, xl: 4 }} spacing={4}>
       {Array.from({ length: count }).map((_, i) => (
@@ -267,8 +256,12 @@ export function LocationList({
     }
   };
 
-  const locations: Location[] = locationsResponse?.data || [];
-  const totalCount = locationsResponse?.pagination.total || 0;
+  // ✅ CORREGIDO: Uso de utilidad type-safe para extraer datos
+  const { items: locations, totalCount } = useExtractedData(locationsResponse);
+  
+  // Debug en desarrollo
+  ResponseUtils.debugResponseFormat(locationsResponse, 'LocationList');
+
   const isLoadingData = isLoading || isRefetching;
   const isMutating = deleteMutation.isPending;
 
@@ -398,6 +391,23 @@ export function LocationList({
           </SimpleGrid>
         )}
       </Box>
+
+      {/* Información de ayuda */}
+      {!isLoadingData && locations.length > 0 && (
+        <Alert status="info" borderRadius="md">
+          <AlertIcon />
+          <Box>
+            <Text fontSize="sm" fontWeight="medium">
+              Consejos para ubicaciones
+            </Text>
+            <Text fontSize="xs" color="gray.600">
+              • Usa nombres descriptivos como "Estante A - Nivel 2" o "Armario Principal"<br />
+              • Los códigos cortos facilitan la identificación rápida<br />
+              • Las ubicaciones inactivas no aparecen en los formularios de recursos
+            </Text>
+          </Box>
+        </Alert>
+      )}
     </VStack>
   );
 }

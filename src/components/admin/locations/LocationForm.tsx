@@ -28,6 +28,7 @@ import { z } from 'zod';
 import { FiCheck, FiX, FiMapPin } from 'react-icons/fi';
 import type { Location, CreateLocationRequest, UpdateLocationRequest } from '@/services/location.service';
 
+// ✅ CORREGIDO: Schema que permite limpiar el campo code
 const locationSchema = z.object({
   name: z
     .string()
@@ -43,7 +44,11 @@ const locationSchema = z.object({
     .string()
     .max(20, 'El código no puede exceder 20 caracteres')
     .optional()
-    .transform(val => val?.trim() || undefined),
+    .transform(val => {
+      // ✅ CORREGIDO: Permitir strings vacíos explícitamente
+      if (!val || val.trim() === '') return '';
+      return val.trim();
+    }),
   active: z.boolean().default(true),
 });
 
@@ -77,6 +82,7 @@ export function LocationForm(props: LocationFormProps) {
     defaultValues: {
       name: location?.name || '',
       description: location?.description || '',
+      // ✅ CORREGIDO: Manejar code como string vacío en lugar de undefined
       code: location?.code || '',
       active: location?.active ?? true,
     },
@@ -86,10 +92,12 @@ export function LocationForm(props: LocationFormProps) {
   const { register, handleSubmit, watch, formState: { errors, isValid, isDirty } } = form;
 
   const handleFormSubmit = handleSubmit(async (data: LocationFormData) => {
+    // ✅ CORREGIDO: Limpiar datos antes de enviar
     const cleanData = {
       name: data.name,
       description: data.description,
-      code: data.code,
+      // ✅ IMPORTANTE: Enviar code como string vacío si está vacío, no como undefined
+      code: data.code || '',
       ...(isEdit && { active: data.active }),
     };
 
@@ -151,12 +159,12 @@ export function LocationForm(props: LocationFormProps) {
                     <FormLabel>Código de Ubicación</FormLabel>
                     <Input
                       {...register('code')}
-                      placeholder="EST-A, ARM-01..."
+                      placeholder="EST-A, ARM-01... (opcional)"
                       maxLength={20}
                     />
                     <FormErrorMessage>{errors.code?.message}</FormErrorMessage>
                     <FormHelperText>
-                      Código corto para identificación rápida (opcional)
+                      Código corto para identificación rápida. Déjalo vacío si no necesitas uno.
                     </FormHelperText>
                   </FormControl>
                 </GridItem>
@@ -208,7 +216,8 @@ export function LocationForm(props: LocationFormProps) {
                         <Text fontWeight="medium" fontSize="sm">
                           {watch('name') || 'Nombre de la ubicación'}
                         </Text>
-                        {watch('code') && (
+                        {/* ✅ CORREGIDO: Mostrar badge solo si code tiene contenido real */}
+                        {watch('code') && watch('code').trim() && (
                           <Badge colorScheme="green" variant="subtle" fontSize="xs">
                             {watch('code')}
                           </Badge>

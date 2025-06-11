@@ -1,4 +1,4 @@
-// src/services/location.service.ts - SIMPLIFICADO SIN ESTADÍSTICAS
+// src/services/location.service.ts
 import axiosInstance from '@/lib/axios';
 import type { ApiResponse, PaginatedResponse } from '@/types/api.types';
 
@@ -21,7 +21,7 @@ export interface CreateLocationRequest {
 export interface UpdateLocationRequest {
   name?: string;
   description?: string;
-  code?: string;
+  code?: string; // ✅ Puede ser string vacío para limpiar
   active?: boolean;
 }
 
@@ -94,9 +94,16 @@ export class LocationService {
    * Crear una nueva ubicación
    */
   static async createLocation(data: CreateLocationRequest): Promise<Location> {
+    const cleanData = {
+      name: data.name,
+      description: data.description,
+      // Si code está vacío, no lo incluir en la petición
+      ...(data.code && data.code.trim() && { code: data.code.trim() }),
+    };
+
     const response = await axiosInstance.post<ApiResponse<Location>>(
       LOCATION_ENDPOINTS.LOCATIONS,
-      data
+      cleanData
     );
 
     if (response.data.success && response.data.data) {
@@ -110,9 +117,31 @@ export class LocationService {
    * Actualizar una ubicación
    */
   static async updateLocation(id: string, data: UpdateLocationRequest): Promise<Location> {
+  // Incluir explícitamente el campo code, incluso si está vacío
+    const cleanData: UpdateLocationRequest = {};
+    
+    if (data.name !== undefined) {
+      cleanData.name = data.name;
+    }
+    
+    if (data.description !== undefined) {
+      cleanData.description = data.description;
+    }
+    
+    // Siempre incluir code si se proporciona, incluso si está vacío
+    if (data.hasOwnProperty('code')) {
+      cleanData.code = data.code || ''; // Enviar string vacío para limpiar
+    }
+    
+    if (data.active !== undefined) {
+      cleanData.active = data.active;
+    }
+
+    console.log('🔄 Enviando datos de actualización:', cleanData);
+
     const response = await axiosInstance.put<ApiResponse<Location>>(
       LOCATION_ENDPOINTS.LOCATION_BY_ID(id),
-      data
+      cleanData
     );
 
     if (response.data.success && response.data.data) {

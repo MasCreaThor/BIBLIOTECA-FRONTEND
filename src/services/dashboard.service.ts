@@ -1,6 +1,6 @@
-// src/services/dashboard.service.ts
+// src/services/dashboard.service.ts - VERSIÓN LIMPIADA
 import axiosInstance from '@/lib/axios';
-import { ApiResponse } from '@/types/api.types';
+import { ApiResponse, PaginatedResponse } from '@/types/api.types';
 
 export interface DashboardStats {
   totalResources: number;
@@ -38,12 +38,37 @@ export interface DetailedStats {
   };
 }
 
+// Interfaces para los datos de recursos
+interface Resource {
+  _id: string;
+  title: string;
+  availability: boolean;
+  categoryId?: {
+    _id: string;
+    name: string;
+  };
+  resourceType?: {
+    _id: string;
+    name: string;
+  };
+  active: boolean;
+}
+
 const DASHBOARD_ENDPOINTS = {
-  STATS_SUMMARY: '/dashboard/stats/summary',
+  // Endpoints que SÍ existen en el backend
   PEOPLE_STATS: '/people/stats/summary',
-  RESOURCES_STATS: '/resources/stats/summary',
   USERS_STATS: '/users/stats/summary',
-  RECENT_ACTIVITY: '/dashboard/recent-activity',
+  
+  // Endpoints para obtener datos y calcular estadísticas localmente
+  RESOURCES: '/resources',
+  
+  // ELIMINADO: CATEGORIES endpoint para evitar confusión con CategoryService
+  // Las categorías ahora se manejan exclusivamente desde CategoryService
+  
+  // Endpoints que NO existen - eliminados
+  // RESOURCES_STATS: '/resources/stats/summary', // ❌ NO EXISTE
+  // DASHBOARD_STATS: '/dashboard/stats/summary', // ❌ NO EXISTE
+  // RECENT_ACTIVITY: '/dashboard/recent-activity', // ❌ NO EXISTE
 } as const;
 
 export class DashboardService {
@@ -52,41 +77,41 @@ export class DashboardService {
    */
   static async getDashboardStats(): Promise<DashboardStats> {
     try {
-      // Por ahora usamos llamadas individuales hasta que se implemente el endpoint unificado
-      const [peopleStats, resourcesStats] = await Promise.allSettled([
+      console.log('📊 Obteniendo estadísticas del dashboard...');
+      
+      // Obtener estadísticas desde endpoints que SÍ existen
+      const [peopleStatsResult, resourcesStatsResult] = await Promise.allSettled([
         DashboardService.getPeopleStats(),    
-        DashboardService.getResourcesStats(), 
+        DashboardService.getResourcesStatsLocal(), // Usar método local
       ]);
 
-      // Datos base
-      const totalPeople = peopleStats.status === 'fulfilled' ? peopleStats.value.total : 0;
-      const totalResources = resourcesStats.status === 'fulfilled' ? resourcesStats.value.total : 0;
-
-      // Mock data para préstamos hasta que se implemente
-      const mockLoanData = {
-        activeLoans: Math.floor(totalResources * 0.15), // 15% de recursos prestados
-        overdueLoans: Math.floor(totalResources * 0.03), // 3% vencidos
+      // Extraer datos de manera segura
+      const totalPeople = peopleStatsResult.status === 'fulfilled' ? peopleStatsResult.value.total : 0;
+      const resourcesData = resourcesStatsResult.status === 'fulfilled' ? resourcesStatsResult.value : {
+        total: 0, available: 0, borrowed: 0, byType: [], byCategory: []
       };
 
-      // Mock para actividad reciente
-      const mockActivity = {
-        loans: Math.floor(Math.random() * 10) + 1,
-        returns: Math.floor(Math.random() * 8) + 1,
-        newResources: Math.floor(Math.random() * 3),
-        newPeople: Math.floor(Math.random() * 5),
-      };
-
-      return {
-        totalResources,
+      // Construir estadísticas del dashboard
+      const dashboardStats: DashboardStats = {
+        totalResources: resourcesData.total,
+        activeLoans: resourcesData.borrowed,
+        overdueLoans: 0, // Por implementar
         totalPeople,
-        activeLoans: mockLoanData.activeLoans,
-        overdueLoans: mockLoanData.overdueLoans,
-        recentActivity: mockActivity,
+        recentActivity: {
+          loans: 0,    // Por implementar
+          returns: 0,  // Por implementar
+          newResources: 0, // Por implementar
+          newPeople: 0,    // Por implementar
+        },
       };
-    } catch (error) {
-      console.error('Error obteniendo estadísticas del dashboard:', error);
+
+      console.log('✅ Estadísticas del dashboard obtenidas exitosamente');
+      return dashboardStats;
       
-      // Fallback con datos mock
+    } catch (error) {
+      console.error('❌ Error obteniendo estadísticas del dashboard:', error);
+      
+      // Fallback: estadísticas vacías
       return {
         totalResources: 0,
         activeLoans: 0,
@@ -103,21 +128,58 @@ export class DashboardService {
   }
 
   /**
+   * Obtener estadísticas detalladas del sistema
+   */
+  static async getDetailedStats(): Promise<DetailedStats> {
+    try {
+      console.log('📊 Obteniendo estadísticas detalladas...');
+
+      const [peopleStats, resourcesStats, usersStats] = await Promise.allSettled([
+        DashboardService.getPeopleStats(),
+        DashboardService.getResourcesStatsLocal(),
+        DashboardService.getUsersStats(),
+      ]);
+
+      const result = {
+        people: peopleStats.status === 'fulfilled' ? peopleStats.value : {
+          total: 0, students: 0, teachers: 0, byGrade: []
+        },
+        resources: resourcesStats.status === 'fulfilled' ? resourcesStats.value : {
+          total: 0, available: 0, borrowed: 0, byType: [], byCategory: []
+        },
+        users: usersStats.status === 'fulfilled' ? usersStats.value : {
+          total: 0, active: 0, inactive: 0, admins: 0, librarians: 0
+        },
+      };
+
+      console.log('✅ Estadísticas detalladas obtenidas exitosamente');
+      return result;
+      
+    } catch (error) {
+      console.error('❌ Error obteniendo estadísticas detalladas:', error);
+      throw error;
+    }
+  }
+
+  /**
    * Obtener estadísticas de personas
    */
   static async getPeopleStats(): Promise<DetailedStats['people']> {
     try {
+      console.log('👥 Obteniendo estadísticas de personas...');
+      
       const response = await axiosInstance.get<ApiResponse<DetailedStats['people']>>(
         DASHBOARD_ENDPOINTS.PEOPLE_STATS
       );
 
       if (response.data.success && response.data.data) {
+        console.log('✅ Estadísticas de personas obtenidas exitosamente');
         return response.data.data;
       }
 
       throw new Error(response.data.message || 'Error al obtener estadísticas de personas');
     } catch (error) {
-      console.error('Error obteniendo estadísticas de personas:', error);
+      console.error('❌ Error obteniendo estadísticas de personas:', error);
       return {
         total: 0,
         students: 0,
@@ -128,21 +190,74 @@ export class DashboardService {
   }
 
   /**
-   * Obtener estadísticas de recursos
+   * Obtener estadísticas de recursos calculadas localmente
+   * (En lugar de usar el endpoint inexistente /resources/stats/summary)
    */
-  static async getResourcesStats(): Promise<DetailedStats['resources']> {
+  static async getResourcesStatsLocal(): Promise<DetailedStats['resources']> {
     try {
-      const response = await axiosInstance.get<ApiResponse<DetailedStats['resources']>>(
-        DASHBOARD_ENDPOINTS.RESOURCES_STATS
+      console.log('📚 Calculando estadísticas de recursos localmente...');
+      
+      // Obtener todos los recursos del endpoint que SÍ existe
+      const resourcesResponse = await axiosInstance.get<ApiResponse<PaginatedResponse<Resource> | Resource[]>>(
+        `${DASHBOARD_ENDPOINTS.RESOURCES}?limit=1000` // Obtener muchos recursos para estadísticas
       );
 
-      if (response.data.success && response.data.data) {
-        return response.data.data;
+      if (!resourcesResponse.data.success) {
+        throw new Error(resourcesResponse.data.message || 'Error al obtener recursos');
       }
 
-      throw new Error(response.data.message || 'Error al obtener estadísticas de recursos');
+      // Normalizar la respuesta (puede ser array directo o paginado)
+      let resources: Resource[];
+      if (Array.isArray(resourcesResponse.data.data)) {
+        resources = resourcesResponse.data.data;
+      } else if (resourcesResponse.data.data && 'data' in resourcesResponse.data.data) {
+        resources = (resourcesResponse.data.data as PaginatedResponse<Resource>).data || [];
+      } else {
+        resources = [];
+      }
+
+      // Calcular estadísticas
+      const total = resources.length;
+      const available = resources.filter(r => r.availability === true).length;
+      const borrowed = total - available;
+
+      // Agrupar por tipo de recurso
+      const typeGroups = resources.reduce((acc, resource) => {
+        const type = resource.resourceType?.name || 'Sin tipo';
+        acc[type] = (acc[type] || 0) + 1;
+        return acc;
+      }, {} as Record<string, number>);
+
+      const byType = Object.entries(typeGroups).map(([type, count]) => ({
+        type,
+        count,
+      }));
+
+      // Agrupar por categoría
+      const categoryGroups = resources.reduce((acc, resource) => {
+        const category = resource.categoryId?.name || 'Sin categoría';
+        acc[category] = (acc[category] || 0) + 1;
+        return acc;
+      }, {} as Record<string, number>);
+
+      const byCategory = Object.entries(categoryGroups).map(([category, count]) => ({
+        category,
+        count,
+      }));
+
+      const result = {
+        total,
+        available,
+        borrowed,
+        byType,
+        byCategory,
+      };
+
+      console.log('✅ Estadísticas de recursos calculadas exitosamente:', result);
+      return result;
+      
     } catch (error) {
-      console.error('Error obteniendo estadísticas de recursos:', error);
+      console.error('❌ Error calculando estadísticas de recursos:', error);
       return {
         total: 0,
         available: 0,
@@ -154,21 +269,24 @@ export class DashboardService {
   }
 
   /**
-   * Obtener estadísticas de usuarios (solo admin)
+   * Obtener estadísticas de usuarios
    */
   static async getUsersStats(): Promise<DetailedStats['users']> {
     try {
+      console.log('👤 Obteniendo estadísticas de usuarios...');
+      
       const response = await axiosInstance.get<ApiResponse<DetailedStats['users']>>(
         DASHBOARD_ENDPOINTS.USERS_STATS
       );
 
       if (response.data.success && response.data.data) {
+        console.log('✅ Estadísticas de usuarios obtenidas exitosamente');
         return response.data.data;
       }
 
       throw new Error(response.data.message || 'Error al obtener estadísticas de usuarios');
     } catch (error) {
-      console.error('Error obteniendo estadísticas de usuarios:', error);
+      console.error('❌ Error obteniendo estadísticas de usuarios:', error);
       return {
         total: 0,
         active: 0,
@@ -176,34 +294,6 @@ export class DashboardService {
         admins: 0,
         librarians: 0,
       };
-    }
-  }
-
-  /**
-   * Obtener estadísticas detalladas (para reportes)
-   */
-  static async getDetailedStats(): Promise<DetailedStats> {
-    try {
-      const [peopleStats, resourcesStats, usersStats] = await Promise.allSettled([
-        DashboardService.getPeopleStats(),    
-        DashboardService.getResourcesStats(), 
-        DashboardService.getUsersStats(),     
-      ]);
-
-      return {
-        people: peopleStats.status === 'fulfilled' ? peopleStats.value : {
-          total: 0, students: 0, teachers: 0, byGrade: []
-        },
-        resources: resourcesStats.status === 'fulfilled' ? resourcesStats.value : {
-          total: 0, available: 0, borrowed: 0, byType: [], byCategory: []
-        },
-        users: usersStats.status === 'fulfilled' ? usersStats.value : {
-          total: 0, active: 0, inactive: 0, admins: 0, librarians: 0
-        },
-      };
-    } catch (error) {
-      console.error('Error obteniendo estadísticas detalladas:', error);
-      throw error;
     }
   }
 
@@ -233,7 +323,7 @@ export class DashboardService {
     const results = await Promise.allSettled([
       DashboardService.checkBackendConnectivity(),
       DashboardService.getPeopleStats(),
-      DashboardService.getResourcesStats(),
+      DashboardService.getResourcesStatsLocal(), // Usar método local
       DashboardService.getUsersStats(),
     ]);
 
@@ -246,4 +336,7 @@ export class DashboardService {
       },
     };
   }
+
+  // ELIMINADO: getCategoriesStats() method que causaba errores
+  // Las estadísticas de categorías ya no son necesarias según los requerimientos del usuario
 }
