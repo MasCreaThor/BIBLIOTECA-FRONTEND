@@ -1,4 +1,3 @@
-// src/utils/index.ts - VERSIÓN ACTUALIZADA
 import { format, formatDistanceToNow, isValid, parseISO } from 'date-fns';
 import { es } from 'date-fns/locale';
 
@@ -59,14 +58,14 @@ export class DateUtils {
    */
   static isPast(date: string | Date): boolean {
     const parsedDate = typeof date === 'string' ? parseISO(date) : date;
-    return parsedDate.getTime() < new Date().getTime();
+    return parsedDate < new Date();
   }
 }
 
 /**
- * Utilidades para strings
+ * Utilidades para formateo de texto
  */
-export class StringUtils {
+export class TextUtils {
   /**
    * Capitalizar primera letra
    */
@@ -75,26 +74,45 @@ export class StringUtils {
   }
 
   /**
-   * Capitalizar cada palabra
+   * Truncar texto
    */
-  static titleCase(str: string): string {
-    return str.replace(/\w\S*/g, (txt) => 
-      txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase()
-    );
+  static truncate(str: string, length: number, suffix = '...'): string {
+    if (str.length <= length) return str;
+    return str.substring(0, length - suffix.length) + suffix;
   }
 
   /**
-   * Truncar texto con elipsis
+   * Limpiar y normalizar texto para búsqueda
    */
-  static truncate(str: string, length: number): string {
-    return str.length > length ? str.substring(0, length) + '...' : str;
+  static normalizeForSearch(str: string): string {
+    return str
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '') // Remover acentos
+      .trim();
   }
 
   /**
-   * Formatear número con separadores de miles
+   * Formatear nombre completo
    */
-  static formatNumber(num: number): string {
-    return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+  static formatFullName(firstName: string, lastName: string): string {
+    return `${firstName.trim()} ${lastName.trim()}`;
+  }
+
+  /**
+   * Extraer iniciales de un nombre
+   */
+  static getInitials(firstName: string, lastName: string): string {
+    return `${firstName.charAt(0).toUpperCase()}${lastName.charAt(0).toUpperCase()}`;
+  }
+
+  /**
+   * Formatear número de documento
+   */
+  static formatDocument(doc: string): string {
+    // Remover caracteres no numéricos y formatear
+    const cleaned = doc.replace(/\D/g, '');
+    return cleaned.replace(/(\d{1,3})(?=(\d{3})+(?!\d))/g, '$1.');
   }
 
   /**
@@ -448,107 +466,6 @@ export const APP_CONSTANTS = {
 } as const;
 
 
-import type { PaginatedResponse } from '@/types/api.types';
 
-export class ResponseUtils {
-  /**
-   * Type guard genérico para verificar si una respuesta es paginada
-   */
-  static isPaginatedResponse<T>(
-    response: PaginatedResponse<T> | T[] | undefined | null
-  ): response is PaginatedResponse<T> {
-    return (
-      response !== null &&
-      response !== undefined &&
-      typeof response === 'object' &&
-      !Array.isArray(response) &&
-      'data' in response &&
-      'pagination' in response &&
-      Array.isArray((response as any).data)
-    );
-  }
-
-  /**
-   * Type guard para verificar si es un array directo
-   */
-  static isDirectArray<T>(
-    response: PaginatedResponse<T> | T[] | undefined | null
-  ): response is T[] {
-    return Array.isArray(response);
-  }
-
-  /**
-   * Extrae datos de una respuesta que puede ser paginada o array directo
-   */
-  static extractResponseData<T>(
-    response: PaginatedResponse<T> | T[] | undefined | null
-  ): { data: T[]; totalCount: number } {
-    // Si no hay respuesta, devolver datos vacíos
-    if (!response) {
-      return { data: [], totalCount: 0 };
-    }
-
-    // Si es una respuesta paginada
-    if (this.isPaginatedResponse(response)) {
-      return {
-        data: response.data,
-        totalCount: response.pagination.total,
-      };
-    }
-
-    // Si es un array directo
-    if (this.isDirectArray(response)) {
-      return {
-        data: response,
-        totalCount: response.length,
-      };
-    }
-
-    // Fallback para casos inesperados
-    console.warn('Respuesta con formato inesperado:', response);
-    return { data: [], totalCount: 0 };
-  }
-
-  /**
-   * Utility para debugging - muestra el formato de la respuesta
-   */
-  static debugResponseFormat<T>(
-    response: PaginatedResponse<T> | T[] | undefined | null,
-    componentName: string
-  ) {
-    if (process.env.NODE_ENV === 'development') {
-      if (!response) {
-        console.log(`[${componentName}] Respuesta vacía o undefined`);
-      } else if (this.isPaginatedResponse(response)) {
-        console.log(`[${componentName}] Respuesta paginada:`, {
-          dataLength: response.data.length,
-          total: response.pagination.total,
-          page: response.pagination.page,
-        });
-      } else if (this.isDirectArray(response)) {
-        console.log(`[${componentName}] Array directo:`, {
-          length: response.length,
-        });
-      } else {
-        console.warn(`[${componentName}] Formato de respuesta no reconocido:`, response);
-      }
-    }
-  }
-}
-
-/**
- * Hook personalizado para extraer datos de manera type-safe
- * (Usar dentro de componentes React)
- */
-export function useExtractedData<T>(
-  response: PaginatedResponse<T> | T[] | undefined | null
-) {
-  const { data, totalCount } = ResponseUtils.extractResponseData(response);
-  
-  return {
-    items: data,
-    totalCount,
-    isEmpty: data.length === 0,
-    hasItems: data.length > 0,
-  };
-}
+// src/utils/index.ts - Agregar a las exportaciones existentes
+export { ImageUtils } from './imageUtils';

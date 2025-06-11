@@ -23,10 +23,16 @@ import {
   IconButton,
   Skeleton,
   SkeletonText,
+  useToast,
 } from '@chakra-ui/react';
 import { useState } from 'react';
-import { FiSearch, FiBook, FiPlus, FiExternalLink, FiX } from 'react-icons/fi';
-import { useGoogleBooksSearch, useGoogleBooks, GoogleBooksUtils } from '@/hooks/useGoogleBooks';
+import { FiSearch, FiBook, FiPlus, FiExternalLink, FiX, FiCheck } from 'react-icons/fi';
+import { 
+  useGoogleBooksSearch, 
+  useGoogleBooks, 
+  useCreateResourceFromGoogleBooks,
+  GoogleBooksUtils 
+} from '@/hooks/useGoogleBooks';
 import { BookPreviewModal } from './BookPreviewModal';
 import type { GoogleBooksVolume } from '@/types/resource.types';
 
@@ -39,17 +45,25 @@ interface GoogleBooksSearchProps {
 
 function BookCard({ 
   volume, 
-  onSelect, 
-  onPreview 
+  onQuickSelect, 
+  onPreview,
+  categoryId,
+  locationId,
+  isCreating = false
 }: { 
   volume: GoogleBooksVolume; 
-  onSelect: () => void;
+  onQuickSelect: () => void;
   onPreview: () => void;
+  categoryId?: string;
+  locationId?: string;
+  isCreating?: boolean;
 }) {
   const imageUrl = GoogleBooksUtils.getBestImageUrl(volume);
   const authors = GoogleBooksUtils.formatAuthors(volume);
   const isbn = GoogleBooksUtils.getAnyISBN(volume);
-  const year = GoogleBooksUtils.getPublicationYear(volume);
+  const year = GoogleBooksUtils.getPublicationYear?.(volume);
+
+  const canCreateResource = categoryId && locationId;
 
   return (
     <Card size="sm" _hover={{ shadow: 'md', transform: 'translateY(-2px)' }} transition="all 0.2s">
@@ -107,23 +121,32 @@ function BookCard({
 
           {/* Acciones */}
           <VStack spacing={2}>
+            {/* Botón de registro rápido */}
+            {canCreateResource && (
+              <Button
+                size="sm"
+                colorScheme="green"
+                leftIcon={isCreating ? <FiCheck /> : <FiPlus />}
+                onClick={onQuickSelect}
+                w="full"
+                isLoading={isCreating}
+                loadingText="Registrando..."
+                isDisabled={isCreating}
+              >
+                {isCreating ? 'Registrando...' : 'Registrar Libro'}
+              </Button>
+            )}
+            
+            {/* Botón de preview */}
             <Button
               size="sm"
-              colorScheme="blue"
-              leftIcon={<FiPlus />}
-              onClick={onSelect}
-              w="full"
-            >
-              Seleccionar
-            </Button>
-            <Button
-              size="xs"
               variant="outline"
               leftIcon={<FiExternalLink />}
               onClick={onPreview}
               w="full"
+              isDisabled={isCreating}
             >
-              Ver detalles
+              Ver Detalles
             </Button>
           </VStack>
         </VStack>
@@ -159,8 +182,10 @@ export function GoogleBooksSearch({
   const [query, setQuery] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedBook, setSelectedBook] = useState<GoogleBooksVolume | null>(null);
+  const [creatingVolumes, setCreatingVolumes] = useState<Set<string>>(new Set());
   
   const { isOpen: isPreviewOpen, onOpen: onPreviewOpen, onClose: onPreviewClose } = useDisclosure();
+  const toast = useToast();
   
   // Hooks
   const { isApiAvailable } = useGoogleBooks();
@@ -169,6 +194,8 @@ export function GoogleBooksSearch({
     isLoading, 
     error 
   } = useGoogleBooksSearch(searchTerm, 12, isApiAvailable);
+
+  const createFromGoogleBooksMutation = useCreateResourceFromGoogleBooks();
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -187,8 +214,52 @@ export function GoogleBooksSearch({
     onPreviewOpen();
   };
 
-  const handleBookSelect = (volume: GoogleBooksVolume) => {
-    onBookSelect(volume);
+  const handleQuickSelect = async (volume: GoogleBooksVolume) => {
+    if (!categoryId || !locationId) {
+      toast({
+        title: 'Configuración incompleta',
+        description: 'Debes seleccionar una categoría y ubicación antes de registrar libros.',
+        status: 'warning',
+        duration: 5000,
+        isClosable: true,
+      });
+      return;
+    }
+
+    // Marcar como creando
+    setCreatingVolumes(prev => new Set(prev).add(volume.id));
+
+    try {
+      await createFromGoogleBooksMutation.mutateAsync({
+        googleBooksId: volume.id,
+        categoryId: categoryId,
+        locationId: locationId,
+        volumes: 1,
+        notes: `Importado automáticamente desde Google Books (ID: ${volume.id})`,
+      });
+
+      // Notificar al componente padre
+      onBookSelect(volume);
+
+      toast({
+        title: '¡Libro registrado!',
+        description: `"${volume.title}" se ha registrado exitosamente en el inventario.`,
+        status: 'success',
+        duration: 5000,
+        isClosable: true,
+      });
+
+    } catch (error: any) {
+      // El error ya se maneja en el hook, pero podemos agregar feedback adicional
+      console.error('Error al registrar libro:', error);
+    } finally {
+      // Remover del estado de creando
+      setCreatingVolumes(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(volume.id);
+        return newSet;
+      });
+    }
   };
 
   if (!isApiAvailable) {
@@ -250,7 +321,7 @@ export function GoogleBooksSearch({
               </InputGroup>
               
               <Text fontSize="sm" color="gray.600">
-                Busca libros por título, autor o ISBN para autocompletar la información
+                Busca libros por título, autor o ISBN. Haz clic en "Registrar Libro" para agregarlo automáticamente al inventario.
               </Text>
             </VStack>
           </form>
@@ -291,8 +362,11 @@ export function GoogleBooksSearch({
                   <BookCard
                     key={volume.id}
                     volume={volume}
-                    onSelect={() => handleBookSelect(volume)}
+                    onQuickSelect={() => handleQuickSelect(volume)}
                     onPreview={() => handleBookPreview(volume)}
+                    categoryId={categoryId}
+                    locationId={locationId}
+                    isCreating={creatingVolumes.has(volume.id)}
                   />
                 ))}
               </SimpleGrid>
@@ -318,7 +392,7 @@ export function GoogleBooksSearch({
             <Box>
               <AlertTitle>Búsqueda en Google Books</AlertTitle>
               <AlertDescription fontSize="sm">
-                Busca libros para autocompletar automáticamente título, autor, editorial e ISBN.
+                Busca libros para registrarlos automáticamente con título, autor, editorial e ISBN.
                 Si no encuentras el libro, siempre puedes registrarlo manualmente.
               </AlertDescription>
             </Box>
@@ -333,7 +407,7 @@ export function GoogleBooksSearch({
           isOpen={isPreviewOpen}
           onClose={onPreviewClose}
           onSelect={() => {
-            handleBookSelect(selectedBook);
+            handleQuickSelect(selectedBook);
             onPreviewClose();
           }}
           categoryId={categoryId}

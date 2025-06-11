@@ -16,7 +16,7 @@ import {
 } from '@chakra-ui/react';
 import { useState } from 'react';
 import { UseFormReturn } from 'react-hook-form';
-import { FiHome, FiPlus } from 'react-icons/fi'; // Cambiar FiBuilding por FiHome
+import { FiHome, FiPlus } from 'react-icons/fi';
 import { usePublishers, useFindOrCreatePublisher } from '@/hooks/useResources';
 import { TextUtils } from '@/utils';
 

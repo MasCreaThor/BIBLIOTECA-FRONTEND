@@ -15,6 +15,8 @@ export interface Resource {
   notes?: string;
   available: boolean;
   isbn?: string;
+  googleBooksId?: string;
+  coverImageUrl?: string;
   
   // Datos populados (cuando están disponibles)
   type?: ResourceType;
@@ -39,6 +41,8 @@ export interface CreateResourceRequest {
   locationId: string;
   notes?: string;
   isbn?: string;
+  googleBooksId?: string;
+  coverImageUrl?: string;    // ✅ CORRECCIÓN: usar coverImageUrl
 }
 
 export interface UpdateResourceRequest {
@@ -51,6 +55,7 @@ export interface UpdateResourceRequest {
   stateId?: string;
   notes?: string;
   available?: boolean;
+  coverImageUrl?: string;    // ✅ CORRECCIÓN: usar coverImageUrl
 }
 
 // ===== ENTIDADES AUXILIARES =====
@@ -155,13 +160,9 @@ export interface ResourceFilters {
   sortOrder?: 'asc' | 'desc';
 }
 
-// ===== RE-EXPORTACIONES DE TIPOS COMUNES =====
-// Re-exportar PaginatedResponse para uso con recursos
-export type { PaginatedResponse };
-
-// ===== RESPUESTAS ESPECÍFICAS =====
+// ===== RESPUESTAS DE LA API =====
 export type ResourceResponse = ApiResponse<Resource>;
-export type ResourceListResponse = ApiResponse<PaginatedResponse<Resource>>;
+export type ResourceListResponse = ApiResponse<Resource[]>;
 export type CategoryListResponse = ApiResponse<Category[]>;
 export type AuthorListResponse = ApiResponse<Author[]>;
 export type PublisherListResponse = ApiResponse<Publisher[]>;
