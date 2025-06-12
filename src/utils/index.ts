@@ -186,7 +186,7 @@ export class ValidationUtils {
   /**
    * Validar número de documento colombiano
    */
-  static isValidColombiannDocument(doc: string): boolean {
+  static isValidColombianDocument(doc: string): boolean {
     const cleaned = doc.replace(/\D/g, '');
     return cleaned.length >= 6 && cleaned.length <= 11;
   }
@@ -465,7 +465,71 @@ export const APP_CONSTANTS = {
   },
 } as const;
 
+// ===== EXPORTACIONES ADICIONALES =====
 
-
-// src/utils/index.ts - Agregar a las exportaciones existentes
+// Re-exportar utilidades de imageUtils
 export { ImageUtils } from './imageUtils';
+
+// Re-exportar funciones de typeGuards para compatibilidad
+export {
+  isPaginatedResponse,
+  isDirectArray,
+  extractResponseData,
+  useExtractedData,
+  isLocationsPaginatedResponse,
+  isCategoriesPaginatedResponse,
+  isResourceTypesPaginatedResponse,
+  debugResponseFormat,
+} from './typeGuards';
+
+// Importar tipos necesarios para ResponseUtils
+import type { PaginatedResponse } from '@/types/api.types';
+import { 
+  extractResponseData, 
+  isPaginatedResponse, 
+  isDirectArray,
+  debugResponseFormat 
+} from './typeGuards';
+
+/**
+ * Utilidades para manejar respuestas del API
+ * Wrapper alrededor de las funciones de typeGuards para compatibilidad
+ */
+export class ResponseUtils {
+  /**
+   * Extrae datos de una respuesta que puede ser paginada o array directo
+   */
+  static extractData<T>(
+    response: PaginatedResponse<T> | T[] | undefined | null
+  ): { data: T[]; totalCount: number } {
+    return extractResponseData(response);
+  }
+
+  /**
+   * Verifica si una respuesta es paginada
+   */
+  static isPaginated<T>(
+    response: PaginatedResponse<T> | T[] | undefined | null
+  ): response is PaginatedResponse<T> {
+    return isPaginatedResponse(response);
+  }
+
+  /**
+   * Verifica si es un array directo
+   */
+  static isArray<T>(
+    response: PaginatedResponse<T> | T[] | undefined | null
+  ): response is T[] {
+    return isDirectArray(response);
+  }
+
+  /**
+   * Debug del formato de respuesta
+   */
+  static debugResponseFormat<T>(
+    response: PaginatedResponse<T> | T[] | undefined | null,
+    componentName: string
+  ): void {
+    debugResponseFormat(response, componentName);
+  }
+}

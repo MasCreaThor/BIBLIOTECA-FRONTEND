@@ -1,6 +1,7 @@
 // src/hooks/useResources.ts
 import { useQuery, useMutation, useQueryClient, UseQueryOptions } from '@tanstack/react-query';
 import { ResourceService } from '@/services/resource.service';
+// ✅ IMPORTACIONES CORREGIDAS
 import type {
   Resource,
   CreateResourceRequest,
@@ -14,8 +15,9 @@ import type {
   ResourceState,
   GoogleBooksVolume,
   CreateResourceFromGoogleBooksRequest,
-  PaginatedResponse,
 } from '@/types/resource.types';
+// ✅ IMPORTAR PaginatedResponse DESDE EL ARCHIVO CORRECTO
+import type { PaginatedResponse } from '@/types/api.types';
 import toast from 'react-hot-toast';
 
 // Query keys para React Query
@@ -43,13 +45,13 @@ export const RESOURCE_QUERY_KEYS = {
  */
 export function useResources(
   filters: ResourceFilters = {},
-  options?: Omit<UseQueryOptions<PaginatedResponse<Resource>>, 'queryKey' | 'queryFn'>
+  options?: Omit<UseQueryOptions<Resource[]>, 'queryKey' | 'queryFn'>
 ) {
   return useQuery({
     queryKey: RESOURCE_QUERY_KEYS.resourcesList(filters),
     queryFn: async () => {
       const response = await ResourceService.getResources(filters);
-      return response.data!;
+      return response.data!; // ResourceService retorna ApiResponse<Resource[]>
     },
     staleTime: 5 * 60 * 1000, // 5 minutos
     gcTime: 10 * 60 * 1000, // 10 minutos

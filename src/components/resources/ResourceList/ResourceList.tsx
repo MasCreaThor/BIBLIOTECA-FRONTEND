@@ -147,9 +147,9 @@ export function ResourceList({
     }
   };
 
-  // Estados derivados
-  const resources: Resource[] = resourcesResponse?.data || [];
-  const totalCount = resourcesResponse?.pagination.total || 0;
+  // ✅ CORREGIDO: Estados derivados para trabajar con array directo
+  const resources: Resource[] = resourcesResponse || [];
+  const totalCount = resources.length;
   const isLoadingData = isLoading || isRefetching;
   const isMutating = updateAvailabilityMutation.isPending || deleteMutation.isPending;
 
@@ -227,46 +227,15 @@ export function ResourceList({
         )}
       </Box>
 
-      {/* Paginación */}
-      {resourcesResponse?.pagination && resourcesResponse.pagination.totalPages > 1 && (
+      {/* ✅ REMOVIDO: Sección de paginación ya que no hay paginación en el backend */}
+      
+      {/* Información del total de resultados */}
+      {!isLoadingData && resources.length > 0 && (
         <Card>
           <CardBody>
-            <Flex justify="space-between" align="center">
-              <Text fontSize="sm" color="gray.600">
-                Página {resourcesResponse.pagination.page} de {resourcesResponse.pagination.totalPages}
-                {' '}({resourcesResponse.pagination.total} recursos en total)
-              </Text>
-              
-              <HStack spacing={2}>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  disabled={!resourcesResponse.pagination.hasPrevPage || isLoadingData}
-                  onClick={() => {
-                    // TODO: Implementar paginación
-                    console.log('Página anterior');
-                  }}
-                >
-                  Anterior
-                </Button>
-                
-                <Text fontSize="sm" color="gray.600" px={3}>
-                  {resourcesResponse.pagination.page}
-                </Text>
-                
-                <Button
-                  size="sm"
-                  variant="outline"
-                  disabled={!resourcesResponse.pagination.hasNextPage || isLoadingData}
-                  onClick={() => {
-                    // TODO: Implementar paginación
-                    console.log('Página siguiente');
-                  }}
-                >
-                  Siguiente
-                </Button>
-              </HStack>
-            </Flex>
+            <Text fontSize="sm" color="gray.600" textAlign="center">
+              Mostrando {resources.length} recurso{resources.length !== 1 ? 's' : ''} en total
+            </Text>
           </CardBody>
         </Card>
       )}
