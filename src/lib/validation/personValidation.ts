@@ -32,7 +32,7 @@ const baseFieldValidations = {
     .optional()
     .refine((val) => {
       if (!val || val.trim() === '') return true; // Opcional
-      return ValidationUtils.isValidColombiannDocument(val);
+      return ValidationUtils.isValidColombianDocument(val);
     }, 'El número de documento debe tener entre 6 y 11 dígitos')
     .transform(val => val?.trim() || undefined),
 
