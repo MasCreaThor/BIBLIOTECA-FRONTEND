@@ -147,11 +147,56 @@ export function ResourceList({
     }
   };
 
-  // ✅ CORREGIDO: Estados derivados para trabajar con array directo
-  const resources: Resource[] = resourcesResponse || [];
+  // ✅ SOLUCIÓN: Manejo seguro de resourcesResponse
+  const resources: Resource[] = useMemo(() => {
+    // Verificar que resourcesResponse existe y es un array
+    if (!resourcesResponse) {
+      return [];
+    }
+    
+    // Si es un array directamente
+    if (Array.isArray(resourcesResponse)) {
+      return resourcesResponse;
+    }
+    
+    // Si es un objeto con propiedad data (respuesta paginada)
+    if (typeof resourcesResponse === 'object' && 'data' in resourcesResponse) {
+      const paginatedData = resourcesResponse as any;
+      return Array.isArray(paginatedData.data) ? paginatedData.data : [];
+    }
+    
+    // Si es un objeto con propiedad items (otra estructura posible)
+    if (typeof resourcesResponse === 'object' && 'items' in resourcesResponse) {
+      const itemsData = resourcesResponse as any;
+      return Array.isArray(itemsData.items) ? itemsData.items : [];
+    }
+    
+    // Fallback: retornar array vacío
+    console.warn('Estructura de resourcesResponse no reconocida:', resourcesResponse);
+    return [];
+  }, [resourcesResponse]);
+
   const totalCount = resources.length;
   const isLoadingData = isLoading || isRefetching;
   const isMutating = updateAvailabilityMutation.isPending || deleteMutation.isPending;
+
+  // Estado de carga inicial
+  if (isLoading && !resourcesResponse) {
+    return (
+      <VStack spacing={6} align="stretch">
+        <ResourceFilters
+          filters={filters}
+          onFiltersChange={handleFiltersChange}
+          onRefresh={handleRefresh}
+          resultCount={0}
+          isLoading={true}
+          viewMode={viewMode}
+          onViewModeChange={setViewMode}
+        />
+        <LoadingGrid count={8} isCompact={isCompact} />
+      </VStack>
+    );
+  }
 
   return (
     <VStack spacing={6} align="stretch">
@@ -179,79 +224,58 @@ export function ResourceList({
         </Alert>
       )}
 
-      {/* Contenido principal */}
-      <Box position="relative">
-        {/* Overlay de loading para mutaciones */}
-        {isMutating && (
-          <Box
-            position="absolute"
-            top={0}
-            left={0}
-            right={0}
-            bottom={0}
-            bg="rgba(255, 255, 255, 0.8)"
-            zIndex={10}
-            display="flex"
-            alignItems="center"
-            justifyContent="center"
-            borderRadius="md"
-          >
-            <Text>Procesando...</Text>
-          </Box>
-        )}
+      {/* Estado de carga durante refetch */}
+      {isRefetching && (
+        <Alert status="info" borderRadius="md">
+          <AlertIcon />
+          <Text>Actualizando recursos...</Text>
+        </Alert>
+      )}
 
-        {/* Lista de recursos */}
-        {isLoadingData ? (
-          <LoadingGrid isCompact={isCompact} />
-        ) : resources.length === 0 ? (
-          <EmptyResources onCreate={onCreate} />
-        ) : (
+      {/* Contenido principal */}
+      {!isError && resources.length === 0 && !isLoadingData ? (
+        <EmptyResources onCreate={onCreate} />
+      ) : (
+        <Box position="relative">
+          {/* Overlay de loading durante mutaciones */}
+          {isMutating && (
+            <Box
+              position="absolute"
+              top={0}
+              left={0}
+              right={0}
+              bottom={0}
+              bg="blackAlpha.100"
+              zIndex={1}
+              borderRadius="md"
+            />
+          )}
+
+          {/* Grid de recursos */}
           <SimpleGrid
-            columns={{ base: 1, md: 2, lg: 3, xl: 4 }}
-            spacing={4}
-            opacity={isMutating ? 0.6 : 1}
+            columns={{
+              base: 1,
+              md: viewMode === 'grid' ? 2 : 1,
+              lg: viewMode === 'grid' ? 3 : 1,
+              xl: viewMode === 'grid' ? 4 : 1,
+            }}
+            spacing={viewMode === 'grid' ? 4 : 3}
             transition="opacity 0.2s"
           >
             {resources.map((resource: Resource) => (
               <ResourceCard
                 key={resource._id}
                 resource={resource}
-                onEdit={handleResourceEdit}
-                onToggleAvailability={handleToggleAvailability}
-                onDelete={handleDeleteResource}
-                showActions={showActions}
+                onEdit={showActions ? handleResourceEdit : undefined}
+                onToggleAvailability={showActions ? handleToggleAvailability : undefined}
+                onDelete={showActions ? handleDeleteResource : undefined}
+                onView={onResourceSelect}
                 isCompact={isCompact}
+                isLoading={isMutating}
               />
             ))}
           </SimpleGrid>
-        )}
-      </Box>
-
-      {/* ✅ REMOVIDO: Sección de paginación ya que no hay paginación en el backend */}
-      
-      {/* Información del total de resultados */}
-      {!isLoadingData && resources.length > 0 && (
-        <Card>
-          <CardBody>
-            <Text fontSize="sm" color="gray.600" textAlign="center">
-              Mostrando {resources.length} recurso{resources.length !== 1 ? 's' : ''} en total
-            </Text>
-          </CardBody>
-        </Card>
-      )}
-
-      {/* Información adicional */}
-      {!isLoadingData && resources.length > 0 && (
-        <Alert status="info" borderRadius="md">
-          <AlertIcon />
-          <Box>
-            <AlertTitle>Consejo</AlertTitle>
-            <AlertDescription fontSize="sm">
-              Haz clic en "Ver" para ver los detalles completos de un recurso, o usa el menú (⋮) para más opciones.
-              Los recursos marcados como "Prestado" aparecen con borde naranja.
-            </AlertDescription>
-          </Box>
-        </Alert>
+        </Box>
       )}
     </VStack>
   );
