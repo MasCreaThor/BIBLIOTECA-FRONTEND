@@ -55,7 +55,7 @@ export function useResourcesStats(
 ) {
   return useQuery({
     queryKey: DASHBOARD_QUERY_KEYS.resourcesStats,
-    queryFn: DashboardService.getResourcesStats,
+    queryFn: DashboardService.getResourcesStatsLocal,
     staleTime: 10 * 60 * 1000, // 10 minutos
     gcTime: 15 * 60 * 1000, // 15 minutos
     retry: 2,
