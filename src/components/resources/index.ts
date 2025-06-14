@@ -11,3 +11,6 @@ export type { ResourceFiltersState } from './ResourceList/ResourceFilters';
 
 // Google Books
 export { GoogleBooksSearch, BookPreviewModal } from './GoogleBooks';
+
+// Búsqueda de recursos
+export { ResourceSearch } from './ResourceSearch/ResourceSearch';

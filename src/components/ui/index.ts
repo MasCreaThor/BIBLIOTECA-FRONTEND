@@ -6,3 +6,4 @@ export { ComingSoon } from './ComingSoon';
 export { SafeLink, useValidatedHref } from './SafeLink';
 export { DebugInfo } from './DebugInfo';
 export { ServerStatus, useServerStatus } from './ServerStatus';
+export { Pagination } from './Pagination';

@@ -154,6 +154,7 @@ export interface ResourceFilters {
   locationId?: string;
   availability?: 'available' | 'borrowed';
   authorId?: string;
+  available?: boolean;
   page?: number;
   limit?: number;
   sortBy?: string;
