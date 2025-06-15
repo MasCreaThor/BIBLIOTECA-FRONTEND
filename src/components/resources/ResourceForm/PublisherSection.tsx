@@ -19,6 +19,7 @@ import { UseFormReturn } from 'react-hook-form';
 import { FiHome, FiPlus } from 'react-icons/fi';
 import { usePublishers, useFindOrCreatePublisher } from '@/hooks/useResources';
 import { TextUtils } from '@/utils';
+import { Publisher } from '@/types/resource.types';
 
 interface PublisherSectionProps {
   form: UseFormReturn<any>;
@@ -41,7 +42,7 @@ export function PublisherSection({ form }: PublisherSectionProps) {
     try {
       const publisher = await findOrCreateMutation.mutateAsync(
         TextUtils.capitalize(newPublisherName.trim())
-      );
+      ) as Publisher;
       
       // Seleccionar automáticamente la editorial creada/encontrada
       setValue('publisherId', publisher._id, { shouldDirty: true });

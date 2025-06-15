@@ -34,7 +34,7 @@ import {
   GoogleBooksUtils 
 } from '@/hooks/useGoogleBooks';
 import { BookPreviewModal } from './BookPreviewModal';
-import type { GoogleBooksVolume } from '@/types/resource.types';
+import { GoogleBooksVolume } from '@/types/resource.types';
 
 interface GoogleBooksSearchProps {
   onBookSelect: (volume: GoogleBooksVolume) => void;
@@ -358,7 +358,7 @@ export function GoogleBooksSearch({
               <LoadingSkeleton />
             ) : searchResults.length > 0 ? (
               <SimpleGrid columns={{ base: 1, md: 2, lg: 3, xl: 4 }} spacing={4}>
-                {searchResults.map((volume) => (
+                {searchResults.map((volume: GoogleBooksVolume) => (
                   <BookCard
                     key={volume.id}
                     volume={volume}

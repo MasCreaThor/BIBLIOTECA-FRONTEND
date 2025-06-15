@@ -178,7 +178,7 @@ export function usePersonForm({
     const cleanData = {
       firstName: TextUtils.capitalize(data.firstName.trim()),
       lastName: TextUtils.capitalize(data.lastName.trim()),
-      personTypeId: data.personTypeId,
+      personTypeId: isEdit ? person?.personTypeId : data.personTypeId, // Mantener el ID original en edición
       documentNumber: data.documentNumber?.trim() || undefined,
       grade: isStudent && data.grade ? data.grade.trim() : undefined,
     };

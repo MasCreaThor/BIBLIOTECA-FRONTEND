@@ -1,6 +1,6 @@
 // src/hooks/usePeople.ts
 import { useQuery, useMutation, useQueryClient, UseQueryOptions } from '@tanstack/react-query';
-import { PersonService } from '@/services/person.service';
+import { personService } from '@/services/person.service';
 import type { 
   Person, 
   PersonType, 
@@ -64,7 +64,7 @@ export function usePeople(
     queryKey: PEOPLE_QUERY_KEYS.peopleList(filters),
     queryFn: async () => {
       try {
-        return await PersonService.getPeople(filters);
+        return await personService.getPeople(filters);
       } catch (error: any) {
         // Si hay error de populate, intentar obtener tipos por separado
         if (error?.response?.status === 500 && 
@@ -73,7 +73,7 @@ export function usePeople(
           console.warn('Error de populate detectado, enriqueciendo datos manualmente...');
           
           // Obtener personas sin populate si es posible
-          const basicResponse = await PersonService.getPeople({ ...filters, populate: false } as any);
+          const basicResponse = await personService.getPeople({ ...filters, populate: false } as any);
           
           // Obtener tipos de persona por separado
           const personTypes = queryClient.getQueryData(PEOPLE_QUERY_KEYS.personTypes) as PersonType[];
@@ -118,7 +118,7 @@ export function usePerson(
     queryKey: PEOPLE_QUERY_KEYS.person(id),
     queryFn: async () => {
       try {
-        return await PersonService.getPersonById(id);
+        return await personService.getPersonById(id);
       } catch (error: any) {
         // Si hay error de populate, intentar enriquecer manualmente
         if (error?.response?.status === 500) {
@@ -126,7 +126,7 @@ export function usePerson(
           
           if (personTypes) {
             // Intentar obtener datos básicos de la persona
-            const basicPerson = await PersonService.getPersonById(id);
+            const basicPerson = await personService.getPersonById(id);
             const enrichedPeople = enrichPeopleWithTypes([basicPerson], personTypes);
             return enrichedPeople[0];
           }
@@ -153,7 +153,7 @@ export function usePersonByDocument(
 ) {
   return useQuery({
     queryKey: PEOPLE_QUERY_KEYS.personByDocument(documentNumber),
-    queryFn: () => PersonService.getPersonByDocument(documentNumber),
+    queryFn: () => personService.getPersonByDocument(documentNumber),
     enabled: enabled && !!documentNumber && documentNumber.length >= 6,
     staleTime: 15 * 60 * 1000,
     gcTime: 20 * 60 * 1000,
@@ -170,7 +170,7 @@ export function usePersonTypes(
 ) {
   return useQuery({
     queryKey: PEOPLE_QUERY_KEYS.personTypes,
-    queryFn: PersonService.getPersonTypes,
+    queryFn: personService.getPersonTypes,
     staleTime: 30 * 60 * 1000, // 30 minutos - datos que cambian poco
     gcTime: 60 * 60 * 1000, // 1 hora
     retry: 2,
@@ -183,13 +183,13 @@ export function usePersonTypes(
  * Hook para obtener estadísticas de personas con manejo de errores mejorado
  */
 export function usePersonStats(
-  options?: Omit<UseQueryOptions<Awaited<ReturnType<typeof PersonService.getPersonStats>>>, 'queryKey' | 'queryFn'>
+  options?: Omit<UseQueryOptions<Awaited<ReturnType<typeof personService.getPersonStats>>>, 'queryKey' | 'queryFn'>
 ) {
   return useQuery({
     queryKey: PEOPLE_QUERY_KEYS.personStats,
     queryFn: async () => {
       try {
-        return await PersonService.getPersonStats();
+        return await personService.getPersonStats();
       } catch (error: any) {
         // Si hay error, devolver estadísticas básicas
         console.error('Error obteniendo estadísticas de personas:', error);
@@ -246,7 +246,7 @@ export function useCreatePerson() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (data: CreatePersonRequest) => PersonService.createPerson(data),
+    mutationFn: (data: CreatePersonRequest) => personService.createPerson(data),
     onSuccess: (newPerson) => {
       // Invalidar queries relacionadas
       queryClient.invalidateQueries({ queryKey: PEOPLE_QUERY_KEYS.people });
@@ -277,7 +277,7 @@ export function useUpdatePerson() {
 
   return useMutation({
     mutationFn: ({ id, data }: { id: string; data: UpdatePersonRequest }) => 
-      PersonService.updatePerson(id, data),
+      personService.updatePerson(id, data),
     onSuccess: (updatedPerson) => {
       // Actualizar queries específicas
       queryClient.setQueryData(
@@ -306,7 +306,7 @@ export function useActivatePerson() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (id: string) => PersonService.activatePerson(id),
+    mutationFn: (id: string) => personService.activatePerson(id),
     onSuccess: (activatedPerson) => {
       // Actualizar cache
       queryClient.setQueryData(
@@ -335,7 +335,7 @@ export function useDeactivatePerson() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (id: string) => PersonService.deactivatePerson(id),
+    mutationFn: (id: string) => personService.deactivatePerson(id),
     onSuccess: (deactivatedPerson) => {
       // Actualizar cache
       queryClient.setQueryData(
@@ -364,7 +364,7 @@ export function useDeletePerson() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (id: string) => PersonService.deletePerson(id),
+    mutationFn: (id: string) => personService.deletePerson(id),
     onSuccess: (_, deletedId) => {
       // Remover de cache
       queryClient.removeQueries({ queryKey: PEOPLE_QUERY_KEYS.person(deletedId) });
@@ -388,7 +388,7 @@ export function useDeletePerson() {
 export function useSearchPeople(query: string, limit: number = 10) {
   return useQuery({
     queryKey: ['people', 'search', query, limit],
-    queryFn: () => PersonService.searchPeople(query, limit),
+    queryFn: () => personService.searchPeople(query, limit),
     enabled: query.length >= 2,
     staleTime: 2 * 60 * 1000, // 2 minutos
     gcTime: 5 * 60 * 1000, // 5 minutos
@@ -402,7 +402,7 @@ export function useSearchPeople(query: string, limit: number = 10) {
 export function useValidateDocument(documentNumber: string, excludeId?: string) {
   return useQuery({
     queryKey: ['people', 'validate-document', documentNumber, excludeId],
-    queryFn: () => PersonService.validateDocumentNumber(documentNumber, excludeId),
+    queryFn: () => personService.validateDocumentNumber(documentNumber, excludeId),
     enabled: !!documentNumber && documentNumber.length >= 6,
     staleTime: 1 * 60 * 1000, // 1 minuto
     gcTime: 5 * 60 * 1000, // 5 minutos

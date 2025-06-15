@@ -1,5 +1,5 @@
 // src/services/personErrorRecovery.service.ts
-import { PersonService } from './person.service';
+import { personService } from './person.service';
 import type { 
   PaginatedResponse, 
   Person, 
@@ -20,7 +20,7 @@ export class PersonErrorRecoveryService {
   static async getPeopleWithFallback(filters: SearchFilters): Promise<PaginatedResponse<Person>> {
     try {
       // Intentar el método normal primero
-      return await PersonService.getPeople(filters);
+      return await personService.getPeople(filters);
     } catch (error: any) {
       // Si es error 500 y menciona populate, intentar estrategia alternativa
       if (error?.response?.status === 500 && 
