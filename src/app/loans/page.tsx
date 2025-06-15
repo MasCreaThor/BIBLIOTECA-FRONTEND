@@ -128,7 +128,7 @@ export default function LoansPage() {
                   <CardBody>
                     <Stat>
                       <StatLabel>Total Préstamos</StatLabel>
-                      <StatNumber color="blue.500">{stats.totalLoans}</StatNumber>
+                      <StatNumber color="blue.500">{stats.total}</StatNumber>
                       <StatHelpText>
                         <FiTrendingUp />
                         Histórico
@@ -141,7 +141,7 @@ export default function LoansPage() {
                   <CardBody>
                     <Stat>
                       <StatLabel>Activos</StatLabel>
-                      <StatNumber color="green.500">{stats.activeLoans}</StatNumber>
+                      <StatNumber color="green.500">{stats.active}</StatNumber>
                       <StatHelpText>
                         <FiCheck />
                         En curso
@@ -154,7 +154,7 @@ export default function LoansPage() {
                   <CardBody>
                     <Stat>
                       <StatLabel>Vencidos</StatLabel>
-                      <StatNumber color="orange.500">{stats.overdueLoans}</StatNumber>
+                      <StatNumber color="orange.500">{stats.overdue}</StatNumber>
                       <StatHelpText>
                         <FiAlertTriangle />
                         Requieren atención
@@ -167,7 +167,7 @@ export default function LoansPage() {
                   <CardBody>
                     <Stat>
                       <StatLabel>Devueltos</StatLabel>
-                      <StatNumber color="gray.500">{stats.returnedLoans}</StatNumber>
+                      <StatNumber color="gray.500">{stats.returned}</StatNumber>
                       <StatHelpText>
                         <FiClock />
                         Completados

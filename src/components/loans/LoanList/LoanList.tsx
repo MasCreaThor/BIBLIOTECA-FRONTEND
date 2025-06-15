@@ -10,6 +10,8 @@ import {
   Alert,
   AlertIcon,
   Button,
+  AlertTitle,
+  AlertDescription,
 } from '@chakra-ui/react';
 import { LoanCard } from '../LoanCard/LoanCard';
 import { Loan } from '@/types';
@@ -40,17 +42,30 @@ export function LoanList({
 }: LoanListProps) {
   if (error) {
     return (
-      <Alert status="error" borderRadius="md">
-        <AlertIcon />
-        <Box flex="1">
-          <Text>{error}</Text>
-        </Box>
+      <Alert 
+        status="error" 
+        borderRadius="md"
+        flexDirection="column"
+        alignItems="center"
+        justifyContent="center"
+        textAlign="center"
+        p={6}
+      >
+        <AlertIcon boxSize="40px" mr={0} />
+        <AlertTitle mt={4} mb={1} fontSize="lg">
+          Error al cargar préstamos
+        </AlertTitle>
+        <AlertDescription maxWidth="sm">
+          {error}
+        </AlertDescription>
         {onRetry && (
           <Button
-            size="sm"
+            mt={4}
+            size="md"
             leftIcon={<FiRefreshCw />}
             onClick={onRetry}
-            ml={3}
+            colorScheme="red"
+            variant="outline"
           >
             Reintentar
           </Button>
@@ -71,9 +86,19 @@ export function LoanList({
 
   if (loans.length === 0) {
     return (
-      <Box textAlign="center" py={8}>
+      <Box 
+        textAlign="center" 
+        py={8}
+        bg="gray.50"
+        borderRadius="md"
+        borderWidth="1px"
+        borderColor="gray.200"
+      >
         <Text color="gray.500" fontSize="lg">
           No se encontraron préstamos
+        </Text>
+        <Text color="gray.400" fontSize="sm" mt={2}>
+          Intenta ajustar los filtros de búsqueda
         </Text>
       </Box>
     );

@@ -59,12 +59,12 @@ export function AuthorsSection({ form }: AuthorsSectionProps) {
   const bulkCreateMutation = useBulkCreateAuthors();
 
   // Autores seleccionados
-  const selectedAuthors = allAuthors.filter(author => 
+  const selectedAuthors = allAuthors.filter((author: Author) => 
     selectedAuthorIds.includes(author._id)
   );
 
   // Resultados de búsqueda filtrados (excluir ya seleccionados)
-  const filteredResults = searchResults.filter(author => 
+  const filteredResults = searchResults.filter((author: Author) => 
     !selectedAuthorIds.includes(author._id)
   );
 
@@ -88,7 +88,7 @@ export function AuthorsSection({ form }: AuthorsSectionProps) {
     try {
       const newAuthor = await createAuthorMutation.mutateAsync({
         name: TextUtils.capitalize(newAuthorName.trim())
-      });
+      }) as Author;
       
       // Agregar automáticamente a la selección
       setValue('authorIds', [...selectedAuthorIds, newAuthor._id], { shouldDirty: true });
@@ -109,7 +109,7 @@ export function AuthorsSection({ form }: AuthorsSectionProps) {
     if (names.length === 0) return;
 
     try {
-      const newAuthors = await bulkCreateMutation.mutateAsync(names);
+      const newAuthors = await bulkCreateMutation.mutateAsync(names) as Author[];
       
       // Agregar todos a la selección
       const newAuthorIds = newAuthors.map(author => author._id);
@@ -154,7 +154,7 @@ export function AuthorsSection({ form }: AuthorsSectionProps) {
                 Autores seleccionados ({selectedAuthors.length})
               </FormLabel>
               <SimpleGrid columns={{ base: 1, md: 2, lg: 3 }} spacing={2}>
-                {selectedAuthors.map((author) => (
+                {selectedAuthors.map((author: Author) => (
                   <Tag
                     key={author._id}
                     size="lg"
@@ -227,7 +227,7 @@ export function AuthorsSection({ form }: AuthorsSectionProps) {
                     </VStack>
                   ) : filteredResults.length > 0 ? (
                     <VStack spacing={2} align="stretch">
-                      {filteredResults.map((author) => (
+                      {filteredResults.map((author: Author) => (
                         <HStack
                           key={author._id}
                           p={3}
@@ -315,7 +315,7 @@ export function AuthorsSection({ form }: AuthorsSectionProps) {
                     Autores seleccionados para este recurso
                   </Text>
                   <HStack wrap="wrap" spacing={2}>
-                    {selectedAuthors.map((author) => (
+                    {selectedAuthors.map((author: Author) => (
                       <Badge key={author._id} colorScheme="blue" variant="subtle">
                         {author.name}
                       </Badge>

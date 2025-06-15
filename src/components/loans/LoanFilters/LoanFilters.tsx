@@ -54,8 +54,8 @@ export function LoanFilters({
     if (filters.search) count++;
     if (filters.status) count++;
     if (filters.isOverdue !== undefined) count++;
-    if (filters.dateFrom) count++;
-    if (filters.dateTo) count++;
+    if (filters.loanDateFrom) count++;
+    if (filters.loanDateTo) count++;
     if (filters.personId) count++;
     if (filters.resourceId) count++;
     return count;
@@ -179,8 +179,8 @@ export function LoanFilters({
                 <FormLabel fontSize="sm">Fecha desde</FormLabel>
                 <Input
                   type="date"
-                  value={localFilters.dateFrom || ''}
-                  onChange={(e) => handleInputChange('dateFrom', e.target.value || undefined)}
+                  value={localFilters.loanDateFrom instanceof Date ? localFilters.loanDateFrom.toISOString().slice(0, 10) : (localFilters.loanDateFrom || '')}
+                  onChange={(e) => handleInputChange('loanDateFrom', e.target.value || undefined)}
                   size="sm"
                 />
               </FormControl>
@@ -190,8 +190,8 @@ export function LoanFilters({
                 <FormLabel fontSize="sm">Fecha hasta</FormLabel>
                 <Input
                   type="date"
-                  value={localFilters.dateTo || ''}
-                  onChange={(e) => handleInputChange('dateTo', e.target.value || undefined)}
+                  value={localFilters.loanDateTo instanceof Date ? localFilters.loanDateTo.toISOString().slice(0, 10) : (localFilters.loanDateTo || '')}
+                  onChange={(e) => handleInputChange('loanDateTo', e.target.value || undefined)}
                   size="sm"
                 />
               </FormControl>

@@ -1,44 +1,69 @@
-// src/lib/axios.ts - CONFIGURACIÓN COMPLETA Y MEJORADA
-import axios, { AxiosError, AxiosResponse, AxiosRequestConfig } from 'axios';
+// src/lib/axios.ts - VERSIÓN CORREGIDA PARA AXIOS MODERNO
+import axios, { AxiosError, AxiosResponse, InternalAxiosRequestConfig } from 'axios';
 import Cookies from 'js-cookie';
 import toast from 'react-hot-toast';
 import { ApiError } from '@/types/api.types';
 
-// Configuración de la instancia de axios
-const axiosInstance = axios.create({
+// Configuración de variables de entorno con valores por defecto
+const API_CONFIG = {
   baseURL: process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:3000/api',
-  timeout: parseInt(process.env.NEXT_PUBLIC_API_TIMEOUT || '30000'), // 30 segundos
+  timeout: parseInt(process.env.NEXT_PUBLIC_API_TIMEOUT || '10000'),
+  tokenKey: process.env.NEXT_PUBLIC_JWT_STORAGE_KEY || 'biblioteca_token',
+  isDevelopment: process.env.NODE_ENV === 'development'
+} as const;
+
+// Interface para metadata personalizada
+interface RequestMetadata {
+  requestId: number;
+  startTime: number;
+}
+
+// Crear instancia de axios con configuración mejorada
+const axiosInstance = axios.create({
+  baseURL: API_CONFIG.baseURL,
+  timeout: API_CONFIG.timeout,
   headers: {
     'Content-Type': 'application/json',
   },
+  // Configuración adicional para mejor manejo
+  validateStatus: (status) => status < 500, // No rechazar automáticamente errores 4xx
 });
 
-// Variable para controlar los toasts de error duplicados
-let lastErrorMessage = '';
-let lastErrorTime = 0;
-const ERROR_DEBOUNCE_TIME = 3000; // 3 segundos
+// Contador de requests para debugging
+let requestCounter = 0;
 
-// Interceptor para requests - agregar token JWT y logs
+// Map para almacenar metadata de requests
+const requestMetadataMap = new Map<number, RequestMetadata>();
+
+// Interceptor para requests - agregar token JWT y logging
 axiosInstance.interceptors.request.use(
-  (config) => {
-    // Agregar token de autenticación
-    const token = Cookies.get(process.env.NEXT_PUBLIC_JWT_STORAGE_KEY || 'biblioteca_token');
+  (config: InternalAxiosRequestConfig) => {
+    const requestId = ++requestCounter;
+    const metadata: RequestMetadata = { requestId, startTime: Date.now() };
     
+    // Almacenar metadata usando URL + timestamp como key único
+    const requestKey = `${config.method}-${config.url}-${metadata.startTime}`;
+    requestMetadataMap.set(requestId, metadata);
+    
+    // Agregar ID a headers para tracking
+    config.headers['X-Request-ID'] = requestId.toString();
+    
+    // Obtener y agregar token JWT si existe
+    const token = Cookies.get(API_CONFIG.tokenKey);
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
     
-    // Logs para desarrollo
-    if (process.env.NODE_ENV === 'development') {
-      console.log('🔄 API Request:', {
+    // Logging en desarrollo
+    if (API_CONFIG.isDevelopment) {
+      console.log(`🚀 API Request #${requestId}:`, {
         method: config.method?.toUpperCase(),
-        url: config.url,
-        baseURL: config.baseURL,
-        data: config.data,
+        url: `${config.baseURL}${config.url}`,
         params: config.params,
+        data: config.data ? (typeof config.data === 'string' ? 'FormData' : config.data) : undefined,
         headers: {
           ...config.headers,
-          Authorization: config.headers.Authorization ? '[PRESENT]' : '[NOT_PRESENT]'
+          Authorization: token ? '[TOKEN_PRESENT]' : '[NO_TOKEN]'
         }
       });
     }
@@ -51,453 +76,215 @@ axiosInstance.interceptors.request.use(
   }
 );
 
-// Interceptor para responses - manejo de errores mejorado
+// Interceptor para responses - manejo de errores mejorado y logging
 axiosInstance.interceptors.response.use(
   (response: AxiosResponse) => {
-    // Logs para desarrollo (respuestas exitosas)
-    if (process.env.NODE_ENV === 'development') {
-      console.log('✅ API Response:', {
+    const { config } = response;
+    const requestIdHeader = config.headers['X-Request-ID'] as string;
+    const requestId = requestIdHeader ? parseInt(requestIdHeader) : 0;
+    const metadata = requestMetadataMap.get(requestId);
+    const duration = metadata?.startTime ? Date.now() - metadata.startTime : 0;
+    
+    // Logging en desarrollo
+    if (API_CONFIG.isDevelopment) {
+      console.log(`✅ API Response #${requestId} (${duration}ms):`, {
         status: response.status,
         statusText: response.statusText,
-        url: response.config.url,
-        method: response.config.method?.toUpperCase(),
-        data: response.data,
-        timing: response.headers['x-response-time'] || 'N/A'
+        url: `${config.baseURL}${config.url}`,
+        success: response.data.success,
+        dataLength: Array.isArray(response.data.data) ? response.data.data.length : 
+                   response.data.data ? 'object' : 'null'
       });
+    }
+    
+    // Limpiar metadata después de usar
+    if (requestId) {
+      requestMetadataMap.delete(requestId);
     }
     
     return response;
   },
   (error: AxiosError<ApiError>) => {
-    const { response, request, config } = error;
+    const { config, response } = error;
+    const requestIdHeader = config?.headers?.['X-Request-ID'] as string;
+    const requestId = requestIdHeader ? parseInt(requestIdHeader) : 0;
+    const metadata = requestMetadataMap.get(requestId);
+    const duration = metadata?.startTime ? Date.now() - metadata.startTime : 0;
     
-    // Logs detallados para desarrollo
-    if (process.env.NODE_ENV === 'development') {
-      console.error('❌ API Error Details:', {
-        message: error.message,
-        code: error.code,
-        url: config?.url,
+    // Logging detallado del error
+    if (API_CONFIG.isDevelopment) {
+      console.error(`❌ API Error #${requestId} (${duration}ms):`, {
         method: config?.method?.toUpperCase(),
+        url: config ? `${config.baseURL}${config.url}` : 'Unknown URL',
         status: response?.status,
         statusText: response?.statusText,
-        responseData: response?.data,
-        stack: error.stack
+        message: response?.data?.message || error.message,
+        code: error.code,
+        isTimeout: error.code === 'ECONNABORTED',
+        isNetworkError: !response
       });
     }
     
-    // Manejo específico de respuestas del servidor
+    // Limpiar metadata después de usar
+    if (requestId) {
+      requestMetadataMap.delete(requestId);
+    }
+    
+    // Manejo de errores específicos con mensajes más informativos
     if (response) {
-      const { status, data } = response;
-      const errorMessage = data?.message || data?.error || 'Error desconocido';
+      const { status } = response;
+      const errorData = response.data;
+      const message = Array.isArray(errorData?.message) 
+        ? errorData.message.join(', ') 
+        : errorData?.message || 'Error desconocido';
       
       switch (status) {
         case 400:
-          // Errores de validación - específicos para préstamos
-          if (config?.url?.includes('/loans')) {
-            handleLoanValidationError(errorMessage, data);
-          } else {
-            handleValidationError(errorMessage);
-          }
+          // Error de validación - mostrar mensaje específico
+          toast.error(`Datos inválidos: ${message}`);
           break;
           
         case 401:
-          handleAuthError();
+          // Token inválido o expirado - redirigir al login
+          console.warn('🔐 Token expirado o inválido, cerrando sesión...');
+          Cookies.remove(API_CONFIG.tokenKey);
+          if (typeof window !== 'undefined' && !window.location.pathname.includes('/login')) {
+            window.location.href = '/login';
+          }
+          toast.error('Sesión expirada. Por favor, inicia sesión nuevamente.');
           break;
           
         case 403:
-          handlePermissionError();
+          // Sin permisos
+          toast.error('No tienes permisos para realizar esta acción.');
           break;
           
         case 404:
-          handleNotFoundError(config?.url);
+          // Recurso no encontrado - mensaje más específico
+          const resource = config?.url?.split('/').pop() || 'recurso';
+          toast.error(`${resource.charAt(0).toUpperCase() + resource.slice(1)} no encontrado.`);
           break;
           
         case 409:
-          handleConflictError(errorMessage);
+          // Conflicto - datos duplicados, etc.
+          toast.error(`Conflicto: ${message}`);
           break;
           
         case 422:
-          handleValidationError(errorMessage);
+          // Error de procesamiento - validaciones del servidor
+          toast.error(`Error de validación: ${message}`);
           break;
           
         case 429:
-          handleRateLimitError();
+          // Muchas requests
+          toast.error('Demasiadas solicitudes. Por favor, espera un momento.');
           break;
           
         case 500:
-          handleServerError(errorMessage);
+          // Error interno del servidor
+          console.error('🔥 Error interno del servidor:', errorData);
+          toast.error('Error interno del servidor. El equipo técnico ha sido notificado.');
           break;
           
         case 502:
         case 503:
         case 504:
-          handleServiceUnavailableError(status);
+          // Errores de infraestructura
+          toast.error('Servicio temporalmente no disponible. Intenta nuevamente en unos minutos.');
           break;
           
         default:
-          handleGenericError(status, errorMessage);
+          // Error genérico
+          toast.error(`Error ${status}: ${message}`);
       }
-    } else if (request) {
-      // Error de red o timeout
-      handleNetworkError(error);
     } else {
-      // Error en la configuración de la request
-      handleRequestConfigError(error);
+      // Error de red o conexión
+      if (error.code === 'ECONNABORTED') {
+        toast.error('La solicitud tardó demasiado tiempo. Verifica tu conexión.');
+      } else if (error.code === 'NETWORK_ERROR' || !navigator.onLine) {
+        toast.error('Sin conexión a internet. Verifica tu red.');
+      } else {
+        console.error('🌐 Error de conexión:', error);
+        toast.error('Error de conexión. Verifica que el servidor esté disponible.');
+      }
     }
     
     return Promise.reject(error);
   }
 );
 
-// ===== FUNCIONES DE MANEJO DE ERRORES ESPECÍFICAS =====
-
-function handleLoanValidationError(message: string | string[], data: any) {
-  const errorText = Array.isArray(message) ? message.join(', ') : message;
-  
-  // Errores específicos de préstamos con mejores mensajes
-  const loanSpecificErrors = {
-    'ID de persona inválido': 'La persona seleccionada no es válida',
-    'ID de recurso inválido': 'El recurso seleccionado no es válido',
-    'La persona no existe': 'La persona seleccionada no existe en el sistema',
-    'El recurso no existe': 'El recurso seleccionado no existe en el sistema',
-    'El recurso no está disponible': 'El recurso ya está prestado o no está disponible',
-    'El recurso ya está prestado': 'Este recurso ya está prestado a otra persona',
-    'Máximo de préstamos alcanzado': 'La persona ya tiene el máximo de préstamos permitidos',
-    'tiene préstamos vencidos': 'La persona tiene préstamos vencidos que debe devolver primero'
-  };
-  
-  let friendlyMessage = errorText;
-  
-  // Buscar mensaje más amigable
-  for (const [key, friendly] of Object.entries(loanSpecificErrors)) {
-    if (errorText.toLowerCase().includes(key.toLowerCase())) {
-      friendlyMessage = friendly;
-      break;
-    }
-  }
-  
-  // No mostrar toast si ya se mostró el mismo error recientemente
-  if (!shouldShowError(friendlyMessage)) return;
-  
-  toast.error(friendlyMessage, {
-    duration: 6000,
-    position: 'top-center',
-    style: {
-      background: '#fed7d7',
-      color: '#c53030',
-      border: '1px solid #feb2b2'
-    }
-  });
-}
-
-function handleValidationError(message: string | string[]) {
-  const errorText = Array.isArray(message) ? message.join(', ') : message;
-  
-  if (!shouldShowError(errorText)) return;
-  
-  toast.error(`Error de validación: ${errorText}`, {
-    duration: 5000,
-    position: 'top-right'
-  });
-}
-
-function handleAuthError() {
-  // Limpiar token y redirigir a login
-  Cookies.remove(process.env.NEXT_PUBLIC_JWT_STORAGE_KEY || 'biblioteca_token');
-  
-  if (typeof window !== 'undefined') {
-    const currentPath = window.location.pathname;
-    const redirectUrl = `/login?redirect=${encodeURIComponent(currentPath)}`;
-    window.location.href = redirectUrl;
-  }
-  
-  if (!shouldShowError('auth_error')) return;
-  
-  toast.error('Tu sesión ha expirado. Por favor, inicia sesión nuevamente.', {
-    duration: 6000,
-    position: 'top-center',
-    style: {
-      background: '#fed7d7',
-      color: '#c53030'
-    }
-  });
-}
-
-function handlePermissionError() {
-  if (!shouldShowError('permission_error')) return;
-  
-  toast.error('No tienes permisos para realizar esta acción.', {
-    duration: 5000,
-    position: 'top-right',
-    style: {
-      background: '#fef5e7',
-      color: '#d69e2e'
-    }
-  });
-}
-
-function handleNotFoundError(url?: string) {
-  let message = 'Recurso no encontrado';
-  
-  // Mensajes específicos según la URL
-  if (url?.includes('/loans/')) {
-    message = 'El préstamo solicitado no existe';
-  } else if (url?.includes('/people/')) {
-    message = 'La persona solicitada no existe';
-  } else if (url?.includes('/resources/')) {
-    message = 'El recurso solicitado no existe';
-  }
-  
-  if (!shouldShowError(message)) return;
-  
-  toast.error(message, {
-    duration: 4000,
-    position: 'top-right'
-  });
-}
-
-function handleConflictError(message: string | string[]) {
-  const errorText = Array.isArray(message) ? message.join(', ') : message;
-  
-  if (!shouldShowError(errorText)) return;
-  
-  toast.error(`Conflicto: ${errorText}`, {
-    duration: 5000,
-    position: 'top-right',
-    style: {
-      background: '#fef5e7',
-      color: '#d69e2e'
-    }
-  });
-}
-
-function handleRateLimitError() {
-  if (!shouldShowError('rate_limit')) return;
-  
-  toast.error('Demasiadas solicitudes. Por favor, espera un momento e intenta nuevamente.', {
-    duration: 6000,
-    position: 'top-center'
-  });
-}
-
-function handleServerError(message: string | string[]) {
-  const errorText = Array.isArray(message) ? message.join(', ') : message;
-  
-  if (!shouldShowError('server_error')) return;
-  
-  toast.error('Error interno del servidor. Por favor, intenta nuevamente en unos momentos.', {
-    duration: 6000,
-    position: 'top-center',
-    style: {
-      background: '#fed7d7',
-      color: '#c53030'
-    }
-  });
-  
-  // Log para desarrollo
-  if (process.env.NODE_ENV === 'development') {
-    console.error('Server Error Details:', errorText);
-  }
-}
-
-function handleServiceUnavailableError(status: number) {
-  const statusMessages = {
-    502: 'Servicio temporalmente no disponible (Error de Gateway)',
-    503: 'Servicio en mantenimiento. Intenta más tarde',
-    504: 'Tiempo de espera agotado. Intenta nuevamente'
-  };
-  
-  const message = statusMessages[status as keyof typeof statusMessages] || 'Servicio no disponible';
-  
-  if (!shouldShowError(`service_unavailable_${status}`)) return;
-  
-  toast.error(message, {
-    duration: 8000,
-    position: 'top-center'
-  });
-}
-
-function handleGenericError(status: number, message: string | string[]) {
-  const errorText = Array.isArray(message) ? message.join(', ') : message;
-  
-  if (!shouldShowError(`generic_${status}`)) return;
-  
-  toast.error(`Error ${status}: ${errorText}`, {
-    duration: 5000,
-    position: 'top-right'
-  });
-}
-
-function handleNetworkError(error: AxiosError) {
-  let message = 'Error de conexión. Verifica tu conexión a internet.';
-  
-  // Mensajes específicos según el tipo de error de red
-  if (error.code === 'ECONNABORTED') {
-    message = 'La operación tardó demasiado tiempo. Intenta nuevamente.';
-  } else if (error.code === 'ENOTFOUND' || error.code === 'ECONNREFUSED') {
-    message = 'No se puede conectar al servidor. Verifica tu conexión.';
-  }
-  
-  if (!shouldShowError('network_error')) return;
-  
-  toast.error(message, {
-    duration: 8000,
-    position: 'top-center',
-    style: {
-      background: '#fed7d7',
-      color: '#c53030'
-    }
-  });
-}
-
-function handleRequestConfigError(error: AxiosError) {
-  if (process.env.NODE_ENV === 'development') {
-    console.error('Request Configuration Error:', error.message);
-  }
-  
-  if (!shouldShowError('config_error')) return;
-  
-  toast.error('Error en la configuración de la solicitud.', {
-    duration: 4000,
-    position: 'top-right'
-  });
-}
-
-// ===== UTILIDADES =====
-
-function shouldShowError(message: string): boolean {
-  const now = Date.now();
-  
-  if (lastErrorMessage === message && (now - lastErrorTime) < ERROR_DEBOUNCE_TIME) {
-    return false;
-  }
-  
-  lastErrorMessage = message;
-  lastErrorTime = now;
-  return true;
-}
-
-// ===== UTILIDADES PÚBLICAS =====
-
+// Funciones utilitarias para uso en servicios
 export const axiosUtils = {
   /**
-   * Crear una request con retry automático
+   * Verificar si hay conexión al backend
    */
-  createRetryRequest: <T = any>(
-    config: AxiosRequestConfig,
-    maxRetries: number = 3,
-    retryDelay: number = 1000
-  ): Promise<T> => {
-    return new Promise((resolve, reject) => {
-      let attempts = 0;
-      
-      const makeRequest = async () => {
-        try {
-          const response = await axiosInstance(config);
-          resolve(response.data);
-        } catch (error) {
-          attempts++;
-          
-          if (attempts <= maxRetries && isRetryableError(error as AxiosError)) {
-            setTimeout(makeRequest, retryDelay * attempts);
-          } else {
-            reject(error);
-          }
-        }
-      };
-      
-      makeRequest();
-    });
-  },
-
-  /**
-   * Crear múltiples requests en paralelo con control de concurrencia
-   */
-  createBatchRequest: async <T = any>(
-    configs: AxiosRequestConfig[],
-    maxConcurrent: number = 5
-  ): Promise<T[]> => {
-    const results: T[] = [];
-    
-    for (let i = 0; i < configs.length; i += maxConcurrent) {
-      const batch = configs.slice(i, i + maxConcurrent);
-      const batchPromises = batch.map(config => axiosInstance(config));
-      
-      try {
-        const batchResults = await Promise.allSettled(batchPromises);
-        
-        batchResults.forEach((result) => {
-          if (result.status === 'fulfilled') {
-            results.push(result.value.data);
-          } else {
-            console.error('Batch request failed:', result.reason);
-          }
-        });
-      } catch (error) {
-        console.error('Batch processing error:', error);
-      }
-    }
-    
-    return results;
-  },
-
-  /**
-   * Verificar estado de conectividad
-   */
-  checkConnectivity: async (): Promise<boolean> => {
+  async isBackendHealthy(): Promise<boolean> {
     try {
-      await axiosInstance.get('/health', { timeout: 5000 });
-      return true;
-    } catch {
+      const response = await axiosInstance.get('/health', { timeout: 5000 });
+      return response.status === 200;
+    } catch (error) {
       return false;
     }
   },
 
   /**
-   * Obtener métricas de performance
+   * Hacer request con retry automático
    */
-  getPerformanceMetrics: () => {
-    // Esta función se puede expandir para incluir métricas reales
+  async requestWithRetry<T>(
+    requestFn: () => Promise<AxiosResponse<T>>, 
+    maxRetries: number = 2,
+    delay: number = 1000
+  ): Promise<AxiosResponse<T>> {
+    let lastError: any;
+    
+    for (let attempt = 0; attempt <= maxRetries; attempt++) {
+      try {
+        return await requestFn();
+      } catch (error: any) {
+        lastError = error;
+        
+        // No reintentar en errores 4xx (client errors)
+        if (error.response?.status >= 400 && error.response?.status < 500) {
+          break;
+        }
+        
+        if (attempt < maxRetries) {
+          console.warn(`🔄 Retry attempt ${attempt + 1}/${maxRetries} after ${delay}ms`);
+          await new Promise(resolve => setTimeout(resolve, delay));
+          delay *= 2; // Exponential backoff
+        }
+      }
+    }
+    
+    throw lastError;
+  },
+
+  /**
+   * Crear instancia de axios personalizada para casos específicos
+   */
+  createCustomInstance(config: Partial<InternalAxiosRequestConfig>) {
+    return axios.create({
+      ...axiosInstance.defaults,
+      ...config
+    });
+  },
+
+  /**
+   * Limpiar metadata acumulada (útil para evitar memory leaks)
+   */
+  clearMetadata(): void {
+    requestMetadataMap.clear();
+  },
+
+  /**
+   * Obtener estadísticas de requests
+   */
+  getStats(): { activeRequests: number; totalRequests: number } {
     return {
-      totalRequests: 0,
-      averageResponseTime: 0,
-      errorRate: 0
+      activeRequests: requestMetadataMap.size,
+      totalRequests: requestCounter
     };
   }
 };
-
-function isRetryableError(error: AxiosError): boolean {
-  // Errores que se pueden reintentar
-  const retryableStatusCodes = [408, 429, 500, 502, 503, 504];
-  const retryableErrorCodes = ['ECONNABORTED', 'ENOTFOUND', 'ECONNREFUSED'];
-  
-  return (
-    !error.response ||
-    retryableStatusCodes.includes(error.response.status) ||
-    retryableErrorCodes.includes(error.code || '')
-  );
-}
-
-// Interceptor para métricas (opcional)
-if (process.env.NODE_ENV === 'development') {
-  let requestCount = 0;
-  let totalResponseTime = 0;
-  
-  axiosInstance.interceptors.request.use((config) => {
-    (config as any).startTime = Date.now();
-    requestCount++;
-    return config;
-  });
-  
-  axiosInstance.interceptors.response.use((response) => {
-    const responseTime = Date.now() - (response.config as any).startTime;
-    totalResponseTime += responseTime;
-    
-    console.log(`📊 Request #${requestCount} completed in ${responseTime}ms`);
-    console.log(`📈 Average response time: ${(totalResponseTime / requestCount).toFixed(2)}ms`);
-    
-    return response;
-  });
-}
 
 export default axiosInstance;

@@ -1,22 +1,17 @@
-// src/types/loan.types.ts - IMPLEMENTACIÓN COMPLETA
-import type { Person, Resource } from './api.types';
+// src/types/loan.types.ts
+import type { ApiResponse, PaginatedResponse, Person, Resource, User } from './api.types';
 
-/**
- * Estado de un préstamo
- */
+// ===== INTERFACES PRINCIPALES =====
+
 export interface LoanStatus {
   _id: string;
   name: 'active' | 'returned' | 'overdue' | 'lost';
   description: string;
-  color: string;
   active: boolean;
   createdAt: Date;
   updatedAt: Date;
 }
 
-/**
- * Préstamo completo con información poblada
- */
 export interface Loan {
   _id: string;
   personId: string;
@@ -26,512 +21,385 @@ export interface Loan {
   dueDate: Date;
   returnedDate?: Date;
   statusId: string;
-  observations?: string;
   loanedBy: string;
   returnedBy?: string;
-  daysOverdue?: number;
+  observations?: string;
+  returnObservations?: string;
+  
+  // Datos populados (cuando están disponibles)
+  person?: Person;
+  resource?: Resource;
+  status?: LoanStatus;
+  loanedByUser?: User;
+  returnedByUser?: User;
+  
+  // Campos calculados
   isOverdue?: boolean;
+  daysOverdue?: number;
+  daysUntilDue?: number;
+  
   createdAt: Date;
   updatedAt: Date;
-
-  // Información poblada
-  person?: {
-    _id: string;
-    firstName: string;
-    lastName: string;
-    fullName: string;
-    documentNumber?: string;
-    grade?: string;
-    personType?: {
-      _id: string;
-      name: string;
-      description: string;
-    };
-  };
-  resource?: {
-    _id: string;
-    title: string;
-    isbn?: string;
-    author?: string;
-    category?: string;
-    available?: boolean;
-    state?: {
-      _id: string;
-      name: string;
-      description: string;
-      color: string;
-    };
-  };
-  status?: {
-    _id: string;
-    name: string;
-    description: string;
-    color: string;
-  };
-  loanedByUser?: {
-    _id: string;
-    firstName: string;
-    lastName: string;
-    username: string;
-  };
-  returnedByUser?: {
-    _id: string;
-    firstName: string;
-    lastName: string;
-    username: string;
-  };
 }
 
-/**
- * Datos para crear un nuevo préstamo
- */
+// ===== REQUESTS =====
+
 export interface CreateLoanRequest {
   personId: string;
   resourceId: string;
   quantity?: number;
   observations?: string;
+  dueDate?: Date; // Opcional, si no se especifica usa default del sistema
 }
 
-/**
- * Datos para procesar una devolución
- */
+export interface UpdateLoanRequest {
+  quantity?: number;
+  dueDate?: Date;
+  observations?: string;
+  statusId?: string;
+}
+
 export interface ReturnLoanRequest {
   loanId: string;
-  returnDate?: string;
-  resourceCondition?: 'good' | 'deteriorated' | 'damaged' | 'lost';
   returnObservations?: string;
+  resourceCondition?: 'good' | 'deteriorated' | 'damaged';
+  actualReturnDate?: Date; // Opcional, si no se especifica usa fecha actual
 }
 
-/**
- * Respuesta de una devolución procesada
- */
+export interface RenewLoanRequest {
+  loanId: string;
+  additionalDays?: number; // Opcional, si no se especifica usa default del sistema
+  observations?: string;
+}
+
+export interface MarkAsLostRequest {
+  loanId: string;
+  observations: string; // Requerido para préstamos perdidos
+  lostDate?: Date; // Opcional, si no se especifica usa fecha actual
+}
+
+// ===== RESPONSES =====
+
+export interface LoanResponse {
+  loan: Loan;
+  person: Person;
+  resource: Resource;
+  status: LoanStatus;
+  loanedByUser?: User;
+  returnedByUser?: User;
+}
+
 export interface ReturnLoanResponse {
   loan: Loan;
-  daysOverdue: number;
-  wasOverdue: boolean;
-  resourceConditionChanged: boolean;
   message: string;
-  penalties?: {
-    hasLateReturnPenalty: boolean;
-    penaltyDays?: number;
-    penaltyAmount?: number;
+  wasOverdue: boolean;
+  daysOverdue?: number;
+  penalty?: {
+    amount: number;
+    currency: string;
+    description: string;
   };
 }
 
-/**
- * Filtros para búsqueda de préstamos
- */
+export interface RenewLoanResponse {
+  loan: Loan;
+  message: string;
+  previousDueDate: Date;
+  newDueDate: Date;
+  renewalCount: number;
+  maxRenewals: number;
+}
+
+// ===== FILTROS Y BÚSQUEDA =====
+
 export interface LoanSearchFilters {
-  search?: string;
-  status?: 'active' | 'returned' | 'overdue' | 'lost';
+  search?: string; // Búsqueda general en persona o recurso
   personId?: string;
   resourceId?: string;
   statusId?: string;
-  dateFrom?: string;
-  dateTo?: string;
+  status?: 'active' | 'returned' | 'overdue' | 'lost';
+  loanedBy?: string;
+  returnedBy?: string;
+  
+  // Filtros por fecha
+  loanDateFrom?: string | Date;
+  loanDateTo?: string | Date;
+  dueDateFrom?: string | Date;
+  dueDateTo?: string | Date;
+  returnDateFrom?: string | Date;
+  returnDateTo?: string | Date;
+  
+  // Filtros especiales
   isOverdue?: boolean;
-  daysOverdue?: number;
+  daysOverdue?: number; // Préstamos con X días de retraso
+  dueInDays?: number; // Préstamos que vencen en X días
+  
+  // Filtros por tipo de persona/recurso
+  personType?: 'student' | 'teacher';
+  resourceType?: 'book' | 'game' | 'map' | 'bible';
+  resourceCategory?: string;
+  grade?: string;
+  
+  // Paginación y ordenamiento
   page?: number;
   limit?: number;
   sortBy?: string;
   sortOrder?: 'asc' | 'desc';
-  loanedBy?: string;
-  returnedBy?: string;
-  hasObservations?: boolean;
 }
 
-/**
- * Estadísticas de préstamos
- */
-export interface LoanStats {
-  totalLoans: number;
+// ===== VERIFICACIONES Y VALIDACIONES =====
+
+export interface CanBorrowResult {
+  canBorrow: boolean;
+  reason?: string;
   activeLoans: number;
+  maxLoans: number;
   overdueLoans: number;
-  returnedLoans: number;
-  lostResources: number;
-  averageLoanDuration: number;
-  totalPeople: number;
-  totalResources: number;
+  availableSlots: number;
+  restrictions?: {
+    hasOverdueLoans: boolean;
+    reachedMaxLoans: boolean;
+    personInactive: boolean;
+    systemRestriction: boolean;
+  };
+}
+
+export interface LoanValidationResult {
+  isValid: boolean;
+  errors: string[];
+  warnings: string[];
+  resourceAvailable: boolean;
+  personCanBorrow: boolean;
+  systemConfiguration: {
+    maxLoansPerPerson: number;
+    loanDurationDays: number;
+    allowRenewals: boolean;
+    maxRenewals: number;
+  };
+}
+
+// ===== ESTADÍSTICAS =====
+
+export interface LoanStats {
+  total: number;
+  active: number;
+  returned: number;
+  overdue: number;
+  lost: number;
   
   // Estadísticas por período
-  thisMonth: {
+  today: {
     newLoans: number;
-    returnedLoans: number;
-    overdueLoans: number;
+    returns: number;
+    renewals: number;
   };
   
   thisWeek: {
     newLoans: number;
-    returnedLoans: number;
-    overdueLoans: number;
+    returns: number;
+    renewals: number;
   };
   
-  today: {
+  thisMonth: {
     newLoans: number;
-    returnedLoans: number;
-    overdueLoans: number;
+    returns: number;
+    renewals: number;
   };
-
-  // Top recursos más prestados
-  mostBorrowedResources: Array<{
-    resourceId: string;
-    title: string;
-    author?: string;
-    borrowCount: number;
-    category?: string;
+  
+  // Tendencias
+  trends: Array<{
+    period: string;
+    loans: number;
+    returns: number;
+    overdue: number;
   }>;
-
-  // Top personas con más préstamos
+  
+  // Top recursos y personas
+  topResources: Array<{
+    resource: Resource;
+    loanCount: number;
+  }>;
+  
   topBorrowers: Array<{
-    personId: string;
-    fullName: string;
-    borrowCount: number;
-    activeLoans: number;
-    overdueLoans: number;
-  }>;
-
-  // Distribución por estado
-  statusDistribution: Array<{
-    status: string;
-    count: number;
-    percentage: number;
-    color: string;
-  }>;
-
-  // Tendencias por mes (últimos 12 meses)
-  monthlyTrends: Array<{
-    month: string;
-    year: number;
-    newLoans: number;
-    returnedLoans: number;
-    overdueLoans: number;
+    person: Person;
+    loanCount: number;
+    overdueCount: number;
   }>;
 }
 
-/**
- * Resultado de verificación si una persona puede pedir préstamos
- */
-export interface CanBorrowResult {
-  canBorrow: boolean;
-  reason?: string;
-  overdueCount?: number;
-  activeCount?: number;
-  maxLoansAllowed?: number;
-  
-  // Información adicional
-  restrictions?: {
-    hasOverdueLoans: boolean;
-    hasReachedLimit: boolean;
-    isPersonActive: boolean;
-    hasActivePenalties: boolean;
-  };
-  
-  // Información de préstamos actuales
-  currentLoans?: Array<{
-    _id: string;
-    resourceTitle: string;
-    dueDate: Date;
-    isOverdue: boolean;
-    daysOverdue?: number;
-  }>;
-  
-  // Próximos vencimientos
-  upcomingDueDates?: Array<{
-    _id: string;
-    resourceTitle: string;
-    dueDate: Date;
-    daysUntilDue: number;
-  }>;
+export interface PersonLoanStats {
+  personId: string;
+  person: Person;
+  totalLoans: number;
+  activeLoans: number;
+  returnedLoans: number;
+  overdueLoans: number;
+  lostLoans: number;
+  averageLoanDuration: number;
+  onTimeReturnRate: number;
+  currentCanBorrow: CanBorrowResult;
+  loanHistory: Loan[];
 }
 
-/**
- * Configuración de límites del sistema
- */
-export interface LoanConfiguration {
+export interface ResourceLoanStats {
+  resourceId: string;
+  resource: Resource;
+  totalLoans: number;
+  currentlyBorrowed: boolean;
+  averageLoanDuration: number;
+  popularityRank: number;
+  lastBorrowed?: Date;
+  mostFrequentBorrower?: Person;
+  loanHistory: Loan[];
+}
+
+// ===== CONFIGURACIÓN DEL SISTEMA =====
+
+export interface LoanSystemConfiguration {
   maxLoansPerPerson: number;
-  maxLoanDays: number;
-  minQuantity: number;
-  maxQuantity: number;
+  loanDurationDays: number;
   allowRenewals: boolean;
   maxRenewals: number;
-  renewalDays: number;
-  penaltyDaysThreshold: number;
+  renewalExtensionDays: number;
+  overdueGracePeriodDays: number;
   
-  // Configuración por tipo de persona
-  personTypeConfigs?: Array<{
-    personType: string;
-    maxLoans: number;
-    maxDays: number;
-    allowRenewals: boolean;
-  }>;
+  // Restricciones
+  requirePersonActive: boolean;
+  requireResourceAvailable: boolean;
+  allowBorrowingWithOverdue: boolean;
   
-  // Configuración por categoría de recurso
-  resourceCategoryConfigs?: Array<{
-    category: string;
-    maxDays: number;
-    allowRenewals: boolean;
-    priority: number;
-  }>;
+  // Notificaciones
+  sendReminders: boolean;
+  reminderDaysBeforeDue: number;
+  sendOverdueNotifications: boolean;
+  
+  // Penalties
+  enablePenalties: boolean;
+  penaltyPerDay: number;
+  penaltyCurrency: string;
 }
 
-/**
- * Notificación de préstamo
- */
-export interface LoanNotification {
-  _id: string;
-  loanId: string;
-  personId: string;
-  type: 'due_soon' | 'overdue' | 'returned' | 'lost';
-  message: string;
-  sentDate: Date;
-  isRead: boolean;
-  
-  // Información del préstamo
-  loan?: {
-    resourceTitle: string;
-    dueDate: Date;
-    daysOverdue?: number;
-  };
-  
-  // Información de la persona
-  person?: {
-    fullName: string;
-    email?: string;
-    documentNumber?: string;
-  };
-}
+// ===== REPORTES =====
 
-/**
- * Reporte de préstamos
- */
 export interface LoanReport {
-  _id: string;
   title: string;
-  description: string;
-  generatedDate: Date;
-  generatedBy: string;
-  parameters: {
-    dateFrom: Date;
-    dateTo: Date;
-    filters: LoanSearchFilters;
+  generatedAt: Date;
+  period: {
+    from: Date;
+    to: Date;
   };
   
-  // Datos del reporte
   summary: {
     totalLoans: number;
-    activeLoans: number;
-    returnedLoans: number;
-    overdueLoans: number;
-    lostResources: number;
+    totalReturns: number;
+    totalOverdue: number;
+    totalLost: number;
+    averageLoanDuration: number;
+    onTimeReturnRate: number;
   };
   
-  // Detalles
-  loans: Loan[];
-  
-  // Gráficos y estadísticas
-  charts: Array<{
-    type: 'bar' | 'pie' | 'line';
-    title: string;
-    data: any[];
-  }>;
-}
-
-/**
- * Préstamo extendido (con información adicional para reportes)
- */
-export interface ExtendedLoan extends Loan {
-  // Información calculada
-  loanDuration?: number; // días entre préstamo y devolución
-  categoryName?: string;
-  personTypeName?: string;
-  locationName?: string;
-  
-  // Información de renovaciones
-  renewals?: Array<{
-    renewedDate: Date;
-    previousDueDate: Date;
-    newDueDate: Date;
-    renewedBy: string;
-    reason?: string;
+  detailsByPerson: Array<{
+    person: Person;
+    stats: PersonLoanStats;
   }>;
   
-  // Historial de estados
-  statusHistory?: Array<{
-    status: string;
-    changedDate: Date;
-    changedBy: string;
-    reason?: string;
+  detailsByResource: Array<{
+    resource: Resource;
+    stats: ResourceLoanStats;
   }>;
   
-  // Penalizaciones aplicadas
-  penalties?: Array<{
-    type: 'late_return' | 'lost_resource' | 'damaged_resource';
-    amount: number;
-    appliedDate: Date;
-    description: string;
-    isPaid: boolean;
-  }>;
-}
-
-/**
- * Estado de un recurso después de devolución
- */
-export interface ResourceCondition {
-  condition: 'good' | 'deteriorated' | 'damaged' | 'lost';
-  description: string;
-  requiresAction: boolean;
-  suggestedAction?: string;
-  estimatedRepairCost?: number;
-}
-
-/**
- * Resumen de préstamos por período
- */
-export interface LoanSummary {
-  period: string;
-  dateRange: {
-    start: string;
-    end: string;
-  };
-  totals: {
+  detailsByDate: Array<{
+    date: Date;
     newLoans: number;
-    returnedLoans: number;
-    overdueLoans: number;
-    activeLoans: number;
-    lostResources: number;
-  };
-  comparisons: {
-    previousPeriod: {
-      newLoans: number;
-      returnedLoans: number;
-      changePercentage: number;
-    };
-  };
-  topResources: Array<{
-    resourceId: string;
-    title: string;
-    borrowCount: number;
-  }>;
-  topBorrowers: Array<{
-    personId: string;
-    fullName: string;
-    borrowCount: number;
+    returns: number;
+    overdue: number;
   }>;
 }
 
-/**
- * Métricas de rendimiento del sistema de préstamos
- */
-export interface LoanMetrics {
-  totalProcessedRequests: number;
-  averageProcessingTime: number;
-  successRate: number;
-  errorRate: number;
+// ===== NOTIFICACIONES =====
+
+export interface LoanNotification {
+  _id: string;
+  type: 'reminder' | 'overdue' | 'returned' | 'renewed' | 'lost';
+  loanId: string;
+  personId: string;
+  resourceId: string;
+  message: string;
+  sentAt: Date;
+  readAt?: Date;
   
-  // Métricas por operación
-  operations: {
-    create: {
-      count: number;
-      averageTime: number;
-      successRate: number;
-    };
-    return: {
-      count: number;
-      averageTime: number;
-      successRate: number;
-    };
-    search: {
-      count: number;
-      averageTime: number;
-      successRate: number;
-    };
-  };
-  
-  // Métricas de uso
-  usage: {
-    peakHours: string[];
-    busyDays: string[];
-    averageLoansPerDay: number;
-    averageReturnsPerDay: number;
+  // Datos adicionales según el tipo
+  metadata?: {
+    daysUntilDue?: number;
+    daysOverdue?: number;
+    newDueDate?: Date;
+    penaltyAmount?: number;
   };
 }
 
-// Exportaciones adicionales para compatibilidad
-export type { Person, Resource };
+// ===== TIPOS DE RESPUESTA DE LA API =====
 
-// Enums útiles
-export enum LoanStatusEnum {
-  ACTIVE = 'active',
-  RETURNED = 'returned',
-  OVERDUE = 'overdue',
-  LOST = 'lost'
+export type LoanListResponse = ApiResponse<PaginatedResponse<Loan>>;
+export type LoanDetailResponse = ApiResponse<LoanResponse>;
+export type LoanStatsResponse = ApiResponse<LoanStats>;
+export type CanBorrowResponse = ApiResponse<CanBorrowResult>;
+export type LoanValidationResponse = ApiResponse<LoanValidationResult>;
+export type PersonLoanStatsResponse = ApiResponse<PersonLoanStats>;
+export type ResourceLoanStatsResponse = ApiResponse<ResourceLoanStats>;
+export type LoanReportResponse = ApiResponse<LoanReport>;
+export type LoanNotificationListResponse = ApiResponse<PaginatedResponse<LoanNotification>>;
+
+// ===== OPERACIONES MASIVAS =====
+
+export interface BulkLoanOperation {
+  loans: CreateLoanRequest[];
+  options: {
+    validateOnly?: boolean;
+    skipDuplicates?: boolean;
+    continueOnError?: boolean;
+    defaultDueDate?: Date;
+  };
 }
 
-export enum ResourceConditionEnum {
-  GOOD = 'good',
-  DETERIORATED = 'deteriorated',
-  DAMAGED = 'damaged',
-  LOST = 'lost'
+export interface BulkLoanResult {
+  successful: Loan[];
+  failed: Array<{
+    request: CreateLoanRequest;
+    error: string;
+    index: number;
+  }>;
+  summary: {
+    total: number;
+    successful: number;
+    failed: number;
+    skipped: number;
+  };
 }
 
-export enum NotificationTypeEnum {
-  DUE_SOON = 'due_soon',
-  OVERDUE = 'overdue',
-  RETURNED = 'returned',
-  LOST = 'lost'
+export interface BulkReturnOperation {
+  returns: Array<{
+    loanId: string;
+    returnObservations?: string;
+    resourceCondition?: 'good' | 'deteriorated' | 'damaged';
+  }>;
+  options: {
+    validateOnly?: boolean;
+    continueOnError?: boolean;
+    defaultReturnDate?: Date;
+  };
 }
 
-// Validadores de tipo
-export const isValidLoanStatus = (status: string): status is LoanStatusEnum => {
-  return Object.values(LoanStatusEnum).includes(status as LoanStatusEnum);
-};
-
-export const isValidResourceCondition = (condition: string): condition is ResourceConditionEnum => {
-  return Object.values(ResourceConditionEnum).includes(condition as ResourceConditionEnum);
-};
-
-// Utilidades de fecha para préstamos
-export const LoanDateUtils = {
-  calculateDueDate: (loanDate: Date, loanDays: number = 15): Date => {
-    const due = new Date(loanDate);
-    due.setDate(due.getDate() + loanDays);
-    return due;
-  },
-  
-  calculateDaysOverdue: (dueDate: Date, returnDate?: Date): number => {
-    const compareDate = returnDate || new Date();
-    if (compareDate <= dueDate) return 0;
-    
-    const diffTime = compareDate.getTime() - dueDate.getTime();
-    return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-  },
-  
-  isOverdue: (dueDate: Date, returnDate?: Date): boolean => {
-    const compareDate = returnDate || new Date();
-    return compareDate > dueDate;
-  },
-  
-  getDaysUntilDue: (dueDate: Date): number => {
-    const today = new Date();
-    const diffTime = dueDate.getTime() - today.getTime();
-    return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-  },
-  
-  formatDueStatus: (dueDate: Date, returnDate?: Date): string => {
-    if (returnDate) return 'Devuelto';
-    
-    const daysUntilDue = LoanDateUtils.getDaysUntilDue(dueDate);
-    
-    if (daysUntilDue < 0) {
-      return `Vencido hace ${Math.abs(daysUntilDue)} día${Math.abs(daysUntilDue) > 1 ? 's' : ''}`;
-    } else if (daysUntilDue === 0) {
-      return 'Vence hoy';
-    } else if (daysUntilDue === 1) {
-      return 'Vence mañana';
-    } else if (daysUntilDue <= 3) {
-      return `Vence en ${daysUntilDue} días`;
-    } else {
-      return `Vence el ${dueDate.toLocaleDateString()}`;
-    }
-  }
-};
+export interface BulkReturnResult {
+  successful: ReturnLoanResponse[];
+  failed: Array<{
+    loanId: string;
+    error: string;
+    index: number;
+  }>;
+  summary: {
+    total: number;
+    successful: number;
+    failed: number;
+    skipped: number;
+  };
+}

@@ -18,7 +18,7 @@ import {
 import { useState, useEffect } from 'react';
 import { FiRefreshCw, FiCalendar, FiUser, FiBook } from 'react-icons/fi';
 import { Loan } from '@/types';
-import { LoanService } from '@/services/loan.service';
+import { loanService } from '@/services/loan.service';
 import { DateUtils } from '@/utils';
 
 interface LoanHistoryProps {
@@ -50,9 +50,9 @@ export function LoanHistory({
     try {
       let response;
       if (personId) {
-        response = await LoanService.getPersonLoans(personId, { limit });
+        response = await loanService.getPersonLoans(personId, { limit });
       } else if (resourceId) {
-        response = await LoanService.getResourceLoans(resourceId, { limit });
+        response = await loanService.getResourceLoans(resourceId, { limit });
       }
 
       if (response) {

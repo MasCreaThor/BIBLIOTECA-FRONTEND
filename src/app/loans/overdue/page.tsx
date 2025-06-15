@@ -24,6 +24,7 @@ import { AuthenticatedRoute } from '@/components/auth/ProtectedRoute';
 import { LoanList } from '@/components/loans';
 import { Pagination } from '@/components/ui';
 import { useLoans, useReturnLoan } from '@/hooks/useLoans';
+import { loanService } from '@/services/loan.service';
 
 export default function OverdueLoansPage() {
   const { loans, loading, error, changePage, refresh } = useLoans({

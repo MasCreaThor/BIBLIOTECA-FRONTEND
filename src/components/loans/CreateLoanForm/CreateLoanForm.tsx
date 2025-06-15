@@ -69,31 +69,57 @@ export function CreateLoanForm({
   onSubmit,
   isLoading = false,
 }: CreateLoanFormProps) {
-  // Estados del formulario
   const [selectedPerson, setSelectedPerson] = useState<Person | null>(null);
   const [selectedResource, setSelectedResource] = useState<Resource | null>(null);
-  const [quantity, setQuantity] = useState(1);
-  const [observations, setObservations] = useState('');
-  const [errors, setErrors] = useState<Record<string, string>>({});
-  const [borrowStatus, setBorrowStatus] = useState<any>(null);
+  const [quantity, setQuantity] = useState<number>(1);
+  const [observations, setObservations] = useState<string>('');
+  const [error, setError] = useState<string | null>(null);
 
-  // Hooks
-  const { checkCanBorrow, loading: checkingBorrow } = useCanBorrow();
-  const cardBg = useColorModeValue('gray.50', 'gray.700');
-  const borderColor = useColorModeValue('gray.200', 'gray.600');
+  const { checkCanBorrow, loading: loadingCanBorrow, error: canBorrowError } = useCanBorrow();
 
-  // Verificar si la persona puede pedir préstamos cuando se selecciona
-  useEffect(() => {
-    if (selectedPerson?._id) {
-      console.log('Checking borrow status for person:', selectedPerson._id);
-      checkCanBorrow(selectedPerson._id).then((result) => {
-        console.log('Borrow status result:', result);
-        setBorrowStatus(result);
-      });
-    } else {
-      setBorrowStatus(null);
+  const handlePersonSelected = (person: Person | null) => {
+    setSelectedPerson(person);
+    setError(null);
+  };
+
+  const handleResourceSelected = (resource: Resource | null) => {
+    setSelectedResource(resource);
+    setError(null);
+  };
+
+  const handleSubmit = async () => {
+    if (!selectedPerson) {
+      setError('Debes seleccionar una persona');
+      return;
     }
-  }, [selectedPerson, checkCanBorrow]);
+
+    if (!selectedResource) {
+      setError('Debes seleccionar un recurso');
+      return;
+    }
+
+    const canBorrowResult = await checkCanBorrow(selectedPerson._id);
+    if (!canBorrowResult?.canBorrow) {
+      setError(canBorrowResult?.reason || canBorrowError || 'La persona no puede realizar más préstamos');
+      return;
+    }
+
+    onSubmit({
+      personId: selectedPerson._id,
+      resourceId: selectedResource._id,
+      quantity,
+      observations: observations.trim() || undefined,
+    });
+  };
+
+  const handleClose = () => {
+    setSelectedPerson(null);
+    setSelectedResource(null);
+    setQuantity(1);
+    setObservations('');
+    setError(null);
+    onClose();
+  };
 
   // Calcular fecha de vencimiento
   const dueDate = useMemo(() => {
@@ -107,82 +133,6 @@ export function CreateLoanForm({
     });
   }, []);
 
-  // Validar formulario
-  const validateForm = (): boolean => {
-    const newErrors: Record<string, string> = {};
-
-    if (!selectedPerson) {
-      newErrors.person = 'Debe seleccionar una persona';
-    }
-
-    if (!selectedResource) {
-      newErrors.resource = 'Debe seleccionar un recurso';
-    }
-
-    // Validaciones específicas del recurso
-    if (selectedResource && !selectedResource.available) {
-      newErrors.resource = 'El recurso seleccionado no está disponible para préstamo';
-    }
-
-    // Validar cantidad
-    if (quantity < 1 || quantity > 5) {
-      newErrors.quantity = 'La cantidad debe estar entre 1 y 5';
-    }
-
-    // Validar observaciones
-    if (observations && observations.length > 500) {
-      newErrors.observations = 'Las observaciones no pueden exceder 500 caracteres';
-    }
-
-    // Validar estado de préstamo de la persona
-    if (borrowStatus && !borrowStatus.canBorrow) {
-      newErrors.person = borrowStatus.reason || 'La persona no puede solicitar préstamos en este momento';
-    }
-
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
-
-  // Manejar envío del formulario
-  const handleSubmit = () => {
-    if (!validateForm()) {
-      console.log('Form validation failed:', errors);
-      return;
-    }
-
-    const loanData: CreateLoanRequest = {
-      personId: selectedPerson!._id,
-      resourceId: selectedResource!._id,
-      quantity,
-      observations: observations.trim() || undefined,
-    };
-
-    console.log('Submitting loan data:', loanData);
-    onSubmit(loanData);
-  };
-
-  // Manejar cierre del modal
-  const handleClose = () => {
-    if (!isLoading) {
-      console.log('Closing loan form');
-      setSelectedPerson(null);
-      setSelectedResource(null);
-      setQuantity(1);
-      setObservations('');
-      setErrors({});
-      setBorrowStatus(null);
-      onClose();
-    }
-  };
-
-  // Verificar si se puede enviar el formulario
-  const canSubmit = selectedPerson && 
-                   selectedResource && 
-                   selectedResource.available && 
-                   borrowStatus?.canBorrow !== false &&
-                   !isLoading &&
-                   !checkingBorrow;
-
   // Obtener color del badge según disponibilidad
   const getAvailabilityBadgeColor = (available: boolean) => {
     return available ? 'green' : 'red';
@@ -194,25 +144,21 @@ export function CreateLoanForm({
   };
 
   return (
-    <Modal 
-      isOpen={isOpen} 
-      onClose={handleClose} 
-      size="xl" 
-      closeOnOverlayClick={!isLoading}
-      scrollBehavior="inside"
-    >
+    <Modal isOpen={isOpen} onClose={handleClose} size="xl">
       <ModalOverlay />
-      <ModalContent maxH="90vh">
-        <ModalHeader>
-          <HStack spacing={3}>
-            <Icon as={FiFileText} color="blue.500" boxSize={6} />
-            <Text>Crear Nuevo Préstamo</Text>
-          </HStack>
-        </ModalHeader>
-        <ModalCloseButton isDisabled={isLoading} />
+      <ModalContent>
+        <ModalHeader>Crear Nuevo Préstamo</ModalHeader>
+        <ModalCloseButton />
         
         <ModalBody>
           <VStack spacing={6} align="stretch">
+            {error && (
+              <Alert status="error" borderRadius="md">
+                <AlertIcon />
+                <Text>{error}</Text>
+              </Alert>
+            )}
+
             {/* Información del préstamo */}
             <Alert status="info" borderRadius="md">
               <AlertIcon />
@@ -228,117 +174,23 @@ export function CreateLoanForm({
             </Alert>
 
             {/* Selección de persona */}
-            <FormControl isInvalid={!!errors.person}>
-              <FormLabel>
-                <HStack spacing={2}>
-                  <Icon as={FiUser} color="blue.500" />
-                  <Text>Persona</Text>
-                  <Text fontSize="xs" color="red.500">*</Text>
-                </HStack>
-              </FormLabel>
+            <FormControl isRequired>
+              <FormLabel>Persona</FormLabel>
               <PersonSearch
-                onPersonSelected={setSelectedPerson}
+                onPersonSelected={handlePersonSelected}
                 selectedPerson={selectedPerson}
-                placeholder="Buscar por nombre, apellido o documento..."
                 isDisabled={isLoading}
               />
-              <FormErrorMessage>{errors.person}</FormErrorMessage>
-              
-              {/* Información de la persona seleccionada */}
-              {selectedPerson && (
-                <Box mt={3}>
-                  <Card size="sm" variant="outline">
-                    <CardBody>
-                      <HStack spacing={3}>
-                        <Avatar 
-                          size="sm" 
-                          name={`${selectedPerson.firstName} ${selectedPerson.lastName}`}
-                        />
-                        <VStack align="start" spacing={0} flex={1}>
-                          <Text fontWeight="medium" fontSize="sm">
-                            {selectedPerson.firstName} {selectedPerson.lastName}
-                          </Text>
-                          <HStack spacing={2} fontSize="xs" color="gray.600">
-                            {selectedPerson.documentNumber && (
-                              <Text>Doc: {selectedPerson.documentNumber}</Text>
-                            )}
-                            {selectedPerson.grade && (
-                              <Text>Grado: {selectedPerson.grade}</Text>
-                            )}
-                          </HStack>
-                        </VStack>
-                      </HStack>
-                    </CardBody>
-                  </Card>
-
-                  {/* Estado de préstamos de la persona */}
-                  <Box mt={2}>
-                    {checkingBorrow ? (
-                      <HStack spacing={2}>
-                        <Spinner size="sm" />
-                        <Text fontSize="sm" color="gray.500">
-                          Verificando disponibilidad para préstamos...
-                        </Text>
-                      </HStack>
-                    ) : borrowStatus ? (
-                      <Alert 
-                        status={getBorrowStatusColor(borrowStatus.canBorrow)} 
-                        size="sm"
-                        borderRadius="md"
-                      >
-                        <AlertIcon />
-                        <Box>
-                          <Text fontWeight="medium" fontSize="sm">
-                            {borrowStatus.canBorrow 
-                              ? '✅ Puede solicitar préstamos' 
-                              : '⚠️ No puede solicitar préstamos'
-                            }
-                          </Text>
-                          {borrowStatus.reason && (
-                            <Text fontSize="xs" mt={1}>{borrowStatus.reason}</Text>
-                          )}
-                          {borrowStatus.activeLoansCount !== undefined && (
-                            <HStack spacing={1} mt={1}>
-                              <Text fontSize="xs">
-                                Préstamos activos: {borrowStatus.activeLoansCount}/{borrowStatus.maxLoansAllowed || 3}
-                              </Text>
-                              <Progress 
-                                value={(borrowStatus.activeLoansCount / (borrowStatus.maxLoansAllowed || 3)) * 100}
-                                size="sm"
-                                width="60px"
-                                colorScheme={borrowStatus.activeLoansCount >= (borrowStatus.maxLoansAllowed || 3) ? 'red' : 'green'}
-                              />
-                            </HStack>
-                          )}
-                        </Box>
-                      </Alert>
-                    ) : null}
-                  </Box>
-                </Box>
-              )}
             </FormControl>
 
-            <Divider />
-
             {/* Selección de recurso */}
-            <FormControl isInvalid={!!errors.resource}>
-              <FormLabel>
-                <HStack spacing={2}>
-                  <Icon as={FiBook} color="green.500" />
-                  <Text>Recurso</Text>
-                  <Text fontSize="xs" color="red.500">*</Text>
-                </HStack>
-              </FormLabel>
+            <FormControl isRequired>
+              <FormLabel>Recurso</FormLabel>
               <ResourceSearch
-                onSelect={setSelectedResource}
-                placeholder="Buscar por título, autor o ISBN..."
+                onSelect={handleResourceSelected}
                 isDisabled={isLoading}
                 filterAvailable={true}
               />
-              <FormErrorMessage>{errors.resource}</FormErrorMessage>
-              <FormHelperText>
-                Solo se muestran recursos disponibles para préstamo
-              </FormHelperText>
             </FormControl>
 
             {/* Información del recurso seleccionado */}
@@ -389,7 +241,7 @@ export function CreateLoanForm({
             <Divider />
 
             {/* Cantidad */}
-            <FormControl isInvalid={!!errors.quantity}>
+            <FormControl isInvalid={!!error}>
               <FormLabel>
                 <HStack spacing={2}>
                   <Icon as={FiHash} color="purple.500" />
@@ -410,14 +262,14 @@ export function CreateLoanForm({
                   <NumberDecrementStepper />
                 </NumberInputStepper>
               </NumberInput>
-              <FormErrorMessage>{errors.quantity}</FormErrorMessage>
+              <FormErrorMessage>{error}</FormErrorMessage>
               <FormHelperText>
                 Máximo 5 unidades por préstamo
               </FormHelperText>
             </FormControl>
 
             {/* Observaciones */}
-            <FormControl isInvalid={!!errors.observations}>
+            <FormControl isInvalid={!!error}>
               <FormLabel>
                 <HStack spacing={2}>
                   <Icon as={FiFileText} color="orange.500" />
@@ -435,7 +287,7 @@ export function CreateLoanForm({
                 resize="vertical"
               />
               <HStack justify="space-between" mt={1}>
-                <FormErrorMessage flex={1}>{errors.observations}</FormErrorMessage>
+                <FormErrorMessage flex={1}>{error}</FormErrorMessage>
                 <Text fontSize="xs" color="gray.500">
                   {observations.length}/500
                 </Text>
@@ -447,7 +299,7 @@ export function CreateLoanForm({
 
             {/* Resumen del préstamo */}
             {selectedPerson && selectedResource && (
-              <Card bg={cardBg} variant="filled">
+              <Card bg={useColorModeValue('gray.50', 'gray.700')} variant="filled">
                 <CardBody>
                   <VStack spacing={3} align="stretch">
                     <HStack spacing={2}>
@@ -486,32 +338,17 @@ export function CreateLoanForm({
         </ModalBody>
 
         <ModalFooter>
-          <HStack spacing={3} width="100%">
-            <Button
-              variant="ghost"
-              onClick={handleClose}
-              isDisabled={isLoading}
-              flex={1}
-            >
-              Cancelar
-            </Button>
-            <Tooltip 
-              label={!canSubmit ? 'Complete todos los campos requeridos' : ''}
-              isDisabled={!!canSubmit}
-            >
-              <Button
-                colorScheme="blue"
-                onClick={handleSubmit}
-                isLoading={isLoading}
-                loadingText="Creando préstamo..."
-                isDisabled={!canSubmit}
-                leftIcon={<Icon as={FiCheck} />}
-                flex={1}
-              >
-                Crear Préstamo
-              </Button>
-            </Tooltip>
-          </HStack>
+          <Button variant="ghost" mr={3} onClick={handleClose}>
+            Cancelar
+          </Button>
+          <Button
+            colorScheme="blue"
+            onClick={handleSubmit}
+            isLoading={isLoading || loadingCanBorrow}
+            isDisabled={!selectedPerson || !selectedResource || loadingCanBorrow}
+          >
+            Crear Préstamo
+          </Button>
         </ModalFooter>
       </ModalContent>
     </Modal>

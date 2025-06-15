@@ -1,7 +1,6 @@
-// src/hooks/useResources.ts
+// src/hooks/useResources.ts - VERSIÓN CORREGIDA
 import { useQuery, useMutation, useQueryClient, UseQueryOptions } from '@tanstack/react-query';
 import { ResourceService } from '@/services/resource.service';
-// ✅ IMPORTACIONES CORREGIDAS
 import type {
   Resource,
   CreateResourceRequest,
@@ -16,7 +15,6 @@ import type {
   GoogleBooksVolume,
   CreateResourceFromGoogleBooksRequest,
 } from '@/types/resource.types';
-// ✅ IMPORTAR PaginatedResponse DESDE EL ARCHIVO CORRECTO
 import type { PaginatedResponse } from '@/types/api.types';
 import toast from 'react-hot-toast';
 
@@ -41,22 +39,76 @@ export const RESOURCE_QUERY_KEYS = {
 } as const;
 
 /**
- * Hook para obtener lista de recursos con filtros
+ * Hook para obtener lista de recursos con filtros - CORREGIDO
  */
 export function useResources(
   filters: ResourceFilters = {},
-  options?: Omit<UseQueryOptions<Resource[]>, 'queryKey' | 'queryFn'>
+  options?: Omit<UseQueryOptions<PaginatedResponse<Resource>>, 'queryKey' | 'queryFn'>
 ) {
   return useQuery({
     queryKey: RESOURCE_QUERY_KEYS.resourcesList(filters),
     queryFn: async () => {
-      const response = await ResourceService.getResources(filters);
-      return response.data!; // ResourceService retorna ApiResponse<Resource[]>
+      try {
+        console.log('🔍 useResources: Obteniendo recursos con filtros:', filters);
+        return await ResourceService.getResources(filters);
+      } catch (error: any) {
+        console.error('❌ useResources: Error al obtener recursos:', error);
+        
+        // Si es error 500, intentar con fallback
+        if (error?.response?.status === 500) {
+          console.warn('🔄 useResources: Intentando fallback...');
+          return ResourceService.getResourcesWithFallback(filters);
+        }
+        
+        throw error;
+      }
     },
     staleTime: 5 * 60 * 1000, // 5 minutos
     gcTime: 10 * 60 * 1000, // 10 minutos
-    retry: 2,
+    retry: (failureCount, error: any) => {
+      // No reintentar en errores 400-499 (client errors)
+      if (error?.response?.status >= 400 && error?.response?.status < 500) {
+        return false;
+      }
+      return failureCount < 2;
+    },
     ...options,
+  });
+}
+
+/**
+ * Hook para búsqueda simple de recursos (optimizado para componentes)
+ */
+export function useSearchResources(query: string, limit: number = 10, availableOnly: boolean = true) {
+  return useQuery({
+    queryKey: ['resources', 'search', query, limit, availableOnly],
+    queryFn: async () => {
+      try {
+        console.log('🔍 useSearchResources: Búsqueda simple:', { query, limit, availableOnly });
+        
+        const filters: ResourceFilters = {
+          search: query.trim(),
+          limit: Math.min(limit, 20),
+          page: 1
+        };
+        
+        if (availableOnly) {
+          filters.availability = 'available';
+        }
+        
+        const response = await ResourceService.getResources(filters);
+        console.log(`✅ useSearchResources: ${response.data.length} recursos encontrados`);
+        
+        return response.data; // Devolver solo el array de recursos
+      } catch (error: any) {
+        console.error('❌ useSearchResources: Error en búsqueda:', error);
+        return []; // Devolver array vacío en caso de error
+      }
+    },
+    enabled: query.length >= 2,
+    staleTime: 2 * 60 * 1000, // 2 minutos
+    gcTime: 5 * 60 * 1000, // 5 minutos
+    retry: 1,
   });
 }
 
@@ -373,5 +425,60 @@ export function useFindOrCreatePublisher() {
       const errorMessage = error?.response?.data?.message || error?.message || 'Error al buscar/crear editorial';
       toast.error(Array.isArray(errorMessage) ? errorMessage.join(', ') : errorMessage);
     },
+  });
+}
+
+/**
+ * Hook para búsqueda de Google Books
+ */
+export function useGoogleBooksSearch(query: string, maxResults = 10) {
+  return useQuery({
+    queryKey: RESOURCE_QUERY_KEYS.googleBooksSearch(query),
+    queryFn: () => ResourceService.searchGoogleBooks(query, maxResults),
+    enabled: query.length >= 3,
+    staleTime: 10 * 60 * 1000, // 10 minutos
+    gcTime: 30 * 60 * 1000, // 30 minutos
+    retry: 1,
+  });
+}
+
+/**
+ * Hook para crear recurso desde Google Books
+ */
+export function useCreateResourceFromGoogleBooks() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (data: CreateResourceFromGoogleBooksRequest) => 
+      ResourceService.createResourceFromGoogleBooks(data),
+    onSuccess: (newResource) => {
+      // Invalidar queries
+      queryClient.invalidateQueries({ queryKey: RESOURCE_QUERY_KEYS.resources });
+      
+      // Agregar al cache
+      queryClient.setQueryData(
+        RESOURCE_QUERY_KEYS.resource(newResource._id),
+        newResource
+      );
+
+      toast.success(`Recurso "${newResource.title}" importado desde Google Books exitosamente`);
+    },
+    onError: (error: any) => {
+      const errorMessage = error?.response?.data?.message || error?.message || 'Error al importar desde Google Books';
+      toast.error(Array.isArray(errorMessage) ? errorMessage.join(', ') : errorMessage);
+    },
+  });
+}
+
+/**
+ * Hook para verificar estado de Google Books API
+ */
+export function useGoogleBooksStatus() {
+  return useQuery({
+    queryKey: RESOURCE_QUERY_KEYS.googleBooksStatus,
+    queryFn: ResourceService.checkGoogleBooksStatus,
+    staleTime: 5 * 60 * 1000, // 5 minutos
+    gcTime: 15 * 60 * 1000, // 15 minutos
+    retry: 1,
   });
 }

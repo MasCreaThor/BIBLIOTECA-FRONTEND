@@ -62,8 +62,8 @@ export function LoanWidget() {
     );
   }
 
-  const hasOverdueLoans = stats.overdueLoans > 0;
-  const overduePercentage = stats.activeLoans > 0 ? (stats.overdueLoans / stats.activeLoans) * 100 : 0;
+  const hasOverdueLoans = stats.overdue > 0;
+  const overduePercentage = stats.active > 0 ? (stats.overdue / stats.active) * 100 : 0;
 
   return (
     <Card bg={cardBg}>
@@ -75,7 +75,7 @@ export function LoanWidget() {
           </HStack>
           {hasOverdueLoans && (
             <Badge colorScheme="orange" variant="subtle">
-              {stats.overdueLoans} vencidos
+              {stats.overdue} vencidos
             </Badge>
           )}
         </HStack>
@@ -87,7 +87,7 @@ export function LoanWidget() {
           <SimpleGrid columns={2} spacing={4}>
             <Stat size="sm">
               <StatLabel>Activos</StatLabel>
-              <StatNumber color="blue.500">{stats.activeLoans}</StatNumber>
+              <StatNumber color="blue.500">{stats.active}</StatNumber>
               <StatHelpText>
                 <FiTrendingUp />
                 En curso
@@ -96,7 +96,7 @@ export function LoanWidget() {
 
             <Stat size="sm">
               <StatLabel>Total</StatLabel>
-              <StatNumber color="gray.500">{stats.totalLoans}</StatNumber>
+              <StatNumber color="gray.500">{stats.total}</StatNumber>
               <StatHelpText>
                 Histórico
               </StatHelpText>
@@ -109,7 +109,7 @@ export function LoanWidget() {
               <AlertIcon />
               <VStack spacing={0} align="start" flex={1}>
                 <Text fontSize="sm" fontWeight="bold">
-                  {stats.overdueLoans} préstamos vencidos
+                  {stats.overdue} préstamos vencidos
                 </Text>
                 <Text fontSize="xs">
                   {overduePercentage.toFixed(1)}% de los préstamos activos

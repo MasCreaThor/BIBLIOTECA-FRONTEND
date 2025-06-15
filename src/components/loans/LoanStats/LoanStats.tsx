@@ -52,8 +52,8 @@ export function LoanStats({ stats, loading = false, error = null, compact = fals
     );
   }
 
-  const activePercentage = stats.totalLoans > 0 ? (stats.activeLoans / stats.totalLoans) * 100 : 0;
-  const overduePercentage = stats.activeLoans > 0 ? (stats.overdueLoans / stats.activeLoans) * 100 : 0;
+  const activePercentage = stats.total > 0 ? (stats.active / stats.total) * 100 : 0;
+  const overduePercentage = stats.active > 0 ? (stats.overdue / stats.active) * 100 : 0;
 
   return (
     <VStack spacing={6} align="stretch">
@@ -63,7 +63,7 @@ export function LoanStats({ stats, loading = false, error = null, compact = fals
           <CardBody>
             <Stat>
               <StatLabel>Total Préstamos</StatLabel>
-              <StatNumber color="blue.500">{stats.totalLoans.toLocaleString()}</StatNumber>
+              <StatNumber color="blue.500">{stats.total.toLocaleString()}</StatNumber>
               <StatHelpText>
                 Histórico completo
               </StatHelpText>
@@ -75,10 +75,10 @@ export function LoanStats({ stats, loading = false, error = null, compact = fals
           <CardBody>
             <Stat>
               <StatLabel>Préstamos Activos</StatLabel>
-              <StatNumber color="green.500">{stats.activeLoans}</StatNumber>
+              <StatNumber color="green.500">{stats.active}</StatNumber>
               <StatHelpText>
                 {activePercentage.toFixed(1)}% del total
-              </StatHelpText>
+              </StatHelpText> 
             </Stat>
           </CardBody>
         </Card>
@@ -89,7 +89,7 @@ export function LoanStats({ stats, loading = false, error = null, compact = fals
               <CardBody>
                 <Stat>
                   <StatLabel>Préstamos Vencidos</StatLabel>
-                  <StatNumber color="orange.500">{stats.overdueLoans}</StatNumber>
+                  <StatNumber color="orange.500">{stats.overdue}</StatNumber>
                   <StatHelpText>
                     {overduePercentage.toFixed(1)}% de activos
                   </StatHelpText>
@@ -100,10 +100,10 @@ export function LoanStats({ stats, loading = false, error = null, compact = fals
             <Card bg={cardBg}>
               <CardBody>
                 <Stat>
-                  <StatLabel>Duración Promedio</StatLabel>
-                  <StatNumber color="purple.500">{stats.averageLoanDuration}</StatNumber>
+                  <StatLabel>Préstamos Hoy</StatLabel>
+                  <StatNumber color="purple.500">{stats.today.newLoans}</StatNumber>
                   <StatHelpText>
-                    días por préstamo
+                    {stats.today.returns} devoluciones
                   </StatHelpText>
                 </Stat>
               </CardBody>
@@ -126,11 +126,11 @@ export function LoanStats({ stats, loading = false, error = null, compact = fals
                   <HStack justify="space-between">
                     <Text fontSize="sm">Al día</Text>
                     <Text fontSize="sm" fontWeight="bold" color="green.500">
-                      {stats.activeLoans - stats.overdueLoans}
+                      {stats.active - stats.overdue}
                     </Text>
                   </HStack>
                   <Progress 
-                    value={((stats.activeLoans - stats.overdueLoans) / Math.max(stats.activeLoans, 1)) * 100} 
+                    value={((stats.active - stats.overdue) / Math.max(stats.active, 1)) * 100} 
                     colorScheme="green" 
                     size="sm" 
                   />
@@ -140,7 +140,7 @@ export function LoanStats({ stats, loading = false, error = null, compact = fals
                   <HStack justify="space-between">
                     <Text fontSize="sm">Vencidos</Text>
                     <Text fontSize="sm" fontWeight="bold" color="orange.500">
-                      {stats.overdueLoans}
+                      {stats.overdue}
                     </Text>
                   </HStack>
                   <Progress 
@@ -160,10 +160,10 @@ export function LoanStats({ stats, loading = false, error = null, compact = fals
                   RECURSOS MÁS PRESTADOS
                 </Text>
                 
-                {stats.mostBorrowedResources.length > 0 ? (
+                {stats.topResources?.length > 0 ? (
                   <VStack spacing={2} align="stretch">
-                    {stats.mostBorrowedResources.slice(0, 3).map((resource, index) => (
-                      <HStack key={resource.resourceId} justify="space-between">
+                    {stats.topResources.slice(0, 3).map(({ resource, loanCount }, index) => (
+                      <HStack key={resource._id} justify="space-between">
                         <HStack spacing={2}>
                           <Badge colorScheme="blue" variant="solid" borderRadius="full">
                             {index + 1}
@@ -173,7 +173,7 @@ export function LoanStats({ stats, loading = false, error = null, compact = fals
                           </Text>
                         </HStack>
                         <Badge colorScheme="green" variant="outline">
-                          {resource.borrowCount}
+                          {loanCount}
                         </Badge>
                       </HStack>
                     ))}

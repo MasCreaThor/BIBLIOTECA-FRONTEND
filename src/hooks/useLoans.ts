@@ -1,7 +1,7 @@
-// src/hooks/useLoans.ts
-import { useState, useEffect, useCallback } from 'react';
+// src/hooks/useLoans.ts - VERSIÓN CORREGIDA PARA ENDPOINTS REALES
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useToast } from '@chakra-ui/react';
-import { LoanService } from '@/services/loan.service';
+import { LoanService } from '@/services/loan.service'; // CORRECCIÓN: Usar clase con métodos estáticos
 import {
   Loan,
   LoanSearchFilters,
@@ -39,12 +39,12 @@ export function useLoans(initialFilters: LoanSearchFilters = {}) {
       const filtersToUse = searchFilters || filters;
       console.log('Fetching loans with filters:', filtersToUse);
       
-      const response = await LoanService.getLoans(filtersToUse);
+      const response = await LoanService.getLoans(filtersToUse); // CORRECCIÓN: Usar método estático
       setLoans(response);
       
       console.log('Loans fetched successfully:', response);
     } catch (err: any) {
-      const errorMessage = err?.response?.data?.message || err?.message || 'Error al cargar préstamos';
+      const errorMessage = err?.message || 'Error al cargar préstamos';
       console.error('Error fetching loans:', err);
       
       setError(errorMessage);
@@ -101,7 +101,7 @@ export function useLoans(initialFilters: LoanSearchFilters = {}) {
   };
 }
 
-// Hook para crear préstamos - VERSIÓN MEJORADA
+// Hook para crear préstamos
 export function useCreateLoan() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -138,7 +138,7 @@ export function useCreateLoan() {
       };
 
       console.log('Sending cleaned loan data:', cleanLoanData);
-      const newLoan = await LoanService.createLoan(cleanLoanData);
+      const newLoan = await LoanService.createLoan(cleanLoanData); // CORRECCIÓN: Usar método estático
       
       console.log('Loan created successfully:', newLoan);
       
@@ -152,22 +152,11 @@ export function useCreateLoan() {
       
       return newLoan;
     } catch (err: any) {
-      let errorMessage = 'Error al crear préstamo';
-      
+      const errorMessage = err?.message || 'Error al crear préstamo';
       console.error('Error creating loan:', err);
       
-      // Manejo específico de errores del backend
-      if (err?.response?.data?.message) {
-        errorMessage = Array.isArray(err.response.data.message) 
-          ? err.response.data.message.join(', ')
-          : err.response.data.message;
-      } else if (err?.message) {
-        errorMessage = err.message;
-      }
-
       setError(errorMessage);
       
-      // Mostrar toast específico de error
       toast({
         title: 'Error al crear préstamo',
         description: errorMessage,
@@ -182,15 +171,11 @@ export function useCreateLoan() {
     }
   }, [toast]);
 
-  const clearError = useCallback(() => {
-    setError(null);
-  }, []);
-
   return {
     createLoan,
     loading,
     error,
-    clearError
+    clearError: () => setError(null),
   };
 }
 
@@ -209,7 +194,7 @@ export function useCanBorrow() {
     setError(null);
 
     try {
-      const result = await LoanService.canPersonBorrow(personId);
+      const result = await LoanService.canPersonBorrow(personId); // CORRECCIÓN: Usar método estático
       console.log('Can borrow result:', result);
       return result;
     } catch (err: any) {
@@ -255,7 +240,7 @@ export function useReturnLoan() {
         throw new Error('Las observaciones de devolución no pueden exceder 500 caracteres');
       }
 
-      const result = await LoanService.returnLoan(returnData);
+      const result = await LoanService.returnLoan(returnData); // CORRECCIÓN: Usar método estático
       
       console.log('Loan returned successfully:', result);
       
@@ -316,7 +301,7 @@ export function useReturnLoan() {
         throw new Error('Las observaciones no pueden exceder 500 caracteres');
       }
 
-      const result = await LoanService.markAsLost(loanId, observations.trim());
+      const result = await LoanService.markAsLost(loanId, observations.trim()); // CORRECCIÓN: Usar método estático
       
       console.log('Loan marked as lost successfully:', result);
       
@@ -371,57 +356,117 @@ export function useReturnLoan() {
   };
 }
 
-// Hook para estadísticas de préstamos
+// Hook para estadísticas de préstamos - CORREGIDO PARA EVITAR MÚLTIPLES LLAMADAS
 export function useLoanStats() {
   const [stats, setStats] = useState<LoanStats | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [lastFetch, setLastFetch] = useState<number>(0);
   const toast = useToast();
+  const abortControllerRef = useRef<AbortController | null>(null);
 
-  const fetchStats = useCallback(async () => {
-    console.log('Fetching loan statistics...');
+  const fetchStats = useCallback(async (forceRefresh: boolean = false) => {
+    // Evitar múltiples llamadas simultáneas
+    const now = Date.now();
+    const timeSinceLastFetch = now - lastFetch;
+    
+    if (!forceRefresh && timeSinceLastFetch < 30000) { // 30 segundos de cooldown
+      console.log('🔄 useLoanStats: Evitando llamada duplicada, última hace:', timeSinceLastFetch, 'ms');
+      return;
+    }
+
+    // Cancelar llamada anterior si existe
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+
+    console.log('📊 useLoanStats: Obteniendo estadísticas de préstamos...');
     setLoading(true);
     setError(null);
+    setLastFetch(now);
+
+    // Crear nuevo AbortController
+    abortControllerRef.current = new AbortController();
 
     try {
-      const result = await LoanService.getLoanStats();
-      setStats(result);
-      console.log('Loan stats fetched successfully:', result);
-    } catch (err: any) {
-      const errorMessage = err?.response?.data?.message || err?.message || 'Error al cargar estadísticas';
-      console.error('Error fetching loan stats:', err);
+      const result = await LoanService.getLoanStats(); // CORRECCIÓN: Usar método estático corregido
       
-      setError(errorMessage);
-      toast({
-        title: 'Error',
-        description: errorMessage,
-        status: 'error',
-        duration: 5000,
-        isClosable: true,
-      });
+      if (!abortControllerRef.current.signal.aborted) {
+        setStats(result);
+        console.log('✅ useLoanStats: Estadísticas obtenidas exitosamente:', result);
+      }
+    } catch (err: any) {
+      if (!abortControllerRef.current.signal.aborted) {
+        const errorMessage = err?.response?.data?.message || err?.message || 'Error al cargar estadísticas';
+        console.error('❌ useLoanStats: Error al obtener estadísticas:', err);
+        
+        setError(errorMessage);
+        
+        // Solo mostrar toast si es un error real, no de conexión
+        if (!errorMessage.includes('conexión') && !errorMessage.includes('Network')) {
+          toast({
+            title: 'Error en estadísticas',
+            description: 'No se pudieron cargar las estadísticas. Mostrando datos básicos.',
+            status: 'warning',
+            duration: 3000,
+            isClosable: true,
+          });
+        }
+        
+        // Establecer estadísticas vacías como fallback
+        setStats({
+          total: 0,
+          active: 0,
+          returned: 0,
+          overdue: 0,
+          lost: 0,
+          today: { newLoans: 0, returns: 0, renewals: 0 },
+          thisWeek: { newLoans: 0, returns: 0, renewals: 0 },
+          thisMonth: { newLoans: 0, returns: 0, renewals: 0 },
+          trends: [],
+          topResources: [],
+          topBorrowers: [],
+        });
+      }
     } finally {
-      setLoading(false);
+      if (!abortControllerRef.current.signal.aborted) {
+        setLoading(false);
+      }
     }
-  }, [toast]);
+  }, [lastFetch, toast]);
 
   const refresh = useCallback(() => {
-    fetchStats();
+    console.log('🔄 useLoanStats: Forzando refresh de estadísticas...');
+    fetchStats(true);
   }, [fetchStats]);
 
   const clearError = useCallback(() => {
     setError(null);
   }, []);
 
+  // Cleanup en unmount
   useEffect(() => {
-    fetchStats();
-  }, [fetchStats]);
+    return () => {
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+    };
+  }, []);
+
+  // Fetch inicial solo una vez
+  useEffect(() => {
+    if (!stats && !loading && lastFetch === 0) {
+      fetchStats();
+    }
+  }, [fetchStats, stats, loading, lastFetch]);
 
   return {
     stats,
     loading,
     error,
     refresh,
-    clearError
+    clearError,
+    lastFetch: new Date(lastFetch), // Para debugging
   };
 }
 
@@ -442,7 +487,7 @@ export function usePersonLoans(personId: string) {
     setError(null);
 
     try {
-      const result = await LoanService.getPersonLoans(personId, filters);
+      const result = await LoanService.getPersonLoans(personId, filters); // CORRECCIÓN: Usar método estático
       setLoans(result);
       console.log('Person loans fetched successfully:', result);
     } catch (err: any) {
@@ -503,7 +548,7 @@ export function useResourceLoans(resourceId: string) {
     setError(null);
 
     try {
-      const result = await LoanService.getResourceLoans(resourceId, filters);
+      const result = await LoanService.getResourceLoans(resourceId, filters); // CORRECCIÓN: Usar método estático
       setLoans(result);
       console.log('Resource loans fetched successfully:', result);
     } catch (err: any) {

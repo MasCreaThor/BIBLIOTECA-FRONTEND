@@ -43,9 +43,9 @@ import { FiArrowLeft, FiCheck, FiX, FiCalendar, FiUser, FiBook, FiAlertTriangle,
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { AuthenticatedRoute } from '@/components/auth/ProtectedRoute';
 import { LoanHistory } from '@/components/loans';
-import { LoanService } from '@/services/loan.service';
+import { loanService } from '@/services/loan.service';
 import { useReturnLoan } from '@/hooks/useLoans';
-import { Loan } from '@/types/loan.types';
+import { Loan, LoanResponse } from '@/types/loan.types';
 import { DateUtils } from '@/utils';
 
 export default function LoanDetailPage() {
@@ -53,7 +53,7 @@ export default function LoanDetailPage() {
   const router = useRouter();
   const loanId = params.id as string;
 
-  const [loan, setLoan] = useState<Loan | null>(null);
+  const [loan, setLoan] = useState<LoanResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [returnObservations, setReturnObservations] = useState('');
@@ -79,7 +79,7 @@ export default function LoanDetailPage() {
     setError(null);
 
     try {
-      const loanData = await LoanService.getLoanById(loanId);
+      const loanData = await loanService.getLoanById(loanId);
       setLoan(loanData);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error al cargar préstamo');
@@ -92,7 +92,7 @@ export default function LoanDetailPage() {
     if (!loan) return;
 
     const result = await returnLoan({
-      loanId: loan._id,
+      loanId: loan.loan._id,
       returnObservations: returnObservations.trim() || undefined,
     });
 
@@ -106,7 +106,7 @@ export default function LoanDetailPage() {
   const handleMarkAsLost = async () => {
     if (!loan || !lostObservations.trim()) return;
 
-    const result = await markAsLost(loan._id, lostObservations.trim());
+    const result = await markAsLost(loan.loan._id, lostObservations.trim());
     
     if (result) {
       setLostObservations('');
@@ -169,7 +169,7 @@ export default function LoanDetailPage() {
     );
   }
 
-  const isActive = loan.status?.name === 'active';
+  const isActive = loan?.loan.status?.name === 'active';
   const canTakeActions = isActive && !processing;
 
   return (
@@ -205,17 +205,17 @@ export default function LoanDetailPage() {
                   <Heading size="lg">Detalles del Préstamo</Heading>
                   <HStack spacing={2}>
                     <Badge
-                      colorScheme={getStatusColor(loan.status?.name || 'active')}
+                      colorScheme={getStatusColor(loan.loan.status?.name || 'active')}
                       fontSize="sm"
                       px={3}
                       py={1}
                       borderRadius="full"
                     >
-                      {loan.status?.description}
+                      {loan.loan.status?.description}
                     </Badge>
-                    {loan.isOverdue && (
+                    {loan.loan.isOverdue && (
                       <Badge colorScheme="orange" fontSize="sm" px={3} py={1} borderRadius="full">
-                        Vencido {loan.daysOverdue} días
+                        Vencido {loan.loan.daysOverdue} días
                       </Badge>
                     )}
                   </HStack>
@@ -246,13 +246,13 @@ export default function LoanDetailPage() {
             </VStack>
 
             {/* Alerta si está vencido */}
-            {loan.isOverdue && (
+            {loan.loan.isOverdue && (
               <Alert status="warning" borderRadius="md">
                 <AlertIcon />
                 <Box>
                   <Text fontWeight="bold">¡Préstamo Vencido!</Text>
                   <Text fontSize="sm">
-                    Este préstamo lleva {loan.daysOverdue} días vencido. 
+                    Este préstamo lleva {loan.loan.daysOverdue} días vencido. 
                     Es importante gestionar la devolución para mantener el inventario actualizado.
                   </Text>
                 </Box>
@@ -274,15 +274,15 @@ export default function LoanDetailPage() {
                       </HStack>
                       
                       <HStack spacing={4}>
-                        <Avatar size="lg" name={loan.person?.fullName} />
+                        <Avatar size="lg" name={loan.loan.person?.fullName} />
                         <VStack spacing={1} align="start">
                           <Text fontWeight="bold" fontSize="xl">
-                            {loan.person?.fullName || 'Usuario no especificado'}
+                            {loan.loan.person?.fullName || 'Usuario no especificado'}
                           </Text>
                           <HStack spacing={2} color={textColor}>
-                            <Text fontSize="sm">{loan.person?.documentNumber}</Text>
+                            <Text fontSize="sm">{loan.loan.person?.documentNumber}</Text>
                             <Text fontSize="sm">•</Text>
-                            <Text fontSize="sm">{loan.person?.grade}</Text>
+                            <Text fontSize="sm">{loan.loan.person?.grade}</Text>
                           </HStack>
                         </VStack>
                       </HStack>
@@ -303,12 +303,12 @@ export default function LoanDetailPage() {
                       
                       <VStack spacing={2} align="start" width="100%">
                         <Text fontWeight="bold" fontSize="xl">
-                          {loan.resource?.title || 'Recurso no especificado'}
+                          {loan.loan.resource?.title || 'Recurso no especificado'}
                         </Text>
                         
-                        {loan.resource?.isbn && (
+                        {loan.loan.resource?.isbn && (
                           <Text fontSize="sm" color={textColor} fontFamily="mono">
-                            ISBN: {loan.resource.isbn}
+                            ISBN: {loan.loan.resource.isbn}
                           </Text>
                         )}
                         
@@ -316,7 +316,7 @@ export default function LoanDetailPage() {
                           <VStack spacing={0} align="start">
                             <Text fontSize="xs" color={textColor}>CANTIDAD</Text>
                             <Badge colorScheme="blue" size="sm">
-                              {loan.quantity}
+                              {loan.loan.quantity}
                             </Badge>
                           </VStack>
                         </HStack>
@@ -326,14 +326,14 @@ export default function LoanDetailPage() {
                 </Card>
 
                 {/* Observaciones */}
-                {loan.observations && (
+                {loan.loan.observations && (
                   <Card bg={cardBg}>
                     <CardBody>
                       <VStack spacing={3} align="start">
                         <Text fontWeight="bold" color={textColor} fontSize="sm">
                           OBSERVACIONES
                         </Text>
-                        <Text fontSize="sm">{loan.observations}</Text>
+                        <Text fontSize="sm">{loan.loan.observations}</Text>
                       </VStack>
                     </CardBody>
                   </Card>
@@ -357,10 +357,10 @@ export default function LoanDetailPage() {
                         <Stat size="sm">
                           <StatLabel>Fecha de Préstamo</StatLabel>
                           <StatNumber fontSize="md">
-                            {DateUtils.formatDate(loan.loanDate)}
+                            {DateUtils.formatDate(loan.loan.loanDate)}
                           </StatNumber>
                           <StatHelpText>
-                            {DateUtils.formatRelative(loan.loanDate)}
+                            {DateUtils.formatRelative(loan.loan.loanDate)}
                           </StatHelpText>
                         </Stat>
 
@@ -368,27 +368,27 @@ export default function LoanDetailPage() {
 
                         <Stat size="sm">
                           <StatLabel>Fecha de Vencimiento</StatLabel>
-                          <StatNumber fontSize="md" color={loan.isOverdue ? 'orange.500' : 'inherit'}>
-                            {DateUtils.formatDate(loan.dueDate)}
+                          <StatNumber fontSize="md" color={loan.loan.isOverdue ? 'orange.500' : 'inherit'}>
+                            {DateUtils.formatDate(loan.loan.dueDate)}
                           </StatNumber>
-                          <StatHelpText color={loan.isOverdue ? 'orange.500' : 'inherit'}>
-                            {loan.isOverdue ? 
-                              `Vencido hace ${loan.daysOverdue} días` : 
-                              DateUtils.formatRelative(loan.dueDate)
+                          <StatHelpText color={loan.loan.isOverdue ? 'orange.500' : 'inherit'}>
+                            {loan.loan.isOverdue ? 
+                              `Vencido hace ${loan.loan.daysOverdue} días` : 
+                              DateUtils.formatRelative(loan.loan.dueDate)
                             }
                           </StatHelpText>
                         </Stat>
 
-                        {loan.returnedDate && (
+                        {loan.loan.returnedDate && (
                           <>
                             <Divider />
                             <Stat size="sm">
                               <StatLabel>Fecha de Devolución</StatLabel>
                               <StatNumber fontSize="md" color="green.500">
-                                {DateUtils.formatDate(loan.returnedDate)}
+                                {DateUtils.formatDate(loan.loan.returnedDate)}
                               </StatNumber>
                               <StatHelpText>
-                                {DateUtils.formatRelative(loan.returnedDate)}
+                                {DateUtils.formatRelative(loan.loan.returnedDate)}
                               </StatHelpText>
                             </Stat>
                           </>
@@ -412,18 +412,18 @@ export default function LoanDetailPage() {
                       <SimpleGrid columns={1} spacing={3}>
                         <HStack justify="space-between">
                           <Text fontSize="sm" color={textColor}>Creado:</Text>
-                          <Text fontSize="sm">{DateUtils.formatDateTime(loan.createdAt)}</Text>
+                          <Text fontSize="sm">{DateUtils.formatDateTime(loan.loan.createdAt)}</Text>
                         </HStack>
                         
                         <HStack justify="space-between">
                           <Text fontSize="sm" color={textColor}>Actualizado:</Text>
-                          <Text fontSize="sm">{DateUtils.formatDateTime(loan.updatedAt)}</Text>
+                          <Text fontSize="sm">{DateUtils.formatDateTime(loan.loan.updatedAt)}</Text>
                         </HStack>
                         
                         <HStack justify="space-between">
                           <Text fontSize="sm" color={textColor}>ID:</Text>
                           <Text fontSize="xs" fontFamily="mono" color={textColor}>
-                            {loan._id}
+                            {loan.loan._id}
                           </Text>
                         </HStack>
                       </SimpleGrid>
@@ -437,8 +437,8 @@ export default function LoanDetailPage() {
             <Card bg={cardBg}>
               <CardBody>
                 <LoanHistory
-                  personId={loan.personId}
-                  title={`Otros préstamos de ${loan.person?.fullName}`}
+                  personId={loan.loan.personId}
+                  title={`Otros préstamos de ${loan.loan.person?.fullName}`}
                   limit={5}
                 />
               </CardBody>
@@ -461,7 +461,7 @@ export default function LoanDetailPage() {
               <AlertDialogBody>
                 <VStack spacing={4} align="stretch">
                   <Text>
-                    ¿Confirmas la devolución del recurso "<strong>{loan.resource?.title}</strong>"?
+                    ¿Confirmas la devolución del recurso "<strong>{loan.loan.resource?.title}</strong>"?
                   </Text>
                   
                   <FormControl>
@@ -514,7 +514,7 @@ export default function LoanDetailPage() {
                   </Alert>
                   
                   <Text>
-                    ¿Confirmas que el recurso "<strong>{loan.resource?.title}</strong>" se ha perdido?
+                    ¿Confirmas que el recurso "<strong>{loan.loan.resource?.title}</strong>" se ha perdido?
                   </Text>
                   
                   <FormControl isRequired>
