@@ -165,19 +165,6 @@ export default function InventoryPage() {
                 <Text fontSize="sm">Inventario</Text>
               </HStack>
             </Tab>
-            <Tab>
-              <HStack spacing={2}>
-                <Icon as={FiPlus} boxSize={4} />
-                <Text fontSize="sm">Acciones Rápidas</Text>
-              </HStack>
-            </Tab>
-            {/* Futuras funcionalidades */}
-            <Tab isDisabled>
-              <HStack spacing={2}>
-                <Icon as={FiSettings} boxSize={4} />
-                <Text fontSize="sm">Configuración</Text>
-              </HStack>
-            </Tab>
           </TabList>
 
           <TabPanels>
@@ -195,16 +182,6 @@ export default function InventoryPage() {
               <InventoryNavigation 
                 showSecondaryActions={true}
               />
-            </TabPanel>
-
-            {/* Tab 3: Configuración (futuro) */}
-            <TabPanel px={0}>
-              <VStack spacing={4} py={8} textAlign="center">
-                <Icon as={FiSettings} boxSize={12} color="gray.400" />
-                <Text color="gray.600">
-                  Las opciones de configuración estarán disponibles próximamente
-                </Text>
-              </VStack>
             </TabPanel>
           </TabPanels>
         </Tabs>
