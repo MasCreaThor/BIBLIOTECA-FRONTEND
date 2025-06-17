@@ -1,10 +1,42 @@
-// components/loans/index.ts
-// Barrel export para componentes de préstamos
+// src/components/loans/index.ts
+// ================================================================
+// EXPORTACIONES DE COMPONENTES DEL SISTEMA DE PRÉSTAMOS - CORREGIDO
+// ================================================================
 
-export { LoanCard } from './LoanCard/LoanCard';
-export { LoanList } from './LoanList/LoanList';
-export { CreateLoanForm } from './CreateLoanForm/CreateLoanForm';
-export { LoanFilters } from './LoanFilters/LoanFilters';
-export { LoanDetails } from './LoanDetails/LoanDetails';
-export { LoanHistory } from './LoanHistory/LoanHistory';
-export { LoanStats } from './LoanStats/LoanStats';
+// Componente principal de gestión
+export { default as LoanManagement } from './LoanManagement';
+
+// Componentes de gestión básica
+export { default as LoansList } from './LoansList';
+export { default as LoanRow } from './LoanRow';
+export { default as CreateLoanModal } from './CreateLoanModal';
+
+// Componentes de devoluciones y vencidos
+export { default as ReturnsManagement } from './ReturnsManagement';
+export { default as OverdueManagement } from './OverdueManagement';
+export { default as ReturnModal } from './ReturnModal';
+
+// Componente de estadísticas
+export { default as LoanStatistics } from './LoanStatistics';
+
+// Exportaciones alternativas para compatibilidad
+export { default as LoanList } from './LoansList';
+export { default as LoanFilters } from './LoansList'; // Si tienes un componente separado de filtros
+
+// Re-exportar tipos principales para facilitar importación
+export type {
+  LoanWithDetails,
+  CreateLoanRequest,
+  UpdateLoanRequest,
+  ReturnLoanRequest,
+  MarkAsLostRequest,
+  LoanSearchFilters,
+  OverdueFilters,
+  LoanStats,
+  OverdueStats,
+  StockStats,
+  UseLoanState,
+  UseLoansState,
+  UseReturnState,
+  UseOverdueState
+} from '@/types/loan.types';
