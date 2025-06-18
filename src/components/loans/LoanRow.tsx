@@ -243,16 +243,20 @@ const LoanRow: React.FC<LoanRowProps> = ({
     <>
       <Tr _hover={{ bg: hoverBg }} transition="background-color 0.2s">
         {/* Información de la Persona */}
-        <Td>
-          <VStack align="start" spacing={1}>
-            <Text fontWeight="medium" fontSize="sm">
+        <Td px={4} py={4}>
+          <VStack align="start" spacing={2} minH="60px" justify="center">
+            <Text fontWeight="semibold" fontSize="sm" color="gray.800">
               {loan.person?.fullName || 'N/A'}
             </Text>
-            <HStack spacing={2}>
+            <HStack spacing={2} minH="20px">
               {getPersonTypeBadge(loan.person?.personType)}
-              {loan.person?.documentNumber && (
-                <Text fontSize="xs" color="gray.500">
+              {loan.person?.documentNumber ? (
+                <Text fontSize="xs" color="gray.500" bg="gray.100" px={2} py={1} rounded="md">
                   {loan.person.documentNumber}
+                </Text>
+              ) : (
+                <Text fontSize="xs" color="gray.400" bg="gray.50" px={2} py={1} rounded="md" fontStyle="italic">
+                  Sin documento
                 </Text>
               )}
             </HStack>
@@ -260,125 +264,175 @@ const LoanRow: React.FC<LoanRowProps> = ({
         </Td>
 
         {/* Información del Recurso */}
-        <Td>
-          <VStack align="start" spacing={1}>
-            <Text fontWeight="medium" fontSize="sm" noOfLines={2}>
+        <Td px={4} py={4}>
+          <VStack align="start" spacing={2} minH="60px" justify="center">
+            <Text fontWeight="semibold" fontSize="sm" color="gray.800" noOfLines={2} maxW="200px">
               {loan.resource?.title || 'N/A'}
             </Text>
-            {loan.resource?.author && (
-              <Text fontSize="xs" color="gray.500" noOfLines={1}>
-                {loan.resource.author}
-              </Text>
-            )}
+            <HStack spacing={2} minH="20px">
+              {loan.resource?.author ? (
+                <Text fontSize="xs" color="gray.600" noOfLines={1} maxW="180px">
+                  {loan.resource.author}
+                </Text>
+              ) : (
+                <Text fontSize="xs" color="gray.400" fontStyle="italic">
+                  Sin autor
+                </Text>
+              )}
+            </HStack>
           </VStack>
         </Td>
 
         {/* Fecha de Préstamo */}
-        <Td>
-          <HStack spacing={2}>
-            <FiCalendar size={14} color="gray" />
-            <Text fontSize="sm">{formatDate(loan.loanDate)}</Text>
+        <Td px={4} py={4}>
+          <HStack spacing={2} minH="60px" align="center">
+            <Box p={1} bg="blue.100" rounded="md" color="blue.600" flexShrink={0}>
+              <FiCalendar size={14} />
+            </Box>
+            <VStack align="start" spacing={0} flex="1">
+              <Text fontSize="sm" fontWeight="medium" color="gray.800">
+                {formatDate(loan.loanDate)}
+              </Text>
+              <Text fontSize="xs" color="gray.500">
+                Préstamo
+              </Text>
+            </VStack>
           </HStack>
         </Td>
 
         {/* Fecha de Vencimiento */}
-        <Td>
-          <HStack spacing={2}>
-            <FiClock 
-              size={14} 
-              color={loan.isOverdue ? "red" : "gray"} 
-            />
-            <Text 
-              fontSize="sm"
-              color={loan.isOverdue ? "red.500" : "gray.600"}
+        <Td px={4} py={4}>
+          <HStack spacing={2} minH="60px" align="center">
+            <Box 
+              p={1} 
+              bg={loan.isOverdue ? "red.100" : "orange.100"} 
+              rounded="md" 
+              color={loan.isOverdue ? "red.600" : "orange.600"}
+              flexShrink={0}
             >
-              {formatDate(loan.dueDate)}
-            </Text>
+              <FiClock size={14} />
+            </Box>
+            <VStack align="start" spacing={0} flex="1">
+              <Text 
+                fontSize="sm" 
+                fontWeight="medium"
+                color={loan.isOverdue ? "red.600" : "gray.800"}
+              >
+                {formatDate(loan.dueDate)}
+              </Text>
+              <Text fontSize="xs" color="gray.500">
+                Vencimiento
+              </Text>
+            </VStack>
           </HStack>
         </Td>
 
         {/* Estado */}
-        <Td>
-          <Badge
-            colorScheme={statusInfo.colorScheme}
-            variant={statusInfo.variant}
-          >
-            <StatusIcon size={12} style={{ marginRight: 4, verticalAlign: 'middle' }} />
-            {statusInfo.label}
-          </Badge>
+        <Td px={4} py={4}>
+          <Box minH="60px" display="flex" alignItems="center">
+            <Badge
+              colorScheme={statusInfo.colorScheme}
+              variant={statusInfo.variant}
+              px={3}
+              py={2}
+              borderRadius="full"
+              fontSize="xs"
+              fontWeight="semibold"
+            >
+              <HStack spacing={1}>
+                <StatusIcon size={12} />
+                <Text>{statusInfo.label}</Text>
+              </HStack>
+            </Badge>
+          </Box>
         </Td>
 
         {/* Cantidad */}
-        <Td>
-          <Badge colorScheme="blue" variant="outline">
-            {loan.quantity}
-          </Badge>
+        <Td px={4} py={4}>
+          <Box minH="60px" display="flex" alignItems="center">
+            <Badge 
+              colorScheme="blue" 
+              variant="subtle"
+              px={3}
+              py={2}
+              borderRadius="md"
+              fontSize="sm"
+              fontWeight="bold"
+            >
+              {loan.quantity} {loan.quantity === 1 ? 'unidad' : 'unidades'}
+            </Badge>
+          </Box>
         </Td>
 
         {/* Acciones */}
-        <Td>
-          <HStack spacing={2}>
-            {/* Acciones Rápidas */}
-            {canReturn && (
-              <Tooltip label="Devolución rápida">
+        <Td px={4} py={4}>
+          <Box minH="60px" display="flex" alignItems="center">
+            <HStack spacing={2}>
+              {/* Acciones Rápidas */}
+              {canReturn && (
+                <Tooltip label="Devolución rápida" placement="top">
+                  <IconButton
+                    size="sm"
+                    aria-label="Devolución rápida"
+                    icon={<FiCheck />}
+                    colorScheme="green"
+                    variant="outline"
+                    onClick={onOpen}
+                    isDisabled={processing}
+                    borderRadius="md"
+                  />
+                </Tooltip>
+              )}
+
+              <Tooltip label="Ver detalles" placement="top">
                 <IconButton
                   size="sm"
-                  aria-label="Devolución rápida"
-                  icon={<FiCheck />}
-                  colorScheme="green"
+                  aria-label="Ver detalles"
+                  icon={<FiEye />}
                   variant="outline"
-                  onClick={onOpen}
-                  isDisabled={processing}
+                  onClick={handleViewDetails}
+                  borderRadius="md"
                 />
               </Tooltip>
-            )}
 
-            <Tooltip label="Ver detalles">
-              <IconButton
-                size="sm"
-                aria-label="Ver detalles"
-                icon={<FiEye />}
-                variant="outline"
-                onClick={handleViewDetails}
-              />
-            </Tooltip>
-
-            {/* Menú de Más Opciones */}
-            <Menu>
-              <MenuButton
-                as={IconButton}
-                size="sm"
-                aria-label="Más opciones"
-                icon={<FiMoreHorizontal />}
-                variant="outline"
-              >
-              </MenuButton>
-              <MenuList>
-                {canReturn && (
-                  <MenuItem
-                    icon={<FiRotateCcw />}
-                    onClick={handleProcessReturn}
-                  >
-                    Procesar Devolución
+              {/* Menú de Más Opciones */}
+              <Menu>
+                <MenuButton
+                  as={IconButton}
+                  size="sm"
+                  aria-label="Más opciones"
+                  icon={<FiMoreHorizontal />}
+                  variant="outline"
+                  borderRadius="md"
+                >
+                </MenuButton>
+                <MenuList>
+                  {canReturn && (
+                    <MenuItem
+                      icon={<FiRotateCcw />}
+                      onClick={handleProcessReturn}
+                    >
+                      Procesar Devolución
+                    </MenuItem>
+                  )}
+                  
+                  {canRenew && (
+                    <MenuItem
+                      icon={<FiRefreshCw />}
+                      onClick={handleRenewLoan}
+                      isDisabled={renewLoading}
+                    >
+                      {renewLoading ? 'Renovando...' : 'Renovar Préstamo'}
+                    </MenuItem>
+                  )}
+                  
+                  <MenuItem icon={<FiEye />} onClick={handleViewDetails}>
+                    Ver Detalles Completos
                   </MenuItem>
-                )}
-                
-                {canRenew && (
-                  <MenuItem
-                    icon={<FiRefreshCw />}
-                    onClick={handleRenewLoan}
-                    isDisabled={renewLoading}
-                  >
-                    {renewLoading ? 'Renovando...' : 'Renovar Préstamo'}
-                  </MenuItem>
-                )}
-                
-                <MenuItem icon={<FiEye />} onClick={handleViewDetails}>
-                  Ver Detalles Completos
-                </MenuItem>
-              </MenuList>
-            </Menu>
-          </HStack>
+                </MenuList>
+              </Menu>
+            </HStack>
+          </Box>
         </Td>
       </Tr>
 

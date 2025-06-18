@@ -34,7 +34,14 @@ class LoanServiceWrapper {
     try {
       // Usar searchLoans si existe
       if (typeof LoanService.searchLoans === 'function') {
-        return await LoanService.searchLoans(filters);
+        const response = await LoanService.searchLoans(filters);
+        
+        // ✅ CORRECCIÓN: Validar la respuesta
+        if (!response || !response.data) {
+          throw new Error('Respuesta inválida del servidor');
+        }
+        
+        return response;
       }
       
       // Último fallback: crear respuesta mock
@@ -51,7 +58,19 @@ class LoanServiceWrapper {
       };
     } catch (error) {
       console.error('Error en LoanServiceWrapper.findAll:', error);
-      throw error;
+      
+      // ✅ CORRECCIÓN: Retornar respuesta de error en lugar de lanzar excepción
+      return {
+        data: [],
+        pagination: {
+          page: 1,
+          limit: 20,
+          total: 0,
+          totalPages: 0,
+          hasNext: false,
+          hasPrev: false
+        }
+      };
     }
   }
 
@@ -219,17 +238,33 @@ export const useLoans = (initialFilters: LoanSearchFilters = {}) => {
       const finalFilters = searchFilters || filters;
       // FIX: Usar el wrapper que maneja diferentes implementaciones
       const response = await LoanServiceWrapper.findAll(finalFilters);
+      
+      // ✅ CORRECCIÓN: Validar que la respuesta tenga la estructura correcta
+      if (!response || !response.data) {
+        throw new Error('Respuesta inválida del servidor');
+      }
+      
       setState(prev => ({ 
         ...prev, 
-        loans: response.data, 
-        pagination: response.pagination,
+        loans: response.data || [], 
+        pagination: response.pagination || {
+          page: 1,
+          limit: 20,
+          total: 0,
+          totalPages: 0,
+          hasNext: false,
+          hasPrev: false
+        },
         loading: false 
       }));
     } catch (error: any) {
+      console.error('Error fetching loans:', error);
       setState(prev => ({ 
         ...prev, 
         loading: false, 
-        error: error.message || 'Error al cargar préstamos' 
+        error: error.message || 'Error al cargar préstamos',
+        loans: [],
+        pagination: null
       }));
     }
   }, [filters]);

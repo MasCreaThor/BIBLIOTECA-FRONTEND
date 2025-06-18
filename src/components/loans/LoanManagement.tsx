@@ -58,7 +58,7 @@ const LoanManagement: React.FC = () => {
   const headerBg = useColorModeValue('white', 'gray.800');
   const shadowColor = useColorModeValue('lg', 'dark-lg');
 
-  // Definir tabs con sus componentes
+  // Definir tabs con sus componentes - Reorganizados por prioridad
   const tabs: TabInfo[] = [
     { 
       id: 'loans', 
@@ -80,7 +80,7 @@ const LoanManagement: React.FC = () => {
     },
     { 
       id: 'stats', 
-      label: 'Estadísticas', 
+      label: 'Estadísticas y Reportes', 
       icon: FiFileText,
       component: LoanStatistics
     }

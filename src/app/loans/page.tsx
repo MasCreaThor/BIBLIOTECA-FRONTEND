@@ -1,6 +1,6 @@
 // src/app/loans/page.tsx
 // ================================================================
-// PÁGINA PRINCIPAL DE GESTIÓN DE PRÉSTAMOS - CORREGIDO
+// PÁGINA PRINCIPAL DE GESTIÓN DE PRÉSTAMOS - SIMPLIFICADA
 // ================================================================
 
 'use client';
@@ -17,11 +17,9 @@ import {
 
 import { FiPlus } from 'react-icons/fi';
 
-// FIX: Importar desde la ruta correcta /components/loans en lugar de /components/loan
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import LoanManagement from '@/components/loans/LoanManagement';
 import CreateLoanModal from '@/components/loans/CreateLoanModal';
-import LoanStatistics from '@/components/loans/LoanStatistics';
 
 // ===== COMPONENTE PRINCIPAL DE LA PÁGINA =====
 
@@ -30,7 +28,9 @@ const LoansPage: React.FC = () => {
 
   const handleLoanCreated = () => {
     // Callback cuando se crea un préstamo exitosamente
+    onClose();
     // Aquí podrías disparar eventos para actualizar la lista
+    // O usar un context/estado global para manejar la actualización
     window.location.reload(); // Temporal - mejor usar estado/context
   };
 
@@ -53,12 +53,7 @@ const LoansPage: React.FC = () => {
             </Button>
           </HStack>
 
-          {/* Estadísticas */}
-          <Box>
-            <LoanStatistics />
-          </Box>
-
-          {/* Gestión Principal */}
+          {/* ✅ SIMPLIFICADO: Solo gestión principal, sin estadísticas duplicadas */}
           <Box>
             <LoanManagement />
           </Box>

@@ -185,6 +185,16 @@ export const LoanStatistics: React.FC = () => {
   if (loading) {
     return (
       <VStack spacing={6} align="stretch">
+        {/* Header de carga */}
+        <Box>
+          <Text fontSize="2xl" fontWeight="bold" color="gray.700" mb={2}>
+            Estadísticas y Reportes de Préstamos
+          </Text>
+          <Text fontSize="md" color="gray.600">
+            Análisis detallado del comportamiento de préstamos y métricas del sistema
+          </Text>
+        </Box>
+        
         <SimpleGrid columns={{ base: 1, md: 2, lg: 4 }} spacing={6}>
           {[...Array(4)].map((_, i) => (
             <Skeleton key={i} height="120px" rounded="lg" />
@@ -228,15 +238,32 @@ export const LoanStatistics: React.FC = () => {
     { name: 'Perdidos', value: stats.lostLoans, color: 'orange' }
   ] : [];
 
-  const overdueByDaysData = overdueStats ? [
-    { name: '1-7 días', value: overdueStats.byDaysOverdue['1-7'], color: 'yellow' },
-    { name: '8-14 días', value: overdueStats.byDaysOverdue['8-14'], color: 'orange' },
-    { name: '15-30 días', value: overdueStats.byDaysOverdue['15-30'], color: 'red' },
-    { name: 'Más de 30 días', value: overdueStats.byDaysOverdue['30+'], color: 'purple' }
-  ] : [];
+  const overdueByDays = overdueStats?.byDaysOverdue ?? {
+    '1-7': 0,
+    '8-14': 0,
+    '15-30': 0,
+    '30+': 0
+  };
+
+  const overdueByDaysData = [
+    { name: '1-7 días', value: overdueByDays['1-7'], color: 'yellow' },
+    { name: '8-14 días', value: overdueByDays['8-14'], color: 'orange' },
+    { name: '15-30 días', value: overdueByDays['15-30'], color: 'red' },
+    { name: 'Más de 30 días', value: overdueByDays['30+'], color: 'purple' }
+  ];
 
   return (
     <VStack spacing={8} align="stretch">
+      {/* ✅ NUEVO: Header descriptivo */}
+      <Box>
+        <Text fontSize="2xl" fontWeight="bold" color="gray.700" mb={2}>
+          Estadísticas y Reportes de Préstamos
+        </Text>
+        <Text fontSize="md" color="gray.600">
+          Análisis detallado del comportamiento de préstamos y métricas del sistema
+        </Text>
+      </Box>
+
       {/* Métricas Principales */}
       <StatsSection title="Métricas Generales">
         <SimpleGrid columns={{ base: 1, md: 2, lg: 4 }} spacing={6}>

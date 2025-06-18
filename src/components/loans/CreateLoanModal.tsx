@@ -1,9 +1,9 @@
 // src/components/loans/CreateLoanModal.tsx
 // ================================================================
-// MODAL PARA CREAR NUEVOS PRÉSTAMOS - CORREGIDO
+// MODAL PARA CREAR NUEVOS PRÉSTAMOS - VERSIÓN MEJORADA CON BÚSQUEDA DINÁMICA
 // ================================================================
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import {
   Modal,
   ModalOverlay,
@@ -18,7 +18,6 @@ import {
   FormErrorMessage,
   Input,
   Textarea,
-  Select,
   NumberInput,
   NumberInputField,
   NumberInputStepper,
@@ -33,7 +32,16 @@ import {
   Spinner,
   Badge,
   Divider,
-  useToast
+  useToast,
+  Grid,
+  GridItem,
+  Progress,
+  Stat,
+  StatLabel,
+  StatNumber,
+  List,
+  ListItem,
+  useDisclosure
 } from '@chakra-ui/react';
 
 // FIX: Usar react-icons en lugar de lucide-react
@@ -45,24 +53,37 @@ import {
   FiCalendar,
   FiAlertTriangle,
   FiCheckCircle,
-  FiFileText
+  FiFileText,
+  FiSearch,
+  FiInfo,
+  FiClock,
+  FiShield,
+  FiX
 } from 'react-icons/fi';
 
-import { useForm } from 'react-hook-form';
+import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 
 // Importar hooks y tipos
 import { useLoans, useLoanValidation } from '@/hooks/useLoans';
+import { PersonService } from '@/services/person.service';
+import { ResourceService } from '@/services/resource.service';
 import type { CreateLoanRequest, LoanWithDetails } from '@/types/loan.types';
+import type { Person } from '@/types/api.types';
+import type { Resource } from '@/types/resource.types';
 
 // ===== ESQUEMA DE VALIDACIÓN =====
 
 const createLoanSchema = z.object({
   personId: z.string().min(1, 'Debe seleccionar una persona'),
   resourceId: z.string().min(1, 'Debe seleccionar un recurso'),
-  quantity: z.number().min(1, 'La cantidad debe ser mayor a 0').max(50, 'Cantidad máxima: 50'),
-  observations: z.string().optional()
+  quantity: z.number()
+    .min(1, 'La cantidad debe ser mayor a 0')
+    .max(50, 'Cantidad máxima: 50'),
+  observations: z.string()
+    .max(500, 'Las observaciones no deben exceder 500 caracteres')
+    .optional()
 });
 
 type CreateLoanFormData = z.infer<typeof createLoanSchema>;
@@ -75,24 +96,19 @@ interface CreateLoanModalProps {
   onSuccess?: (loan: LoanWithDetails) => void;
 }
 
-interface Person {
-  _id: string;
-  firstName: string;
-  lastName: string;
-  fullName: string;
-  documentNumber?: string;
-  personType?: {
-    name: string;
-  };
-}
+// Usar el tipo Person directamente ya que ya incluye personType
+type PersonWithType = Person;
 
-interface Resource {
-  _id: string;
-  title: string;
-  author?: string;
-  isbn?: string;
-  totalQuantity: number;
-  availableQuantity: number;
+// Usar el tipo Resource directamente ya que ya incluye los campos necesarios
+type ResourceWithStock = Resource;
+
+interface ValidationState {
+  personValid: boolean;
+  resourceValid: boolean;
+  quantityValid: boolean;
+  overallValid: boolean;
+  errors: string[];
+  warnings: string[];
 }
 
 // ===== COMPONENTE PRINCIPAL =====
@@ -105,12 +121,25 @@ export const CreateLoanModal: React.FC<CreateLoanModalProps> = ({
   const toast = useToast();
   
   // Estados
-  const [people, setPeople] = useState<Person[]>([]);
-  const [resources, setResources] = useState<Resource[]>([]);
+  const [people, setPeople] = useState<PersonWithType[]>([]);
+  const [resources, setResources] = useState<ResourceWithStock[]>([]);
   const [loadingPeople, setLoadingPeople] = useState(false);
   const [loadingResources, setLoadingResources] = useState(false);
-  const [selectedPerson, setSelectedPerson] = useState<Person | null>(null);
-  const [selectedResource, setSelectedResource] = useState<Resource | null>(null);
+  const [selectedPerson, setSelectedPerson] = useState<PersonWithType | null>(null);
+  const [selectedResource, setSelectedResource] = useState<ResourceWithStock | null>(null);
+  const [validationState, setValidationState] = useState<ValidationState>({
+    personValid: false,
+    resourceValid: false,
+    quantityValid: false,
+    overallValid: false,
+    errors: [],
+    warnings: []
+  });
+  const [searchPerson, setSearchPerson] = useState('');
+  const [searchResource, setSearchResource] = useState('');
+  const [showPersonResults, setShowPersonResults] = useState(false);
+  const [showResourceResults, setShowResourceResults] = useState(false);
+  const debounceTimeout = useRef<NodeJS.Timeout | null>(null);
   
   // Hooks
   const { createLoan, loading: creating } = useLoans();
@@ -130,12 +159,14 @@ export const CreateLoanModal: React.FC<CreateLoanModalProps> = ({
     watch,
     setValue,
     reset,
-    formState: { errors }
+    control,
+    formState: { errors, isValid: formIsValid }
   } = useForm<CreateLoanFormData>({
     resolver: zodResolver(createLoanSchema),
     defaultValues: {
       quantity: 1
-    }
+    },
+    mode: 'onChange'
   });
 
   const watchedValues = watch();
@@ -144,50 +175,76 @@ export const CreateLoanModal: React.FC<CreateLoanModalProps> = ({
 
   useEffect(() => {
     if (isOpen) {
-      loadPeople();
+      setPeople([]); // Limpiar resultados al abrir
       loadResources();
     }
   }, [isOpen]);
 
+  // Validación automática cuando cambian los valores
   useEffect(() => {
     if (watchedValues.personId && watchedValues.resourceId && watchedValues.quantity) {
       validateCurrentLoan();
+    } else {
+      // Limpiar validación si faltan campos
+      setValidationState({
+        personValid: false,
+        resourceValid: false,
+        quantityValid: false,
+        overallValid: false,
+        errors: [],
+        warnings: []
+      });
     }
-  }, [watchedValues.personId, watchedValues.resourceId, watchedValues.quantity]);
+  }, [watchedValues.personId, watchedValues.resourceId, watchedValues.quantity, selectedPerson, selectedResource]);
+
+  // Búsqueda de personas en tiempo real con debounce
+  useEffect(() => {
+    if (!searchPerson || !searchPerson.trim()) {
+      setPeople([]);
+      return;
+    }
+    setLoadingPeople(true);
+    if (debounceTimeout.current) clearTimeout(debounceTimeout.current);
+    debounceTimeout.current = setTimeout(async () => {
+      try {
+        const results = await PersonService.searchPeople(searchPerson, 10);
+        setPeople(results);
+      } catch (error) {
+        setPeople([]);
+      } finally {
+        setLoadingPeople(false);
+      }
+    }, 350);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchPerson]);
+
+  // Cerrar resultados de búsqueda cuando se hace clic fuera
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as Element;
+      if (!target.closest('.search-container')) {
+        setShowPersonResults(false);
+        setShowResourceResults(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
 
   // ===== FUNCIONES DE CARGA =====
-
-  const loadPeople = async () => {
-    setLoadingPeople(true);
-    try {
-      // Aquí deberías llamar a tu servicio para obtener personas
-      // const response = await PersonService.getPeople({ active: true });
-      // setPeople(response.data);
-      
-      // Mock data por ahora
-      setPeople([]);
-    } catch (error: any) {
-      toast({
-        title: 'Error',
-        description: 'Error al cargar personas',
-        status: 'error',
-        duration: 3000,
-        isClosable: true
-      });
-    } finally {
-      setLoadingPeople(false);
-    }
-  };
 
   const loadResources = async () => {
     setLoadingResources(true);
     try {
-      // Aquí deberías llamar a tu servicio para obtener recursos
-      // const response = await ResourceService.getResources({ available: true });
-      // setResources(response.data);
-      
-      // Mock data por ahora
-      setResources([]);
+      const response = await ResourceService.searchResourcesForLoan({
+        limit: 100,
+        sortBy: 'title',
+        sortOrder: 'asc'
+      });
+      setResources(response);
     } catch (error: any) {
       toast({
         title: 'Error',
@@ -196,6 +253,7 @@ export const CreateLoanModal: React.FC<CreateLoanModalProps> = ({
         duration: 3000,
         isClosable: true
       });
+      setResources([]);
     } finally {
       setLoadingResources(false);
     }
@@ -204,87 +262,235 @@ export const CreateLoanModal: React.FC<CreateLoanModalProps> = ({
   // ===== VALIDACIONES =====
 
   const validateCurrentLoan = async () => {
-    if (!watchedValues.personId || !watchedValues.resourceId) return;
+    console.log('🔍 validateCurrentLoan llamado con:', {
+      personId: watchedValues.personId,
+      resourceId: watchedValues.resourceId,
+      quantity: watchedValues.quantity,
+      selectedResource,
+      selectedPerson
+    });
+
+    if (!watchedValues.personId || !watchedValues.resourceId || !watchedValues.quantity) {
+      console.log('🔍 Validación cancelada - faltan campos requeridos');
+      return;
+    }
 
     try {
-      await validateLoan({
+      // ✅ VALIDACIONES LOCALES PRIMERO
+      const localErrors: string[] = [];
+      const localWarnings: string[] = [];
+      let localResourceValid = true;
+      let localPersonValid = true;
+      let localQuantityValid = true;
+
+      // Validar estado del recurso
+      if (selectedResource) {
+        console.log('🔍 Validando estado del recurso:', selectedResource.stateId);
+        if (selectedResource.stateId && typeof selectedResource.stateId === 'object') {
+          const state = selectedResource.stateId as any;
+          console.log('🔍 Estado del recurso:', state);
+          if (state.name === 'damaged' || state.name === 'lost' || state.name === 'maintenance') {
+            const errorMsg = `El recurso no se puede prestar porque está en estado: ${state.description || state.name}`;
+            console.log('🔍 Error de estado:', errorMsg);
+            localErrors.push(errorMsg);
+            localResourceValid = false;
+          }
+        }
+
+        // Validar disponibilidad
+        if ((selectedResource.availableQuantity || 0) <= 0) {
+          localErrors.push('No hay unidades disponibles del recurso');
+          localResourceValid = false;
+        }
+
+        // Validar cantidad vs disponibilidad
+        if (watchedValues.quantity > (selectedResource.availableQuantity || 0)) {
+          localErrors.push(`Cantidad solicitada (${watchedValues.quantity}) excede la disponibilidad (${selectedResource.availableQuantity || 0})`);
+          localQuantityValid = false;
+        }
+      }
+
+      // Validar cantidad según tipo de persona
+      if (selectedPerson?.personType?.name === 'student' && watchedValues.quantity > 1) {
+        localErrors.push('Los estudiantes solo pueden prestar 1 unidad');
+        localQuantityValid = false;
+      }
+
+      console.log('🔍 Errores locales encontrados:', localErrors);
+
+      // Si hay errores locales, no hacer validación del backend
+      if (localErrors.length > 0) {
+        console.log('🔍 Estableciendo estado de validación con errores locales');
+        setValidationState({
+          personValid: localPersonValid,
+          resourceValid: localResourceValid,
+          quantityValid: localQuantityValid,
+          overallValid: false,
+          errors: localErrors,
+          warnings: localWarnings
+        });
+        return;
+      }
+
+      // ✅ VALIDACIÓN DEL BACKEND
+      const validationData: CreateLoanRequest = {
         personId: watchedValues.personId,
         resourceId: watchedValues.resourceId,
-        quantity: watchedValues.quantity || 1
+        quantity: watchedValues.quantity,
+        observations: watchedValues.observations
+      };
+
+      const result = await validateLoan(validationData);
+      
+      // Combinar validaciones locales y del backend
+      setValidationState({
+        personValid: localPersonValid && (result.personInfo?.canBorrow || false),
+        resourceValid: localResourceValid && (result.resourceInfo?.available || false),
+        quantityValid: localQuantityValid && (result.quantityInfo?.requested <= (result.quantityInfo?.maxAllowed || 0)),
+        overallValid: localErrors.length === 0 && result.isValid,
+        errors: [...localErrors, ...(result.errors || [])],
+        warnings: [...localWarnings, ...(result.warnings || [])]
       });
-    } catch (error) {
-      // Error manejado por el hook
+    } catch (error: any) {
+      console.error('🔍 Error en validación:', error);
+      setValidationState({
+        personValid: false,
+        resourceValid: false,
+        quantityValid: false,
+        overallValid: false,
+        errors: [error.message || 'Error de validación'],
+        warnings: []
+      });
     }
   };
 
-  // ===== MANEJADORES =====
+  // ===== MANEJADORES DE CAMBIO =====
 
-  // FIX: Tipos explícitos para los parámetros
-  const handleFilterChange = (key: string, value: string | number | boolean) => {
-    // Implementar filtrado si es necesario
-  };
-
-  const handlePersonChange = async (personId: string) => {
-    setValue('personId', personId);
+  const handlePersonSelect = async (person: PersonWithType) => {
+    setSelectedPerson(person);
+    setValue('personId', person._id);
+    setSearchPerson(person.fullName || '');
+    setShowPersonResults(false);
     
-    const person = people.find(p => p._id === personId);
-    setSelectedPerson(person || null);
-
-    if (personId) {
-      try {
-        const canBorrow = await canPersonBorrow(personId);
-        if (!canBorrow.canBorrow) {
-          toast({
-            title: 'Advertencia',
-            description: canBorrow.reason || 'Esta persona no puede tomar préstamos',
-            status: 'warning',
-            duration: 5000,
-            isClosable: true
-          });
-        }
-      } catch (error) {
-        // Error manejado por el hook
+    try {
+      const canBorrow = await canPersonBorrow(person._id);
+      if (!canBorrow.canBorrow) {
+        toast({
+          title: 'Persona no elegible',
+          description: canBorrow.reason || 'La persona no puede realizar préstamos',
+          status: 'warning',
+          duration: 5000,
+          isClosable: true
+        });
       }
+    } catch (error: any) {
+      console.error('Error al verificar elegibilidad:', error);
     }
   };
 
-  const handleResourceChange = async (resourceId: string) => {
-    setValue('resourceId', resourceId);
+  const handleResourceSelect = async (resource: ResourceWithStock) => {
+    console.log('🔍 handleResourceSelect llamado con:', resource);
+    setSelectedResource(resource);
+    setValue('resourceId', resource._id);
+    setSearchResource(resource.title || '');
+    setShowResourceResults(false);
     
-    const resource = resources.find(r => r._id === resourceId);
-    setSelectedResource(resource || null);
-
-    if (resourceId) {
-      try {
-        const availability = await checkResourceAvailability(resourceId);
-        if (!availability.canLoan) {
-          toast({
-            title: 'Advertencia',
-            description: 'Este recurso no tiene unidades disponibles',
-            status: 'warning',
-            duration: 5000,
-            isClosable: true
-          });
+    // ✅ FORZAR VALIDACIÓN INMEDIATA si ya tenemos persona y cantidad
+    if (watchedValues.personId && watchedValues.quantity) {
+      console.log('🔍 Forzando validación inmediata...');
+      setTimeout(() => validateCurrentLoan(), 100);
+    }
+    
+    try {
+      const availability = await checkResourceAvailability(resource._id);
+      
+      // Validar si el recurso se puede prestar
+      if (!availability.canLoan) {
+        let reason = 'Stock insuficiente';
+        
+        // Verificar si es por estado del recurso
+        if (resource.stateId && typeof resource.stateId === 'object') {
+          const state = resource.stateId as any;
+          if (state.name === 'damaged' || state.name === 'lost' || state.name === 'maintenance') {
+            reason = `Estado: ${state.description || state.name}`;
+          }
         }
-      } catch (error) {
-        // Error manejado por el hook
+        
+        // Verificar si es por disponibilidad
+        if (availability.availableQuantity <= 0) {
+          reason = 'No hay unidades disponibles';
+        }
+        
+        toast({
+          title: 'Recurso no disponible',
+          description: reason,
+          status: 'warning',
+          duration: 5000,
+          isClosable: true
+        });
+        
+        // ✅ NO limpiar la selección - permitir que se muestre el error en la validación
+        // setSelectedResource(null);
+        // setValue('resourceId', '');
+        // setSearchResource('');
+        // return;
       }
+      
+      // Ajustar cantidad máxima según disponibilidad
+      const maxQuantity = Math.min(
+        availability.availableQuantity,
+        selectedPerson?.personType?.name === 'student' ? 1 : 50
+      );
+      
+      if (watchedValues.quantity > maxQuantity) {
+        setValue('quantity', maxQuantity);
+      }
+    } catch (error: any) {
+      console.error('Error al verificar disponibilidad:', error);
+      toast({
+        title: 'Error al verificar recurso',
+        description: 'No se pudo verificar la disponibilidad del recurso',
+        status: 'error',
+        duration: 3000,
+        isClosable: true
+      });
     }
   };
+
+  const handleQuantityChange = (value: number) => {
+    setValue('quantity', value);
+    
+    // Validar cantidad según tipo de persona
+    if (selectedPerson?.personType?.name === 'student' && value > 1) {
+      toast({
+        title: 'Cantidad inválida',
+        description: 'Los estudiantes solo pueden prestar 1 unidad',
+        status: 'warning',
+        duration: 3000,
+        isClosable: true
+      });
+      setValue('quantity', 1);
+    }
+  };
+
+  // ===== ENVÍO DEL FORMULARIO =====
 
   const handleSubmit_Internal = async (data: CreateLoanFormData) => {
     try {
       const loan = await createLoan(data);
       
       toast({
-        title: 'Éxito',
-        description: 'Préstamo creado correctamente',
+        title: 'Préstamo creado',
+        description: 'El préstamo se ha creado exitosamente',
         status: 'success',
         duration: 3000,
         isClosable: true
       });
 
-      onSuccess?.(loan);
+      if (onSuccess) {
+        onSuccess(loan);
+      }
+      
       handleClose();
     } catch (error: any) {
       toast({
@@ -301,15 +507,88 @@ export const CreateLoanModal: React.FC<CreateLoanModalProps> = ({
     reset();
     setSelectedPerson(null);
     setSelectedResource(null);
+    setValidationState({
+      personValid: false,
+      resourceValid: false,
+      quantityValid: false,
+      overallValid: false,
+      errors: [],
+      warnings: []
+    });
+    setSearchPerson('');
+    setSearchResource('');
+    setShowPersonResults(false);
+    setShowResourceResults(false);
     onClose();
   };
+
+  // ===== FILTROS =====
+
+  const filteredResources = useMemo(() => {
+    if (!searchResource.trim()) return [];
+    
+    return resources.filter(resource => {
+      const searchTerm = searchResource.toLowerCase();
+      const title = resource.title?.toLowerCase() || '';
+      const authors = resource.authors?.some(author => 
+        author.name?.toLowerCase().includes(searchTerm)
+      ) || false;
+      const isbn = resource.isbn?.toLowerCase() || '';
+      
+      return title.includes(searchTerm) || authors || isbn.includes(searchTerm);
+    }).slice(0, 10); // Limitar a 10 resultados
+  }, [resources, searchResource]);
+
+  // ===== CÁLCULOS =====
+
+  const maxQuantityForPerson = useMemo(() => {
+    if (!selectedPerson?.personType) return 5;
+    
+    switch (selectedPerson.personType.name) {
+      case 'student':
+        return 1;
+      case 'teacher':
+        return selectedResource?.availableQuantity || 50;
+      default:
+        return 5;
+    }
+  }, [selectedPerson, selectedResource]);
+
+  const canSubmit = useMemo(() => {
+    // Validaciones básicas del formulario
+    const basicValid = formIsValid && !creating && !validating;
+    
+    // Validar que se haya seleccionado una persona
+    const personSelected = !!selectedPerson && !!watchedValues.personId;
+    
+    // Validar que se haya seleccionado un recurso
+    const resourceSelected = !!selectedResource && !!watchedValues.resourceId;
+    
+    // Validar que el recurso se pueda prestar
+    const resourceCanBeLoaned = !selectedResource || (() => {
+      if (selectedResource.stateId && typeof selectedResource.stateId === 'object') {
+        const state = selectedResource.stateId as any;
+        // No se puede prestar si está dañado, perdido o en mantenimiento
+        if (state.name === 'damaged' || state.name === 'lost' || state.name === 'maintenance') {
+          return false;
+        }
+      }
+      // Verificar que haya unidades disponibles
+      return (selectedResource.availableQuantity || 0) > 0;
+    })();
+    
+    // Validar cantidad
+    const quantityValid = watchedValues.quantity > 0 && watchedValues.quantity <= maxQuantityForPerson;
+    
+    return basicValid && personSelected && resourceSelected && resourceCanBeLoaned && quantityValid;
+  }, [formIsValid, creating, validating, selectedPerson, selectedResource, watchedValues, maxQuantityForPerson]);
 
   // ===== RENDER =====
 
   return (
-    <Modal isOpen={isOpen} onClose={handleClose} size="2xl">
+    <Modal isOpen={isOpen} onClose={handleClose} size="6xl" scrollBehavior="inside">
       <ModalOverlay />
-      <ModalContent>
+      <ModalContent maxH="90vh" h="auto">
         <ModalHeader>
           <HStack>
             <FiBook />
@@ -319,167 +598,475 @@ export const CreateLoanModal: React.FC<CreateLoanModalProps> = ({
         <ModalCloseButton />
 
         <form onSubmit={handleSubmit(handleSubmit_Internal)}>
-          <ModalBody>
-            <VStack spacing={6} align="stretch">
-              {/* Validación Global */}
-              {validationErrors.length > 0 && (
-                <Alert status="error">
+          <ModalBody maxH="calc(90vh - 140px)" overflowY="auto">
+            <VStack spacing={4} align="stretch">
+              {/* Estado de Validación Global */}
+              {validationState.errors.length > 0 && (
+                <Alert status="error" size="sm">
                   <AlertIcon />
                   <Box>
-                    {validationErrors.map((error, index) => (
-                      <Text key={index} fontSize="sm">{error}</Text>
+                    <Text fontWeight="bold" mb={1} fontSize="sm">Errores de validación:</Text>
+                    {validationState.errors.map((error, index) => (
+                      <Text key={index} fontSize="xs">• {error}</Text>
                     ))}
                   </Box>
                 </Alert>
               )}
 
-              {/* Selección de Persona */}
-              <FormControl isInvalid={!!errors.personId} isRequired>
-                <FormLabel>
-                  <HStack>
-                    <FiUser />
-                    <Text>Persona</Text>
-                  </HStack>
-                </FormLabel>
-                <Select
-                  placeholder="Seleccionar persona..."
-                  {...register('personId')}
-                  onChange={(e) => handlePersonChange(e.target.value)}
-                >
-                  {loadingPeople ? (
-                    <option disabled>Cargando personas...</option>
-                  ) : (
-                    people.map((person) => (
-                      <option key={person._id} value={person._id}>
-                        {person.fullName} 
-                        {person.documentNumber && ` - ${person.documentNumber}`}
-                        {person.personType && ` (${person.personType.name})`}
-                      </option>
-                    ))
-                  )}
-                </Select>
-                <FormErrorMessage>{errors.personId?.message}</FormErrorMessage>
-              </FormControl>
-
-              {/* Información de la Persona Seleccionada */}
-              {selectedPerson && (
-                <Box p={4} bg="blue.50" borderRadius="md" borderLeft="4px solid" borderColor="blue.500">
-                  <HStack justify="space-between">
-                    <VStack align="start" spacing={1}>
-                      <Text fontWeight="bold">{selectedPerson.fullName}</Text>
-                      {selectedPerson.documentNumber && (
-                        <Text fontSize="sm" color="gray.600">
-                          Documento: {selectedPerson.documentNumber}
-                        </Text>
-                      )}
-                    </VStack>
-                    {selectedPerson.personType && (
-                      <Badge colorScheme={selectedPerson.personType.name === 'student' ? 'blue' : 'purple'}>
-                        {selectedPerson.personType.name === 'student' ? 'Estudiante' : 'Profesor'}
-                      </Badge>
-                    )}
-                  </HStack>
-                </Box>
-              )}
-
-              {/* Selección de Recurso */}
-              <FormControl isInvalid={!!errors.resourceId} isRequired>
-                <FormLabel>
-                  <HStack>
-                    <FiBook />
-                    <Text>Recurso</Text>
-                  </HStack>
-                </FormLabel>
-                <Select
-                  placeholder="Seleccionar recurso..."
-                  {...register('resourceId')}
-                  onChange={(e) => handleResourceChange(e.target.value)}
-                >
-                  {loadingResources ? (
-                    <option disabled>Cargando recursos...</option>
-                  ) : (
-                    resources.map((resource) => (
-                      <option key={resource._id} value={resource._id}>
-                        {resource.title}
-                        {resource.author && ` - ${resource.author}`}
-                        {` (Disponibles: ${resource.availableQuantity})`}
-                      </option>
-                    ))
-                  )}
-                </Select>
-                <FormErrorMessage>{errors.resourceId?.message}</FormErrorMessage>
-              </FormControl>
-
-              {/* Información del Recurso Seleccionado */}
-              {selectedResource && (
-                <Box p={4} bg="green.50" borderRadius="md" borderLeft="4px solid" borderColor="green.500">
-                  <VStack align="start" spacing={2}>
-                    <Text fontWeight="bold">{selectedResource.title}</Text>
-                    {selectedResource.author && (
-                      <Text fontSize="sm" color="gray.600">
-                        Autor: {selectedResource.author}
-                      </Text>
-                    )}
-                    {selectedResource.isbn && (
-                      <Text fontSize="sm" color="gray.600">
-                        ISBN: {selectedResource.isbn}
-                      </Text>
-                    )}
-                    <HStack>
-                      <Badge colorScheme="green">
-                        Disponibles: {selectedResource.availableQuantity}
-                      </Badge>
-                      <Badge colorScheme="blue">
-                        Total: {selectedResource.totalQuantity}
-                      </Badge>
-                    </HStack>
-                  </VStack>
-                </Box>
-              )}
-
-              {/* Cantidad */}
-              <FormControl isInvalid={!!errors.quantity} isRequired>
-                <FormLabel>Cantidad</FormLabel>
-                <NumberInput min={1} max={selectedResource?.availableQuantity || 50}>
-                  <NumberInputField {...register('quantity', { valueAsNumber: true })} />
-                  <NumberInputStepper>
-                    <NumberIncrementStepper />
-                    <NumberDecrementStepper />
-                  </NumberInputStepper>
-                </NumberInput>
-                <FormErrorMessage>{errors.quantity?.message}</FormErrorMessage>
-              </FormControl>
-
-              {/* Observaciones */}
-              <FormControl isInvalid={!!errors.observations}>
-                <FormLabel>
-                  <HStack>
-                    <FiFileText />
-                    <Text>Observaciones (Opcional)</Text>
-                  </HStack>
-                </FormLabel>
-                <Textarea
-                  {...register('observations')}
-                  placeholder="Observaciones adicionales del préstamo..."
-                  rows={3}
-                />
-                <FormErrorMessage>{errors.observations?.message}</FormErrorMessage>
-              </FormControl>
-
-              {/* Estado de Validación */}
-              {validating && (
-                <HStack justify="center" p={4}>
-                  <Spinner size="sm" />
-                  <Text fontSize="sm" color="gray.600">Validando préstamo...</Text>
-                </HStack>
-              )}
-
-              {isValid && !validating && watchedValues.personId && watchedValues.resourceId && (
-                <Alert status="success">
+              {validationState.warnings.length > 0 && (
+                <Alert status="warning" size="sm">
                   <AlertIcon />
-                  <Text fontSize="sm">El préstamo es válido y puede ser creado</Text>
+                  <Box>
+                    <Text fontWeight="bold" mb={1} fontSize="sm">Advertencias:</Text>
+                    {validationState.warnings.map((warning, index) => (
+                      <Text key={index} fontSize="xs">• {warning}</Text>
+                    ))}
+                  </Box>
                 </Alert>
               )}
+
+              <Grid templateColumns="repeat(2, 1fr)" gap={4}>
+                {/* COLUMNA IZQUIERDA - SELECCIÓN */}
+                <GridItem>
+                  <VStack spacing={4} align="stretch">
+                    {/* Búsqueda de Persona */}
+                    <FormControl isInvalid={!!errors.personId} isRequired>
+                      <FormLabel fontSize="sm">
+                        <HStack>
+                          <FiUser size={16} />
+                          <Text>Buscar Persona</Text>
+                        </HStack>
+                      </FormLabel>
+                      
+                      <Box position="relative" className="search-container">
+                        <Input
+                          size="sm"
+                          placeholder="Buscar por nombre, documento o tipo de persona..."
+                          value={searchPerson}
+                          onChange={(e) => {
+                            setSearchPerson(e.target.value);
+                            setShowPersonResults(true);
+                            if (!e.target.value.trim()) {
+                              setSelectedPerson(null);
+                              setValue('personId', '');
+                              setShowPersonResults(false);
+                            }
+                          }}
+                          onFocus={() => setShowPersonResults(true)}
+                        />
+                        
+                        {showPersonResults && searchPerson.trim() && (
+                          <Box
+                            position="absolute"
+                            top="100%"
+                            left={0}
+                            right={0}
+                            bg="white"
+                            border="1px solid"
+                            borderColor="gray.200"
+                            borderRadius="md"
+                            boxShadow="lg"
+                            zIndex={10}
+                            maxH="150px"
+                            overflowY="auto"
+                          >
+                            {loadingPeople ? (
+                              <Box p={2} textAlign="center">
+                                <Spinner size="sm" />
+                                <Text fontSize="xs" ml={2}>Buscando...</Text>
+                              </Box>
+                            ) : people.length === 0 ? (
+                              <Box p={2} textAlign="center">
+                                <Text fontSize="xs" color="gray.500">No se encontraron personas</Text>
+                              </Box>
+                            ) : (
+                              <List spacing={0}>
+                                {people.map((person) => (
+                                  <ListItem
+                                    key={person._id}
+                                    p={2}
+                                    cursor="pointer"
+                                    _hover={{ bg: "gray.50" }}
+                                    onClick={() => handlePersonSelect(person)}
+                                  >
+                                    <VStack align="start" spacing={1}>
+                                      <Text fontWeight="medium" fontSize="sm">{person.fullName}</Text>
+                                      {person.documentNumber && (
+                                        <Text fontSize="xs" color="gray.600">
+                                          Documento: {person.documentNumber}
+                                        </Text>
+                                      )}
+                                      {person.personType && (
+                                        <Badge size="sm" colorScheme={person.personType.name === 'student' ? 'blue' : 'purple'}>
+                                          {person.personType.name === 'student' ? 'Estudiante' : 'Profesor'}
+                                        </Badge>
+                                      )}
+                                    </VStack>
+                                  </ListItem>
+                                ))}
+                              </List>
+                            )}
+                          </Box>
+                        )}
+                      </Box>
+                      
+                      <FormErrorMessage fontSize="xs">{errors.personId?.message}</FormErrorMessage>
+                    </FormControl>
+
+                    {/* Búsqueda de Recurso */}
+                    <FormControl isInvalid={!!errors.resourceId} isRequired>
+                      <FormLabel fontSize="sm">
+                        <HStack>
+                          <FiBook size={16} />
+                          <Text>Buscar Recurso</Text>
+                        </HStack>
+                      </FormLabel>
+                      
+                      <Box position="relative" className="search-container">
+                        <Input
+                          size="sm"
+                          placeholder="Buscar por título, autor o ISBN..."
+                          value={searchResource}
+                          onChange={(e) => {
+                            setSearchResource(e.target.value);
+                            setShowResourceResults(true);
+                            if (!e.target.value.trim()) {
+                              setSelectedResource(null);
+                              setValue('resourceId', '');
+                              setShowResourceResults(false);
+                            }
+                          }}
+                          onFocus={() => setShowResourceResults(true)}
+                        />
+                        
+                        {showResourceResults && searchResource.trim() && (
+                          <Box
+                            position="absolute"
+                            top="100%"
+                            left={0}
+                            right={0}
+                            bg="white"
+                            border="1px solid"
+                            borderColor="gray.200"
+                            borderRadius="md"
+                            boxShadow="lg"
+                            zIndex={10}
+                            maxH="150px"
+                            overflowY="auto"
+                          >
+                            {loadingResources ? (
+                              <Box p={2} textAlign="center">
+                                <Spinner size="sm" />
+                                <Text fontSize="xs" ml={2}>Buscando...</Text>
+                              </Box>
+                            ) : filteredResources.length === 0 ? (
+                              <Box p={2} textAlign="center">
+                                <Text fontSize="xs" color="gray.500">No se encontraron recursos</Text>
+                              </Box>
+                            ) : (
+                              <List spacing={0}>
+                                {filteredResources.map((resource) => (
+                                  <ListItem
+                                    key={resource._id}
+                                    p={2}
+                                    cursor="pointer"
+                                    _hover={{ bg: "gray.50" }}
+                                    onClick={() => handleResourceSelect(resource)}
+                                  >
+                                    <VStack align="start" spacing={1}>
+                                      <Text fontWeight="medium" fontSize="sm">{resource.title}</Text>
+                                      {resource.authors && resource.authors.length > 0 && (
+                                        <Text fontSize="xs" color="gray.600">
+                                          Autor: {resource.authors[0].name}
+                                        </Text>
+                                      )}
+                                      <HStack spacing={2}>
+                                        <Badge size="sm" colorScheme="green">
+                                          Disponibles: {resource.availableQuantity || 0}
+                                        </Badge>
+                                        {resource.isbn && (
+                                          <Badge size="sm" variant="outline">
+                                            ISBN: {resource.isbn}
+                                          </Badge>
+                                        )}
+                                      </HStack>
+                                    </VStack>
+                                  </ListItem>
+                                ))}
+                              </List>
+                            )}
+                          </Box>
+                        )}
+                      </Box>
+                      
+                      <FormErrorMessage fontSize="xs">{errors.resourceId?.message}</FormErrorMessage>
+                    </FormControl>
+
+                    {/* Cantidad */}
+                    <FormControl isInvalid={!!errors.quantity} isRequired>
+                      <FormLabel fontSize="sm">Cantidad</FormLabel>
+                      <Controller
+                        name="quantity"
+                        control={control}
+                        render={({ field }) => (
+                          <NumberInput
+                            size="sm"
+                            min={1}
+                            max={maxQuantityForPerson}
+                            value={field.value}
+                            onChange={(value) => {
+                              field.onChange(Number(value));
+                              handleQuantityChange(Number(value));
+                            }}
+                          >
+                            <NumberInputField />
+                            <NumberInputStepper>
+                              <NumberIncrementStepper />
+                              <NumberDecrementStepper />
+                            </NumberInputStepper>
+                          </NumberInput>
+                        )}
+                      />
+                      <FormErrorMessage fontSize="xs">{errors.quantity?.message}</FormErrorMessage>
+                    </FormControl>
+
+                    {/* Observaciones */}
+                    <FormControl isInvalid={!!errors.observations}>
+                      <FormLabel fontSize="sm">
+                        <HStack>
+                          <FiFileText size={16} />
+                          <Text>Observaciones (Opcional)</Text>
+                        </HStack>
+                      </FormLabel>
+                      <Textarea
+                        size="sm"
+                        {...register('observations')}
+                        placeholder="Observaciones adicionales del préstamo..."
+                        rows={2}
+                      />
+                      <FormErrorMessage fontSize="xs">{errors.observations?.message}</FormErrorMessage>
+                    </FormControl>
+                  </VStack>
+                </GridItem>
+
+                {/* COLUMNA DERECHA - INFORMACIÓN Y VALIDACIÓN */}
+                <GridItem>
+                  <VStack spacing={4} align="stretch">
+                    {/* Información de la Persona Seleccionada */}
+                    {selectedPerson && (
+                      <Box p={3} bg="blue.50" borderRadius="md" borderLeft="4px solid" borderColor="blue.500">
+                        <VStack align="start" spacing={2}>
+                          <HStack justify="space-between" w="full">
+                            <Text fontWeight="bold" fontSize="md">{selectedPerson.fullName}</Text>
+                            {selectedPerson.personType && (
+                              <Badge size="sm" colorScheme={selectedPerson.personType.name === 'student' ? 'blue' : 'purple'}>
+                                {selectedPerson.personType.name === 'student' ? 'Estudiante' : 'Profesor'}
+                              </Badge>
+                            )}
+                          </HStack>
+                          
+                          {selectedPerson.documentNumber && (
+                            <Text fontSize="xs" color="gray.600">
+                              Documento: {selectedPerson.documentNumber}
+                            </Text>
+                          )}
+                          
+                          {selectedPerson.grade && (
+                            <Text fontSize="xs" color="gray.600">
+                              Grado: {selectedPerson.grade}
+                            </Text>
+                          )}
+
+                          <HStack spacing={4}>
+                            <Stat size="sm">
+                              <StatLabel fontSize="xs">Préstamos máx.</StatLabel>
+                              <StatNumber fontSize="sm">{selectedPerson.personType?.name === 'student' ? 1 : 'Sin límite'}</StatNumber>
+                            </Stat>
+                          </HStack>
+                        </VStack>
+                      </Box>
+                    )}
+
+                    {/* Información del Recurso Seleccionado */}
+                    {selectedResource && (
+                      <Box 
+                        p={3} 
+                        bg={(() => {
+                          // Determinar color según estado del recurso
+                          if (selectedResource.stateId && typeof selectedResource.stateId === 'object') {
+                            const state = selectedResource.stateId as any;
+                            if (state.name === 'damaged' || state.name === 'lost') {
+                              return 'red.50';
+                            } else if (state.name === 'maintenance') {
+                              return 'orange.50';
+                            }
+                          }
+                          return 'green.50';
+                        })()}
+                        borderRadius="md" 
+                        borderLeft="4px solid" 
+                        borderColor={(() => {
+                          // Determinar color del borde según estado
+                          if (selectedResource.stateId && typeof selectedResource.stateId === 'object') {
+                            const state = selectedResource.stateId as any;
+                            if (state.name === 'damaged' || state.name === 'lost') {
+                              return 'red.500';
+                            } else if (state.name === 'maintenance') {
+                              return 'orange.500';
+                            }
+                          }
+                          return 'green.500';
+                        })()}
+                      >
+                        <VStack align="start" spacing={2}>
+                          <HStack justify="space-between" w="full">
+                            <Text fontWeight="bold" fontSize="md">{selectedResource.title}</Text>
+                            {selectedResource.stateId && typeof selectedResource.stateId === 'object' && (
+                              <Badge 
+                                size="sm" 
+                                colorScheme={(() => {
+                                  const state = selectedResource.stateId as any;
+                                  if (state.name === 'damaged' || state.name === 'lost') {
+                                    return 'red';
+                                  } else if (state.name === 'maintenance') {
+                                    return 'orange';
+                                  }
+                                  return 'green';
+                                })()}
+                              >
+                                {(() => {
+                                  const state = selectedResource.stateId as any;
+                                  return state.description || state.name;
+                                })()}
+                              </Badge>
+                            )}
+                          </HStack>
+                          
+                          {selectedResource.authors && selectedResource.authors.length > 0 && (
+                            <Text fontSize="xs" color="gray.600">
+                              Autor: {selectedResource.authors[0].name}
+                            </Text>
+                          )}
+                          
+                          {selectedResource.isbn && (
+                            <Text fontSize="xs" color="gray.600">
+                              ISBN: {selectedResource.isbn}
+                            </Text>
+                          )}
+
+                          <Grid templateColumns="repeat(2, 1fr)" gap={3} w="full">
+                            <Stat size="sm">
+                              <StatLabel fontSize="xs">Disponibles</StatLabel>
+                              <StatNumber fontSize="sm" color="green.500">{selectedResource.availableQuantity || 0}</StatNumber>
+                            </Stat>
+                            <Stat size="sm">
+                              <StatLabel fontSize="xs">Total</StatLabel>
+                              <StatNumber fontSize="sm">{selectedResource.totalQuantity}</StatNumber>
+                            </Stat>
+                          </Grid>
+
+                          <Progress 
+                            value={((selectedResource.availableQuantity || 0) / selectedResource.totalQuantity) * 100} 
+                            colorScheme="green" 
+                            size="sm"
+                          />
+                          
+                          {/* Advertencia si el recurso no se puede prestar */}
+                          {selectedResource.stateId && typeof selectedResource.stateId === 'object' && (() => {
+                            const state = selectedResource.stateId as any;
+                            if (state.name === 'damaged' || state.name === 'lost' || state.name === 'maintenance') {
+                              return (
+                                <Alert status="warning" size="sm">
+                                  <AlertIcon />
+                                  <Text fontSize="xs">
+                                    Este recurso no se puede prestar debido a su estado: {state.description || state.name}
+                                  </Text>
+                                </Alert>
+                              );
+                            }
+                            return null;
+                          })()}
+                        </VStack>
+                      </Box>
+                    )}
+
+                    {/* Estado de Validación */}
+                    {validating && (
+                      <HStack justify="center" p={3}>
+                        <Spinner size="sm" />
+                        <Text fontSize="xs" color="gray.600">Validando préstamo...</Text>
+                      </HStack>
+                    )}
+
+                    {!validating && validationState.overallValid && (
+                      <Alert status="success" size="sm">
+                        <AlertIcon />
+                        <Box>
+                          <Text fontWeight="bold" fontSize="sm">✅ Préstamo válido</Text>
+                          <Text fontSize="xs">El préstamo cumple con todas las validaciones y se puede procesar</Text>
+                        </Box>
+                      </Alert>
+                    )}
+
+                    {!validating && !validationState.overallValid && validationState.errors.length > 0 && (
+                      <Alert status="error" size="sm">
+                        <AlertIcon />
+                        <Box>
+                          <Text fontWeight="bold" fontSize="sm">❌ Préstamo inválido</Text>
+                          <VStack align="start" spacing={1} mt={2}>
+                            {validationState.errors.map((error, index) => (
+                              <Text key={index} fontSize="xs">• {error}</Text>
+                            ))}
+                          </VStack>
+                        </Box>
+                      </Alert>
+                    )}
+
+                    {!validating && validationState.warnings.length > 0 && (
+                      <Alert status="warning" size="sm">
+                        <AlertIcon />
+                        <Box>
+                          <Text fontWeight="bold" fontSize="sm">⚠️ Advertencias</Text>
+                          <VStack align="start" spacing={1} mt={2}>
+                            {validationState.warnings.map((warning, index) => (
+                              <Text key={index} fontSize="xs">• {warning}</Text>
+                            ))}
+                          </VStack>
+                        </Box>
+                      </Alert>
+                    )}
+
+                    {!validating && !validationState.overallValid && validationState.errors.length === 0 && (
+                      <Alert status="info" size="sm">
+                        <AlertIcon />
+                        <Box>
+                          <Text fontWeight="bold" fontSize="sm">ℹ️ Información</Text>
+                          <Text fontSize="xs">Complete todos los campos para validar el préstamo</Text>
+                        </Box>
+                      </Alert>
+                    )}
+
+                    {/* Información de Fechas */}
+                    <Box p={3} bg="gray.50" borderRadius="md">
+                      <VStack align="start" spacing={2}>
+                        <Text fontWeight="bold" fontSize="xs">Información del Préstamo</Text>
+                        <HStack spacing={4}>
+                          <Stat size="sm">
+                            <StatLabel fontSize="xs">Fecha de préstamo</StatLabel>
+                            <StatNumber fontSize="xs">{new Date().toLocaleDateString()}</StatNumber>
+                          </Stat>
+                          <Stat size="sm">
+                            <StatLabel fontSize="xs">Fecha de vencimiento</StatLabel>
+                            <StatNumber fontSize="xs">
+                              {new Date(Date.now() + 15 * 24 * 60 * 60 * 1000).toLocaleDateString()}
+                            </StatNumber>
+                          </Stat>
+                        </HStack>
+                      </VStack>
+                    </Box>
+                  </VStack>
+                </GridItem>
+              </Grid>
             </VStack>
           </ModalBody>
 
@@ -495,7 +1082,7 @@ export const CreateLoanModal: React.FC<CreateLoanModalProps> = ({
                 colorScheme="blue"
                 leftIcon={creating ? <Spinner size="sm" /> : <FiSave />}
                 isLoading={creating}
-                isDisabled={!isValid || creating || validating}
+                isDisabled={!canSubmit}
               >
                 {creating ? 'Creando...' : 'Crear Préstamo'}
               </Button>
