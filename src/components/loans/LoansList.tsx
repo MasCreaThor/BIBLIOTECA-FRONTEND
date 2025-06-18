@@ -50,6 +50,7 @@ import {
 import { useLoans } from '@/hooks/useLoans';
 import LoanRow from './LoanRow';
 import ReturnModal from './ReturnModal';
+import LoanDetailsModal from './LoanDetailsModal';
 import type { LoanWithDetails, LoanSearchFilters } from '@/types/loan.types';
 
 // ===== INTERFACES =====
@@ -62,35 +63,10 @@ interface LocalFiltersState {
   dateTo: string;
 }
 
-interface LoanDetailsModalProps {
-  loan: LoanWithDetails | null;
-  isOpen: boolean;
-  onClose: () => void;
-}
-
-// ===== COMPONENTE DE MODAL DE DETALLES =====
-
-const LoanDetailsModal: React.FC<LoanDetailsModalProps> = ({ loan, isOpen, onClose }) => {
-  // Este componente se puede expandir para mostrar todos los detalles del préstamo
-  // Por ahora, redirigiremos al componente de vista detallada
-  
-  if (!loan) return null;
-
-  return (
-    <Box>
-      {/* Aquí iría el modal de detalles completos */}
-      {/* Por simplicidad, solo cerramos el modal por ahora */}
-      {/* Aquí iría el modal de detalles completos */}
-      {/* Por simplicidad, no se muestra nada por ahora */}
-    </Box>
-  );
-};
-
 // ===== COMPONENTE PRINCIPAL =====
 
 const LoansList: React.FC = () => {
   // Estados
-  const [selectedLoans, setSelectedLoans] = useState<string[]>([]);
   const [selectedLoan, setSelectedLoan] = useState<LoanWithDetails | null>(null);
   const [localFilters, setLocalFilters] = useState<LocalFiltersState>({
     search: '',
@@ -174,24 +150,6 @@ const LoansList: React.FC = () => {
     updateFilters({});
   };
 
-  const handleSelectLoan = (loanId: string) => {
-    setSelectedLoans(prev => 
-      prev.includes(loanId) 
-        ? prev.filter(id => id !== loanId)
-        : [...prev, loanId]
-    );
-  };
-
-  const handleSelectAll = () => {
-    if (!loans || loans.length === 0) return;
-    
-    if (selectedLoans.length === loans.length) {
-      setSelectedLoans([]);
-    } else {
-      setSelectedLoans(loans.map((loan: LoanWithDetails) => loan._id));
-    }
-  };
-
   const handleViewDetails = (loan: LoanWithDetails) => {
     setSelectedLoan(loan);
     openDetailsModal();
@@ -208,15 +166,16 @@ const LoansList: React.FC = () => {
     refetch(); // Actualizar la lista
   };
 
-  const handleExportSelected = () => {
-    if (selectedLoans.length === 0) {
-      alert('Selecciona al menos un préstamo para exportar');
-      return;
+  const handleRenewLoan = async (loan: LoanWithDetails) => {
+    try {
+      // Aquí se implementaría la lógica de renovación
+      // Por ahora, solo mostraremos un mensaje
+      console.log('Renovando préstamo:', loan._id);
+      alert('Función de renovación en desarrollo');
+      refetch(); // Actualizar la lista
+    } catch (error) {
+      console.error('Error al renovar préstamo:', error);
     }
-    
-    // Implementar exportación
-    console.log('Exportando préstamos:', selectedLoans);
-    alert('Función de exportación en desarrollo');
   };
 
   // Calcular si hay filtros activos
@@ -350,19 +309,6 @@ const LoansList: React.FC = () => {
 
           {/* Acciones */}
           <HStack spacing={3}>
-            {selectedLoans.length > 0 && (
-              <Button
-                size="sm"
-                leftIcon={<FiDownload />}
-                colorScheme="green"
-                variant="outline"
-                onClick={handleExportSelected}
-                borderRadius="md"
-              >
-                Exportar ({selectedLoans.length})
-              </Button>
-            )}
-
             <Button
               size="sm"
               leftIcon={<FiFilter />}
@@ -519,14 +465,6 @@ const LoansList: React.FC = () => {
             <Table variant="unstyled" size="md" sx={{ tableLayout: 'fixed' }}>
               <Thead>
                 <Tr bg={useColorModeValue('gray.50', 'gray.700')} borderBottom="2px" borderColor={borderColor}>
-                  <Th px={4} py={4} w="50px" textAlign="center">
-                    <Checkbox
-                      isChecked={loans && selectedLoans.length === loans.length && loans.length > 0}
-                      isIndeterminate={selectedLoans.length > 0 && loans && selectedLoans.length < loans.length}
-                      onChange={handleSelectAll}
-                      colorScheme="blue"
-                    />
-                  </Th>
                   <Th px={4} py={4} fontSize="sm" fontWeight="bold" color="gray.700" textTransform="uppercase" letterSpacing="wide" w="200px" textAlign="left">
                     Persona
                   </Th>
@@ -552,33 +490,24 @@ const LoansList: React.FC = () => {
               </Thead>
               <Tbody>
                 {loans.map((loan: LoanWithDetails, index: number) => (
-                  <React.Fragment key={loan._id}>
-                    <Tr 
-                      _hover={{ 
-                        bg: useColorModeValue('blue.50', 'blue.900'),
-                        transform: 'translateY(-1px)',
-                        boxShadow: 'sm'
-                      }}
-                      transition="all 0.2s"
-                      borderBottom="1px"
-                      borderColor={useColorModeValue('gray.100', 'gray.600')}
-                      bg={index % 2 === 0 ? useColorModeValue('white', 'gray.800') : useColorModeValue('gray.25', 'gray.750')}
-                    >
-                      <Td px={4} py={4} w="50px" textAlign="center">
-                        <Checkbox
-                          isChecked={selectedLoans.includes(loan._id)}
-                          onChange={() => handleSelectLoan(loan._id)}
-                          colorScheme="blue"
-                        />
-                      </Td>
-                      <LoanRow
-                        loan={loan}
-                        onUpdate={refetch}
-                        onViewDetails={handleViewDetails}
-                        onReturnLoan={handleReturnLoan}
-                      />
-                    </Tr>
-                  </React.Fragment>
+                  <Tr 
+                    _hover={{ 
+                      bg: useColorModeValue('blue.50', 'blue.900'),
+                      transform: 'translateY(-1px)',
+                      boxShadow: 'sm'
+                    }}
+                    transition="all 0.2s"
+                    borderBottom="1px"
+                    borderColor={useColorModeValue('gray.100', 'gray.600')}
+                    bg={index % 2 === 0 ? useColorModeValue('white', 'gray.800') : useColorModeValue('gray.25', 'gray.750')}
+                  >
+                    <LoanRow
+                      loan={loan}
+                      onUpdate={refetch}
+                      onViewDetails={handleViewDetails}
+                      onReturnLoan={handleReturnLoan}
+                    />
+                  </Tr>
                 ))}
               </Tbody>
             </Table>
@@ -698,6 +627,7 @@ const LoansList: React.FC = () => {
         loan={selectedLoan}
         isOpen={showDetailsModal}
         onClose={closeDetailsModal}
+        onReturnLoan={handleReturnLoan}
       />
     </VStack>
   );

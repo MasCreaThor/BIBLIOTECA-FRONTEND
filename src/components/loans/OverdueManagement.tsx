@@ -135,7 +135,6 @@ export const OverdueManagement: React.FC = () => {
   });
 
   const [selectedLoans, setSelectedLoans] = useState<string[]>([]);
-  const [processingReminders, setProcessingReminders] = useState(false);
 
   // Hooks
   const {
@@ -219,56 +218,6 @@ export const OverdueManagement: React.FC = () => {
     } else {
       setSelectedLoans(overdueLoans.map((loan: LoanWithDetails) => loan._id));
     }
-  };
-
-  const handleSendReminders = async () => {
-    if (selectedLoans.length === 0) {
-      toast({
-        title: 'Advertencia',
-        description: 'Selecciona al menos un préstamo para enviar recordatorios',
-        status: 'warning',
-        duration: 3000,
-        isClosable: true
-      });
-      return;
-    }
-
-    setProcessingReminders(true);
-    try {
-      // Aquí implementarías la llamada al servicio de recordatorios
-      // await LoanService.sendOverdueReminders(selectedLoans);
-      
-      toast({
-        title: 'Éxito',
-        description: `Recordatorios enviados para ${selectedLoans.length} préstamos`,
-        status: 'success',
-        duration: 3000,
-        isClosable: true
-      });
-      
-      setSelectedLoans([]);
-    } catch (error: any) {
-      toast({
-        title: 'Error',
-        description: error.message || 'Error al enviar recordatorios',
-        status: 'error',
-        duration: 5000,
-        isClosable: true
-      });
-    } finally {
-      setProcessingReminders(false);
-    }
-  };
-
-  const handleExportReport = () => {
-    // Implementar exportación de reporte
-    toast({
-      title: 'Información',
-      description: 'Función de exportación en desarrollo',
-      status: 'info',
-      duration: 3000,
-      isClosable: true
-    });
   };
 
   // ===== CÁLCULOS =====
@@ -413,27 +362,6 @@ export const OverdueManagement: React.FC = () => {
           <Text fontSize="sm" color="gray.600">
             {selectedLoans.length} de {overdueLoans.length} seleccionados
           </Text>
-        </HStack>
-
-        <HStack>
-          <Button
-            leftIcon={<FiMail />}
-            colorScheme="orange"
-            size="sm"
-            onClick={handleSendReminders}
-            isLoading={processingReminders}
-            isDisabled={selectedLoans.length === 0}
-          >
-            Enviar Recordatorios
-          </Button>
-          <Button
-            leftIcon={<FiDownload />}
-            variant="outline"
-            size="sm"
-            onClick={handleExportReport}
-          >
-            Exportar Reporte
-          </Button>
         </HStack>
       </HStack>
 

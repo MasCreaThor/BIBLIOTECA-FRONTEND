@@ -61,6 +61,7 @@ import { es } from 'date-fns/locale';
 // Importar hooks y tipos
 import { useLoans, useReturn } from '@/hooks/useLoans';
 import type { LoanWithDetails, ReturnLoanRequest, LoanSearchFilters } from '@/types/loan.types';
+import LoanDetailsModal from './LoanDetailsModal';
 
 // ===== INTERFACES =====
 
@@ -245,6 +246,13 @@ export const ReturnsManagement: React.FC = () => {
     refetch
   } = useLoans({ status: 'active' }); // Solo préstamos activos para devoluciones
 
+  // Hooks para modales
+  const { 
+    isOpen: showDetailsModal, 
+    onOpen: openDetailsModal, 
+    onClose: closeDetailsModal 
+  } = useDisclosure();
+
   // ===== EFECTOS =====
 
   useEffect(() => {
@@ -301,19 +309,14 @@ export const ReturnsManagement: React.FC = () => {
     onOpen();
   };
 
+  const handleViewDetails = (loan: LoanWithDetails) => {
+    setSelectedLoan(loan);
+    openDetailsModal();
+  };
+
   const handleReturnSuccess = () => {
     setSelectedLoan(null);
     refetch();
-  };
-
-  const handleExportReport = () => {
-    toast({
-      title: 'Información',
-      description: 'Función de exportación en desarrollo',
-      status: 'info',
-      duration: 3000,
-      isClosable: true
-    });
   };
 
   // ===== CÁLCULOS =====
@@ -453,15 +456,6 @@ export const ReturnsManagement: React.FC = () => {
         >
           Actualizar
         </Button>
-
-        <Button
-          leftIcon={<FiDownload />}
-          variant="outline"
-          size="sm"
-          onClick={handleExportReport}
-        >
-          Exportar Reporte
-        </Button>
       </HStack>
 
       {/* Tabla de Préstamos Activos */}
@@ -580,7 +574,7 @@ export const ReturnsManagement: React.FC = () => {
                         >
                           Devolver
                         </Button>
-                        <Button size="xs" variant="outline" leftIcon={<FiEye />}>
+                        <Button size="xs" variant="outline" leftIcon={<FiEye />} onClick={() => handleViewDetails(loan)}>
                           Ver
                         </Button>
                       </HStack>
@@ -622,6 +616,14 @@ export const ReturnsManagement: React.FC = () => {
         isOpen={isOpen}
         onClose={onClose}
         onSuccess={handleReturnSuccess}
+      />
+
+      {/* Modal de Detalles */}
+      <LoanDetailsModal
+        loan={selectedLoan}
+        isOpen={showDetailsModal}
+        onClose={closeDetailsModal}
+        onReturnLoan={handleProcessReturn}
       />
     </VStack>
   );

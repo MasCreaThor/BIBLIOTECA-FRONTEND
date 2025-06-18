@@ -65,6 +65,11 @@ export interface LoanWithDetails extends Loan {
       description: string;
       color: string;
     };
+    location?: {
+      _id: string;
+      name: string;
+      description: string;
+    };
   };
   status?: {
     _id: string;
