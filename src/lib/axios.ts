@@ -2,7 +2,6 @@
 import axios, { AxiosError, AxiosResponse, InternalAxiosRequestConfig } from 'axios';
 import Cookies from 'js-cookie';
 import toast from 'react-hot-toast';
-import { ApiError } from '@/types/api.types';
 
 // Configuración de variables de entorno con valores por defecto
 const API_CONFIG = {
@@ -104,7 +103,7 @@ axiosInstance.interceptors.response.use(
     
     return response;
   },
-  (error: AxiosError<ApiError>) => {
+  (error: AxiosError) => {
     const { config, response } = error;
     const requestIdHeader = config?.headers?.['X-Request-ID'] as string;
     const requestId = requestIdHeader ? parseInt(requestIdHeader) : 0;
@@ -118,7 +117,7 @@ axiosInstance.interceptors.response.use(
         url: config ? `${config.baseURL}${config.url}` : 'Unknown URL',
         status: response?.status,
         statusText: response?.statusText,
-        message: response?.data?.message || error.message,
+        message: (response?.data as any)?.message || error.message,
         code: error.code,
         isTimeout: error.code === 'ECONNABORTED',
         isNetworkError: !response
@@ -133,7 +132,7 @@ axiosInstance.interceptors.response.use(
     // Manejo de errores específicos con mensajes más informativos
     if (response) {
       const { status } = response;
-      const errorData = response.data;
+      const errorData: any = response.data;
       const message = Array.isArray(errorData?.message) 
         ? errorData.message.join(', ') 
         : errorData?.message || 'Error desconocido';

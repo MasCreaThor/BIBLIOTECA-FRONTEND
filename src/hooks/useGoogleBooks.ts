@@ -1,6 +1,6 @@
 // src/hooks/useGoogleBooks.ts
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { ResourceService } from '@/services/resource.service';
+import { GoogleBooksService } from '@/services/google-books.service';
 import type {
   GoogleBooksVolume,
   CreateResourceFromGoogleBooksRequest,
@@ -15,7 +15,7 @@ import toast from 'react-hot-toast';
 export function useGoogleBooksStatus() {
   return useQuery({
     queryKey: RESOURCE_QUERY_KEYS.googleBooksStatus,
-    queryFn: ResourceService.checkGoogleBooksStatus,
+    queryFn: GoogleBooksService.checkGoogleBooksStatus,
     staleTime: 10 * 60 * 1000, // 10 minutos
     gcTime: 30 * 60 * 1000, // 30 minutos
     refetchInterval: 15 * 60 * 1000, // Verificar cada 15 minutos
@@ -33,7 +33,7 @@ export function useGoogleBooksSearch(
 ) {
   return useQuery({
     queryKey: RESOURCE_QUERY_KEYS.googleBooksSearch(query),
-    queryFn: () => ResourceService.searchGoogleBooks(query, maxResults),
+    queryFn: () => GoogleBooksService.searchGoogleBooks(query, maxResults),
     enabled: enabled && query.length >= 3,
     staleTime: 10 * 60 * 1000, // 10 minutos
     gcTime: 30 * 60 * 1000, // 30 minutos
@@ -49,7 +49,7 @@ export function useCreateResourceFromGoogleBooks() {
 
   return useMutation({
     mutationFn: (data: CreateResourceFromGoogleBooksRequest) => 
-      ResourceService.createResourceFromGoogleBooks(data),
+      GoogleBooksService.createResourceFromGoogleBooks(data),
     onSuccess: (newResource: Resource) => {
       // Invalidar queries de recursos
       queryClient.invalidateQueries({ queryKey: RESOURCE_QUERY_KEYS.resources });

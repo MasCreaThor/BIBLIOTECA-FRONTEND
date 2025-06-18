@@ -44,6 +44,7 @@ import { DeleteConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { DateUtils } from '@/utils';
 import type { Location, LocationFilters } from '@/services/location.service';
+import { PaginatedResponse } from '@/types/api.types';
 
 interface LocationListProps {
   onLocationSelect?: (location: Location) => void;
@@ -223,12 +224,12 @@ export function LocationList({
     search: '',
     active: undefined,
     page: 1,
-    limit: 50, // Aumentado para obtener más ubicaciones de una vez
+    limit: 20,
     sortBy: 'name',
     sortOrder: 'asc',
   });
 
-  // ✅ CORREGIDO: Usar locationsResponse en lugar de categoriesResponse
+  // Queries y mutations
   const {
     data: locationsResponse,
     isLoading,
@@ -260,198 +261,142 @@ export function LocationList({
   const handleLocationEdit = (location: Location) => {
     if (onLocationEdit) {
       onLocationEdit(location);
-    } else if (onLocationSelect) {
-      onLocationSelect(location);
     }
   };
 
   const handleDeleteLocation = async (location: Location) => {
     try {
       await deleteMutation.mutateAsync(location._id);
+      refetch();
     } catch (error) {
       // Error manejado por el hook
     }
   };
 
-  // ✅ CORREGIDO: Variables y lógica para locations en lugar de categories
+  // Renderizado condicional
+  if (isLoading) {
+    return <LoadingGrid />;
+  }
+
+  if (isError) {
+    return (
+      <Alert status="error">
+        <AlertIcon />
+        <VStack align="start" flex={1}>
+          <Text fontWeight="semibold">Error al cargar ubicaciones</Text>
+          <Text fontSize="sm">{error?.message}</Text>
+          <Button size="sm" onClick={handleRefresh}>
+            Reintentar
+          </Button>
+        </VStack>
+      </Alert>
+    );
+  }
+
+  // Manejo seguro de la respuesta
   let locations: Location[] = [];
   let totalCount = 0;
+  let pagination: { total: number; page: number; totalPages: number } | null = null;
 
   if (locationsResponse) {
-    // Verificar si la respuesta es un array directo o un objeto paginado
-    if (Array.isArray(locationsResponse)) {
-      // El backend retorna directamente un array
-      locations = locationsResponse as Location[];
+    if ('data' in locationsResponse && 'pagination' in locationsResponse) {
+      // Es una respuesta paginada
+      const response = locationsResponse as PaginatedResponse<Location>;
+      locations = response.data;
+      pagination = response.pagination;
+      totalCount = pagination?.total || 0;
+    } else if (Array.isArray(locationsResponse)) {
+      // Es un array directo
+      locations = locationsResponse;
       totalCount = locations.length;
-    } else if (locationsResponse.data && Array.isArray(locationsResponse.data)) {
-      // El backend retorna un objeto paginado
-      locations = locationsResponse.data;
-      totalCount = locationsResponse.pagination?.total || locationsResponse.data.length;
-    } else {
-      console.warn('Formato de respuesta inesperado para ubicaciones:', locationsResponse);
     }
   }
 
-  const isLoadingData = isLoading || isRefetching;
-  const isMutating = deleteMutation.isPending;
-
-  // Log para debugging (remover en producción)
-  if (process.env.NODE_ENV === 'development') {
-    console.log('LocationList - locationsResponse:', locationsResponse);
-    console.log('LocationList - locations:', locations);
-    console.log('LocationList - totalCount:', totalCount);
+  if (locations.length === 0) {
+    return (
+      <EmptyState
+        title="No se encontraron ubicaciones"
+        description={
+          filters.search || filters.active !== undefined
+            ? 'Intente ajustar los filtros de búsqueda'
+            : 'No hay ubicaciones registradas en el sistema'
+        }
+        icon={FiMapPin}
+        onAction={onCreate}
+        actionLabel="Crear Ubicación"
+      />
+    );
   }
 
   return (
-    <VStack spacing={6} align="stretch">
-      {/* Filtros */}
-      <VStack spacing={4} align="stretch">
-        <HStack spacing={4}>
-          {/* Búsqueda */}
-          <InputGroup flex={1}>
-            <InputLeftElement pointerEvents="none">
-              <FiSearch color="gray.400" />
-            </InputLeftElement>
-            <Input
-              placeholder="Buscar ubicaciones por nombre..."
-              value={filters.search}
-              onChange={(e) => handleSearchChange(e.target.value)}
-              bg="white"
-            />
-          </InputGroup>
+    <VStack spacing={4} align="stretch">
+      {/* Filtros y acciones */}
+      <HStack spacing={4}>
+        <InputGroup maxW="300px">
+          <InputLeftElement pointerEvents="none">
+            <FiSearch color="gray.300" />
+          </InputLeftElement>
+          <Input
+            placeholder="Buscar ubicaciones..."
+            value={filters.search}
+            onChange={(e) => handleSearchChange(e.target.value)}
+          />
+        </InputGroup>
 
-          {/* Controles */}
-          <HStack spacing={2}>
+        <FormControl display="flex" alignItems="center" w="auto">
+          <FormLabel htmlFor="active-filter" mb="0" fontSize="sm">
+            Solo activas
+          </FormLabel>
+          <Switch
+            id="active-filter"
+            isChecked={filters.active === true}
+            onChange={(e) => handleActiveFilterChange(e.target.checked)}
+          />
+        </FormControl>
+
+        <HStack spacing={2} ml="auto">
+          <IconButton
+            aria-label="Refrescar"
+            icon={<FiRefreshCw />}
+            onClick={handleRefresh}
+            isLoading={isRefetching}
+            variant="ghost"
+          />
+          {onCreate && (
             <Button
-              leftIcon={<FiRefreshCw />}
-              variant="outline"
-              onClick={handleRefresh}
-              isLoading={isLoadingData}
-              size="md"
+              leftIcon={<FiPlus />}
+              colorScheme="blue"
+              onClick={onCreate}
             >
-              Actualizar
+              Nueva Ubicación
             </Button>
-
-            {onCreate && (
-              <Button
-                leftIcon={<FiPlus />}
-                colorScheme="green"
-                onClick={onCreate}
-                size="md"
-              >
-                Nueva Ubicación
-              </Button>
-            )}
-          </HStack>
+          )}
         </HStack>
+      </HStack>
 
-        {/* Filtro de estado y contador */}
-        <HStack spacing={4}>
-          <FormControl display="flex" alignItems="center" w="auto">
-            <FormLabel htmlFor="active-filter" mb={0} fontSize="sm">
-              Solo activas
-            </FormLabel>
-            <Switch
-              id="active-filter"
-              isChecked={filters.active === true}
-              onChange={(e) => handleActiveFilterChange(e.target.checked)}
-              colorScheme="green"
-            />
-          </FormControl>
+      {/* Lista de ubicaciones */}
+      <SimpleGrid columns={{ base: 1, md: 2, lg: 3, xl: 4 }} spacing={4}>
+        {locations.map((location: Location) => (
+          <LocationCard
+            key={location._id}
+            location={location}
+            onEdit={handleLocationEdit}
+            onDelete={handleDeleteLocation}
+            showActions={showActions}
+          />
+        ))}
+      </SimpleGrid>
 
+      {/* Información de paginación */}
+      {pagination && (
+        <HStack justify="center" p={4}>
           <Text fontSize="sm" color="gray.600">
-            {totalCount === 0
-              ? 'No se encontraron ubicaciones'
-              : `${totalCount} ubicación${totalCount !== 1 ? 'es' : ''} encontrada${totalCount !== 1 ? 's' : ''}`
+            Mostrando {locations.length} de {totalCount} ubicaciones
+            {pagination.totalPages > 1 && 
+              ` - Página ${pagination.page} de ${pagination.totalPages}`
             }
           </Text>
         </HStack>
-      </VStack>
-
-      {/* Estados de error */}
-      {isError && (
-        <Alert status="error" borderRadius="md">
-          <AlertIcon />
-          <Box>
-            <Text fontWeight="medium">Error al cargar ubicaciones</Text>
-            <Text fontSize="sm">
-              {error?.message || 'No se pudieron cargar las ubicaciones. Intenta refrescar la página.'}
-            </Text>
-          </Box>
-        </Alert>
-      )}
-
-      {/* Contenido principal */}
-      <Box position="relative">
-        {/* Overlay de loading para mutaciones */}
-        {isMutating && (
-          <Box
-            position="absolute"
-            top={0}
-            left={0}
-            right={0}
-            bottom={0}
-            bg="rgba(255, 255, 255, 0.8)"
-            zIndex={10}
-            display="flex"
-            alignItems="center"
-            justifyContent="center"
-            borderRadius="md"
-          >
-            <Text>Procesando...</Text>
-          </Box>
-        )}
-
-        {/* Lista de ubicaciones */}
-        {isLoadingData ? (
-          <LoadingGrid />
-        ) : locations.length === 0 ? (
-          <EmptyState
-            icon={FiMapPin}
-            title="No hay ubicaciones registradas"
-            description={
-              filters.search 
-                ? `No se encontraron ubicaciones que coincidan con "${filters.search}"`
-                : "Comienza creando ubicaciones para organizar físicamente tus recursos."
-            }
-            actionLabel={onCreate ? "Crear Primera Ubicación" : undefined}
-            onAction={onCreate}
-          />
-        ) : (
-          <SimpleGrid
-            columns={{ base: 1, md: 2, lg: 3, xl: 4 }}
-            spacing={4}
-            opacity={isMutating ? 0.6 : 1}
-            transition="opacity 0.2s"
-          >
-            {locations.map((location: Location) => (
-              <LocationCard
-                key={location._id}
-                location={location}
-                onEdit={handleLocationEdit}
-                onDelete={handleDeleteLocation}
-                showActions={showActions}
-              />
-            ))}
-          </SimpleGrid>
-        )}
-      </Box>
-
-      {/* Información de ayuda */}
-      {!isLoadingData && locations.length > 0 && (
-        <Alert status="info" borderRadius="md">
-          <AlertIcon />
-          <Box>
-            <Text fontSize="sm" fontWeight="medium">
-              Consejos para ubicaciones
-            </Text>
-            <Text fontSize="xs" color="gray.600">
-              • Usa nombres descriptivos como "Estante A - Nivel 2" o "Armario Principal"<br />
-              • Los códigos cortos facilitan la identificación rápida<br />
-              • Las ubicaciones inactivas no aparecen en los formularios de recursos
-            </Text>
-          </Box>
-        </Alert>
       )}
     </VStack>
   );

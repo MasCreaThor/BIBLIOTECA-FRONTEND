@@ -25,7 +25,6 @@ export {
   export {
     useResourceTypes,
     useResourceType,
-    useResourceTypeStats,
     useCreateResourceType,
     useUpdateResourceType,
     useActivateResourceType,

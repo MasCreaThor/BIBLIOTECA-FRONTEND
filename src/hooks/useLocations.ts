@@ -1,70 +1,211 @@
-// src/hooks/useLocations.ts - VERSIÓN CON DEBUG PARA CAMPO CODE
+// src/hooks/useLocations.ts - HOOK PARA GESTIÓN DE UBICACIONES
+// ================================================================
+// HOOK PERSONALIZADO PARA UBICACIONES CON REACT QUERY
+// ================================================================
+
 import { useQuery, useMutation, useQueryClient, UseQueryOptions } from '@tanstack/react-query';
-import { LocationService } from '@/services/location.service';
-import type {
-  Location,
-  CreateLocationRequest,
-  UpdateLocationRequest,
-  LocationFilters,
-} from '@/services/location.service';
-import type { PaginatedResponse } from '@/types/api.types';
+import axiosInstance from '@/lib/axios';
+import type { 
+  Location, 
+  ApiResponse, 
+  PaginatedResponse 
+} from '@/types/api.types';
 import toast from 'react-hot-toast';
 
-// Query keys para React Query
+// ===== INTERFACES =====
+export interface CreateLocationRequest {
+  name: string;
+  description: string;
+  code?: string;
+}
+
+export interface UpdateLocationRequest {
+  name?: string;
+  description?: string;
+  code?: string;
+  active?: boolean;
+}
+
+export interface LocationFilters {
+  search?: string;
+  active?: boolean;
+  page?: number;
+  limit?: number;
+  sortBy?: string;
+  sortOrder?: 'asc' | 'desc';
+}
+
+// ===== ENDPOINTS =====
+const LOCATION_ENDPOINTS = {
+  LOCATIONS: '/locations',
+  LOCATION_BY_ID: (id: string) => `/locations/${id}`,
+  ACTIVATE: (id: string) => `/locations/${id}/activate`,
+  DEACTIVATE: (id: string) => `/locations/${id}/deactivate`,
+} as const;
+
+// ===== SERVICIOS =====
+class LocationService {
+  /**
+   * Obtener ubicaciones con filtros
+   */
+  static async getLocations(filters: LocationFilters = {}): Promise<Location[]> {
+    try {
+      const params = new URLSearchParams();
+      
+      if (filters.search) params.append('search', filters.search);
+      if (filters.active !== undefined) params.append('active', filters.active.toString());
+      if (filters.page) params.append('page', filters.page.toString());
+      if (filters.limit) params.append('limit', filters.limit.toString());
+      if (filters.sortBy) params.append('sortBy', filters.sortBy);
+      if (filters.sortOrder) params.append('sortOrder', filters.sortOrder);
+
+      const url = params.toString() 
+        ? `${LOCATION_ENDPOINTS.LOCATIONS}?${params.toString()}`
+        : LOCATION_ENDPOINTS.LOCATIONS;
+
+      const response = await axiosInstance.get<ApiResponse<PaginatedResponse<Location> | Location[]>>(url);
+
+      if (response.data.success && response.data.data) {
+        // El backend puede devolver array directo o paginado
+        if (Array.isArray(response.data.data)) {
+          return response.data.data;
+        } else {
+          return response.data.data.data || [];
+        }
+      }
+
+      throw new Error(response.data.message || 'Error al obtener ubicaciones');
+    } catch (error: any) {
+      console.error('Error al obtener ubicaciones:', error);
+      
+      // Fallback con ubicaciones predeterminadas si el backend no las tiene
+      if (error?.response?.status === 404) {
+        const defaultLocations: Location[] = [
+          {
+            _id: 'default-biblioteca',
+            name: 'Biblioteca Principal',
+            description: 'Área principal de la biblioteca',
+            code: 'BIB-001',
+            active: true,
+            createdAt: new Date(),
+            updatedAt: new Date(),
+          },
+          {
+            _id: 'default-deposito',
+            name: 'Depósito',
+            description: 'Área de almacenamiento',
+            code: 'DEP-001',
+            active: true,
+            createdAt: new Date(),
+            updatedAt: new Date(),
+          },
+          {
+            _id: 'default-salon',
+            name: 'Salón de Lectura',
+            description: 'Área de lectura y estudio',
+            code: 'SAL-001',
+            active: true,
+            createdAt: new Date(),
+            updatedAt: new Date(),
+          },
+        ];
+        
+        return defaultLocations;
+      }
+      
+      throw error;
+    }
+  }
+
+  /**
+   * Obtener ubicación por ID
+   */
+  static async getLocationById(id: string): Promise<Location> {
+    const response = await axiosInstance.get<ApiResponse<Location>>(
+      LOCATION_ENDPOINTS.LOCATION_BY_ID(id)
+    );
+
+    if (response.data.success && response.data.data) {
+      return response.data.data;
+    }
+
+    throw new Error(response.data.message || 'Error al obtener ubicación');
+  }
+
+  /**
+   * Crear ubicación
+   */
+  static async createLocation(data: CreateLocationRequest): Promise<Location> {
+    const response = await axiosInstance.post<ApiResponse<Location>>(
+      LOCATION_ENDPOINTS.LOCATIONS,
+      data
+    );
+
+    if (response.data.success && response.data.data) {
+      return response.data.data;
+    }
+
+    throw new Error(response.data.message || 'Error al crear ubicación');
+  }
+
+  /**
+   * Actualizar ubicación
+   */
+  static async updateLocation(id: string, data: UpdateLocationRequest): Promise<Location> {
+    const response = await axiosInstance.put<ApiResponse<Location>>(
+      LOCATION_ENDPOINTS.LOCATION_BY_ID(id),
+      data
+    );
+
+    if (response.data.success && response.data.data) {
+      return response.data.data;
+    }
+
+    throw new Error(response.data.message || 'Error al actualizar ubicación');
+  }
+
+  /**
+   * Eliminar ubicación
+   */
+  static async deleteLocation(id: string): Promise<void> {
+    const response = await axiosInstance.delete<ApiResponse<null>>(
+      LOCATION_ENDPOINTS.LOCATION_BY_ID(id)
+    );
+
+    if (!response.data.success) {
+      throw new Error(response.data.message || 'Error al eliminar ubicación');
+    }
+  }
+}
+
+// ===== QUERY KEYS =====
 export const LOCATION_QUERY_KEYS = {
   locations: ['locations'] as const,
   locationsList: (filters: LocationFilters) => ['locations', 'list', filters] as const,
   location: (id: string) => ['locations', 'detail', id] as const,
 } as const;
 
+// ===== HOOKS =====
+
 /**
- * Hook para obtener lista de ubicaciones con filtros
+ * Hook para obtener lista de ubicaciones
  */
 export function useLocations(
   filters: LocationFilters = {},
-  options?: Omit<UseQueryOptions<PaginatedResponse<Location> | Location[]>, 'queryKey' | 'queryFn'>
+  options?: Omit<UseQueryOptions<Location[]>, 'queryKey' | 'queryFn'>
 ) {
   return useQuery({
     queryKey: LOCATION_QUERY_KEYS.locationsList(filters),
-    queryFn: async () => {
-      try {
-        const response = await LocationService.getLocations(filters);
-        return response;
-      } catch (error: any) {
-        // Si el backend aún no soporta paginación, manejar como array simple
-        if (error?.response?.status === 404 || error?.message?.includes('pagination')) {
-          console.warn('API de ubicaciones no soporta paginación, usando formato simple');
-          
-          try {
-            const simpleResponse = await fetch('/api/locations');
-            if (simpleResponse.ok) {
-              const data = await simpleResponse.json();
-              return Array.isArray(data) ? data : data.data || [];
-            }
-          } catch (simpleError) {
-            console.error('Error en llamada simple a ubicaciones:', simpleError);
-          }
-        }
-        
-        throw error;
-      }
-    },
-    staleTime: 5 * 60 * 1000, // 5 minutos
-    gcTime: 10 * 60 * 1000, // 10 minutos
-    retry: (failureCount, error: any) => {
-      // No reintentar en errores 4xx
-      if (error?.response?.status >= 400 && error?.response?.status < 500) {
-        return false;
-      }
-      return failureCount < 2;
-    },
-    placeholderData: [] as Location[],
+    queryFn: () => LocationService.getLocations(filters),
+    staleTime: 15 * 60 * 1000, // 15 minutos - ubicaciones cambian poco
+    gcTime: 30 * 60 * 1000,    // 30 minutos
+    retry: 2,
     ...options,
   });
 }
 
 /**
- * Hook para obtener una ubicación por ID
+ * Hook para obtener ubicación por ID
  */
 export function useLocation(
   id: string,
@@ -74,112 +215,78 @@ export function useLocation(
     queryKey: LOCATION_QUERY_KEYS.location(id),
     queryFn: () => LocationService.getLocationById(id),
     enabled: !!id,
-    staleTime: 10 * 60 * 1000,
-    gcTime: 15 * 60 * 1000,
+    staleTime: 15 * 60 * 1000,
+    gcTime: 30 * 60 * 1000,
     retry: 2,
     ...options,
   });
 }
 
 /**
- * Hook para crear una ubicación
+ * Hook para crear ubicación
  */
 export function useCreateLocation() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (data: CreateLocationRequest) => {
-      console.log('🆕 Creando ubicación con datos:', data);
-      return LocationService.createLocation(data);
-    },
+    mutationFn: (data: CreateLocationRequest) => LocationService.createLocation(data),
     onSuccess: (newLocation) => {
-      console.log('✅ Ubicación creada exitosamente:', newLocation);
-      
-      // Invalidar queries relacionadas
       queryClient.invalidateQueries({ queryKey: LOCATION_QUERY_KEYS.locations });
-      
-      // Agregar al cache
-      queryClient.setQueryData(LOCATION_QUERY_KEYS.location(newLocation._id), newLocation);
-      
       toast.success(`Ubicación "${newLocation.name}" creada exitosamente`);
     },
     onError: (error: any) => {
-      console.error('❌ Error creando ubicación:', error);
-      const errorMessage = error?.response?.data?.message || error?.message || 'Error al crear ubicación';
-      toast.error(Array.isArray(errorMessage) ? errorMessage.join(', ') : errorMessage);
+      const message = error?.response?.data?.message || error.message || 'Error al crear ubicación';
+      toast.error(message);
     },
   });
 }
 
 /**
- * Hook para actualizar una ubicación
+ * Hook para actualizar ubicación
  */
 export function useUpdateLocation() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ id, data }: { id: string; data: UpdateLocationRequest }) => {
-      console.log(`🔄 Actualizando ubicación ${id} con datos:`, data);
-      
-      // ✅ DEBUG: Verificar que el campo code se incluye correctamente
-      if (data.hasOwnProperty('code')) {
-        console.log(`📝 Campo code detectado: "${data.code}" (tipo: ${typeof data.code})`);
-      } else {
-        console.log('⚠️ Campo code no presente en los datos de actualización');
-      }
-      
-      return LocationService.updateLocation(id, data);
-    },
-    onSuccess: (updatedLocation) => {
-      console.log('✅ Ubicación actualizada exitosamente:', updatedLocation);
-      
-      // ✅ DEBUG: Verificar el valor del código en la respuesta
-      console.log(`📝 Código actualizado: "${updatedLocation.code}" (tipo: ${typeof updatedLocation.code})`);
-      
-      // Actualizar cache específico
-      queryClient.setQueryData(LOCATION_QUERY_KEYS.location(updatedLocation._id), updatedLocation);
-      
-      // Invalidar listas
+    mutationFn: ({ id, data }: { id: string; data: UpdateLocationRequest }) =>
+      LocationService.updateLocation(id, data),
+    onSuccess: (updatedLocation, { id }) => {
+      queryClient.setQueryData(LOCATION_QUERY_KEYS.location(id), updatedLocation);
       queryClient.invalidateQueries({ queryKey: LOCATION_QUERY_KEYS.locations });
-      
       toast.success(`Ubicación "${updatedLocation.name}" actualizada exitosamente`);
     },
     onError: (error: any) => {
-      console.error('❌ Error actualizando ubicación:', error);
-      console.error('❌ Detalles del error:', error?.response?.data);
-      
-      const errorMessage = error?.response?.data?.message || error?.message || 'Error al actualizar ubicación';
-      toast.error(Array.isArray(errorMessage) ? errorMessage.join(', ') : errorMessage);
+      const message = error?.response?.data?.message || error.message || 'Error al actualizar ubicación';
+      toast.error(message);
     },
   });
 }
 
 /**
- * Hook para eliminar una ubicación
+ * Hook para eliminar ubicación
  */
 export function useDeleteLocation() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (id: string) => {
-      console.log(`🗑️ Eliminando ubicación ${id}`);
-      return LocationService.deleteLocation(id);
-    },
+    mutationFn: (id: string) => LocationService.deleteLocation(id),
     onSuccess: (_, deletedId) => {
-      console.log(`✅ Ubicación ${deletedId} eliminada exitosamente`);
-      
-      // Remover del cache
       queryClient.removeQueries({ queryKey: LOCATION_QUERY_KEYS.location(deletedId) });
-      
-      // Invalidar listas
       queryClient.invalidateQueries({ queryKey: LOCATION_QUERY_KEYS.locations });
-      
       toast.success('Ubicación eliminada exitosamente');
     },
     onError: (error: any) => {
-      console.error('❌ Error eliminando ubicación:', error);
-      const errorMessage = error?.response?.data?.message || error?.message || 'Error al eliminar ubicación';
-      toast.error(Array.isArray(errorMessage) ? errorMessage.join(', ') : errorMessage);
+      const message = error?.response?.data?.message || error.message || 'Error al eliminar ubicación';
+      toast.error(message);
     },
+  });
+}
+
+/**
+ * Hook para obtener ubicaciones activas (utilidad común)
+ */
+export function useActiveLocations() {
+  return useLocations({ active: true }, {
+    staleTime: 30 * 60 * 1000, // 30 minutos para ubicaciones activas
   });
 }

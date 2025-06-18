@@ -6,5 +6,5 @@ export { ResourceList } from './ResourceList';
 
 // Subcomponentes (exportados para reutilización si es necesario)
 export { ResourceCard } from './ResourceCard';
-export { ResourceFilters } from './ResourceFilters';
+export { ResourceFiltersComponent } from './ResourceFilters';
 export type { ResourceFiltersState } from './ResourceFilters';

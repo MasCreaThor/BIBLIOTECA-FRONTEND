@@ -48,7 +48,8 @@ export default function InventoryPage() {
   const updateMutation = useUpdateResource();
 
   // Datos para estadísticas rápidas
-  const { data: resourceTypes } = useResourceTypes();
+  const { data: resourceTypesResponse } = useResourceTypes();
+  const resourceTypes = resourceTypesResponse?.data || [];
 
   // Determinar si mostrar vista compacta en móvil
   const isMobile = useBreakpointValue({ base: true, md: false });
@@ -84,6 +85,11 @@ export default function InventoryPage() {
     onEditOpen();
   };
 
+  // ✅ NUEVO: Handler para navegar a la página de detalles del recurso
+  const handleResourceSelect = (resource: Resource) => {
+    router.push(`/inventory/${resource._id}`);
+  };
+
   const isMutating = createMutation.isPending || updateMutation.isPending;
 
   return (
@@ -112,7 +118,7 @@ export default function InventoryPage() {
               </HStack>
 
               {/* Estadísticas rápidas */}
-              {resourceTypes && resourceTypes.length > 0 && (
+              {resourceTypes.length > 0 && (
                 <HStack spacing={3} pt={2} wrap="wrap">
                   <Text fontSize="sm" color="gray.600">Tipos disponibles:</Text>
                   {resourceTypes.map((type) => (
@@ -172,6 +178,7 @@ export default function InventoryPage() {
             <TabPanel px={0}>
               <ResourceList
                 onResourceEdit={handleResourceEdit}
+                onResourceSelect={handleResourceSelect}
                 onCreate={() => router.push('/inventory/new')}
                 showActions={true}
               />

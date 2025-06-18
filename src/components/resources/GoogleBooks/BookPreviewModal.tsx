@@ -18,8 +18,17 @@ import {
   Badge,
   Divider,
   SimpleGrid,
+  FormControl,
+  FormLabel,
+  NumberInput,
+  NumberInputField,
+  NumberInputStepper,
+  NumberIncrementStepper,
+  NumberDecrementStepper,
+  Tooltip,
 } from '@chakra-ui/react';
-import { FiBook, FiPlus, FiExternalLink } from 'react-icons/fi';
+import { useState } from 'react';
+import { FiBook, FiPlus, FiExternalLink, FiInfo } from 'react-icons/fi';
 import { GoogleBooksUtils, useCreateResourceFromGoogleBooks } from '@/hooks/useGoogleBooks';
 import type { GoogleBooksVolume } from '@/types/resource.types';
 
@@ -41,6 +50,9 @@ export function BookPreviewModal({
   locationId,
 }: BookPreviewModalProps) {
   const createFromGoogleBooksMutation = useCreateResourceFromGoogleBooks();
+  
+  // ✅ NUEVO: Estado para la cantidad total
+  const [totalQuantity, setTotalQuantity] = useState(1);
 
   // Datos del libro
   const imageUrl = GoogleBooksUtils.getBestImageUrl(volume);
@@ -60,6 +72,7 @@ export function BookPreviewModal({
         categoryId: categoryId!,
         locationId: locationId!,
         volumes: 1,
+        totalQuantity: totalQuantity, // ✅ NUEVO: Incluir cantidad total
         notes: `Importado desde Google Books (ID: ${volume.id})`,
       });
       
@@ -196,6 +209,38 @@ export function BookPreviewModal({
             </SimpleGrid>
           </VStack>
         </ModalBody>
+
+        {/* ✅ NUEVO: Campo de cantidad total */}
+        {canCreateResource && (
+          <Box px={6} pb={4}>
+            <Divider mb={4} />
+            <FormControl>
+              <FormLabel>
+                <HStack spacing={2}>
+                  <Text>Cantidad Total</Text>
+                  <Tooltip label="Número total de unidades disponibles">
+                    <Box>
+                      <FiInfo />
+                    </Box>
+                  </Tooltip>
+                </HStack>
+              </FormLabel>
+              <NumberInput
+                value={totalQuantity}
+                onChange={(_, valueAsNumber) => setTotalQuantity(isNaN(valueAsNumber) ? 1 : valueAsNumber)}
+                min={1}
+                max={10000}
+                isDisabled={createFromGoogleBooksMutation.isPending}
+              >
+                <NumberInputField />
+                <NumberInputStepper>
+                  <NumberIncrementStepper />
+                  <NumberDecrementStepper />
+                </NumberInputStepper>
+              </NumberInput>
+            </FormControl>
+          </Box>
+        )}
 
         <ModalFooter>
           <HStack spacing={3}>

@@ -44,6 +44,7 @@ import { DeleteConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { DateUtils } from '@/utils';
 import type { Category, CategoryFilters } from '@/services/category.service';
+import type { PaginatedResponse } from '@/types/api.types';
 
 interface CategoryListProps {
   onCategorySelect?: (category: Category) => void;
@@ -256,182 +257,143 @@ export function CategoryList({
   const handleCategoryEdit = (category: Category) => {
     if (onCategoryEdit) {
       onCategoryEdit(category);
-    } else if (onCategorySelect) {
-      onCategorySelect(category);
     }
   };
 
   const handleDeleteCategory = async (category: Category) => {
     try {
       await deleteMutation.mutateAsync(category._id);
+      refetch();
     } catch (error) {
       // Error manejado por el hook
     }
   };
 
-  // Estados derivados - CORREGIDO para manejar ambos formatos
+  // Renderizado condicional
+  if (isLoading) {
+    return <LoadingGrid />;
+  }
+
+  if (isError) {
+    return (
+      <Alert status="error">
+        <AlertIcon />
+        <VStack align="start" flex={1}>
+          <Text fontWeight="semibold">Error al cargar categorías</Text>
+          <Text fontSize="sm">{error?.message}</Text>
+          <Button size="sm" onClick={handleRefresh}>
+            Reintentar
+          </Button>
+        </VStack>
+      </Alert>
+    );
+  }
+
+  // Manejo seguro de la respuesta
   let categories: Category[] = [];
   let totalCount = 0;
+  let pagination: { total: number; page: number; totalPages: number } | null = null;
 
   if (categoriesResponse) {
-    // Verificar si la respuesta es un array directo o un objeto paginado
-    if (Array.isArray(categoriesResponse)) {
-      // El backend retorna directamente un array
-      categories = categoriesResponse as Category[];
+    if ('data' in categoriesResponse && 'pagination' in categoriesResponse) {
+      // Es una respuesta paginada
+      const response = categoriesResponse as PaginatedResponse<Category>;
+      categories = response.data;
+      pagination = response.pagination;
+      totalCount = pagination.total;
+    } else if (Array.isArray(categoriesResponse)) {
+      // Es un array directo
+      categories = categoriesResponse;
       totalCount = categories.length;
-    } else if (categoriesResponse.data && Array.isArray(categoriesResponse.data)) {
-      // El backend retorna un objeto paginado
-      categories = categoriesResponse.data;
-      totalCount = categoriesResponse.pagination?.total || categoriesResponse.data.length;
-    } else {
-      console.warn('Formato de respuesta inesperado:', categoriesResponse);
     }
   }
 
-  const isLoadingData = isLoading || isRefetching;
-  const isMutating = deleteMutation.isPending;
-
-  // Log para debugging (remover en producción)
-  if (process.env.NODE_ENV === 'development') {
-    console.log('CategoryList - categoriesResponse:', categoriesResponse);
-    console.log('CategoryList - categories:', categories);
-    console.log('CategoryList - totalCount:', totalCount);
+  if (categories.length === 0) {
+    return (
+      <EmptyState
+        title="No se encontraron categorías"
+        description={
+          filters.search || filters.active !== undefined
+            ? 'Intente ajustar los filtros de búsqueda'
+            : 'No hay categorías registradas en el sistema'
+        }
+        icon={FiGrid}
+        onAction={onCreate}
+        actionLabel="Crear Categoría"
+      />
+    );
   }
 
   return (
-    <VStack spacing={6} align="stretch">
-      {/* Filtros */}
-      <VStack spacing={4} align="stretch">
-        <HStack spacing={4}>
-          {/* Búsqueda */}
-          <InputGroup flex={1}>
-            <InputLeftElement pointerEvents="none">
-              <FiSearch color="gray.400" />
-            </InputLeftElement>
-            <Input
-              placeholder="Buscar categorías..."
-              value={filters.search}
-              onChange={(e) => handleSearchChange(e.target.value)}
-              bg="white"
-            />
-          </InputGroup>
+    <VStack spacing={4} align="stretch">
+      {/* Filtros y acciones */}
+      <HStack spacing={4}>
+        <InputGroup maxW="300px">
+          <InputLeftElement pointerEvents="none">
+            <FiSearch color="gray.300" />
+          </InputLeftElement>
+          <Input
+            placeholder="Buscar categorías..."
+            value={filters.search}
+            onChange={(e) => handleSearchChange(e.target.value)}
+          />
+        </InputGroup>
 
-          {/* Controles */}
-          <HStack spacing={2}>
+        <FormControl display="flex" alignItems="center" w="auto">
+          <FormLabel htmlFor="active-filter" mb="0" fontSize="sm">
+            Solo activas
+          </FormLabel>
+          <Switch
+            id="active-filter"
+            isChecked={filters.active === true}
+            onChange={(e) => handleActiveFilterChange(e.target.checked)}
+          />
+        </FormControl>
+
+        <HStack spacing={2} ml="auto">
+          <IconButton
+            aria-label="Refrescar"
+            icon={<FiRefreshCw />}
+            onClick={handleRefresh}
+            isLoading={isRefetching}
+            variant="ghost"
+          />
+          {onCreate && (
             <Button
-              leftIcon={<FiRefreshCw />}
-              variant="outline"
-              onClick={handleRefresh}
-              isLoading={isLoadingData}
-              size="md"
-            >
-              Actualizar
-            </Button>
-
-            {onCreate && (
-              <Button
-                leftIcon={<FiPlus />}
-                colorScheme="blue"
-                onClick={onCreate}
-                size="md"
-              >
-                Nueva Categoría
-              </Button>
-            )}
-          </HStack>
-        </HStack>
-
-        {/* Filtro de estado y contador */}
-        <HStack spacing={4}>
-          <FormControl display="flex" alignItems="center" w="auto">
-            <FormLabel htmlFor="active-filter" mb={0} fontSize="sm">
-              Solo activas
-            </FormLabel>
-            <Switch
-              id="active-filter"
-              isChecked={filters.active === true}
-              onChange={(e) => handleActiveFilterChange(e.target.checked)}
+              leftIcon={<FiPlus />}
               colorScheme="blue"
-            />
-          </FormControl>
+              onClick={onCreate}
+            >
+              Nueva Categoría
+            </Button>
+          )}
+        </HStack>
+      </HStack>
 
+      {/* Lista de categorías */}
+      <SimpleGrid columns={{ base: 1, md: 2, lg: 3, xl: 4 }} spacing={4}>
+        {categories.map((category: Category) => (
+          <CategoryCard
+            key={category._id}
+            category={category}
+            onEdit={handleCategoryEdit}
+            onDelete={handleDeleteCategory}
+            showActions={showActions}
+          />
+        ))}
+      </SimpleGrid>
+
+      {/* Información de paginación */}
+      {pagination && (
+        <HStack justify="center" p={4}>
           <Text fontSize="sm" color="gray.600">
-            {totalCount === 0
-              ? 'No se encontraron categorías'
-              : `${totalCount} categoría${totalCount !== 1 ? 's' : ''} encontrada${totalCount !== 1 ? 's' : ''}`
+            Mostrando {categories.length} de {totalCount} categorías
+            {pagination.totalPages > 1 && 
+              ` - Página ${pagination.page} de ${pagination.totalPages}`
             }
           </Text>
         </HStack>
-      </VStack>
-
-      {/* Estados de error */}
-      {isError && (
-        <Alert status="error" borderRadius="md">
-          <AlertIcon />
-          <Box>
-            <Text fontWeight="medium">Error al cargar categorías</Text>
-            <Text fontSize="sm">
-              {error?.message || 'No se pudieron cargar las categorías. Intenta refrescar la página.'}
-            </Text>
-          </Box>
-        </Alert>
       )}
-
-      {/* Contenido principal */}
-      <Box position="relative">
-        {/* Overlay de loading para mutaciones */}
-        {isMutating && (
-          <Box
-            position="absolute"
-            top={0}
-            left={0}
-            right={0}
-            bottom={0}
-            bg="rgba(255, 255, 255, 0.8)"
-            zIndex={10}
-            display="flex"
-            alignItems="center"
-            justifyContent="center"
-            borderRadius="md"
-          >
-            <Text>Procesando...</Text>
-          </Box>
-        )}
-
-        {/* Lista de categorías */}
-        {isLoadingData ? (
-          <LoadingGrid />
-        ) : categories.length === 0 ? (
-          <EmptyState
-            icon={FiGrid}
-            title="No hay categorías registradas"
-            description={
-              filters.search 
-                ? `No se encontraron categorías que coincidan con "${filters.search}"`
-                : "Comienza creando categorías para organizar tus recursos."
-            }
-            actionLabel={onCreate ? "Crear Primera Categoría" : undefined}
-            onAction={onCreate}
-          />
-        ) : (
-          <SimpleGrid
-            columns={{ base: 1, md: 2, lg: 3, xl: 4 }}
-            spacing={4}
-            opacity={isMutating ? 0.6 : 1}
-            transition="opacity 0.2s"
-          >
-            {categories.map((category: Category) => (
-              <CategoryCard
-                key={category._id}
-                category={category}
-                onEdit={handleCategoryEdit}
-                onDelete={handleDeleteCategory}
-                showActions={showActions}
-              />
-            ))}
-          </SimpleGrid>
-        )}
-      </Box>
     </VStack>
   );
 }

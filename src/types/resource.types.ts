@@ -18,6 +18,16 @@ export interface Resource {
   googleBooksId?: string;
   coverImageUrl?: string;
   
+  // ✅ CAMPOS DE CANTIDAD PARA GESTIÓN DE PRÉSTAMOS
+  totalQuantity: number;           // Cantidad total disponible
+  currentLoansCount: number;       // Cantidad actualmente prestada
+  availableQuantity?: number;      // Cantidad disponible (calculada en backend)
+  hasStock?: boolean;              // Si tiene stock disponible (calculado)
+  
+  // ✅ CAMPOS ADICIONALES PARA GESTIÓN
+  totalLoans: number;              // Total de préstamos históricos
+  lastLoanDate?: Date;             // Fecha del último préstamo
+  
   // Datos populados (cuando están disponibles)
   type?: ResourceType;
   category?: Category;
@@ -43,6 +53,9 @@ export interface CreateResourceRequest {
   isbn?: string;
   googleBooksId?: string;
   coverImageUrl?: string;
+  
+  // ✅ CAMPO OBLIGATORIO: Cantidad total
+  totalQuantity: number;
 }
 
 export interface UpdateResourceRequest {
@@ -57,6 +70,9 @@ export interface UpdateResourceRequest {
   available?: boolean;
   coverImageUrl?: string;
   isbn?: string;
+  
+  // ✅ PERMITIR ACTUALIZAR CANTIDAD TOTAL
+  totalQuantity?: number;
 }
 
 // ===== ENTIDADES AUXILIARES =====
@@ -151,6 +167,9 @@ export interface CreateResourceFromGoogleBooksRequest {
   notes?: string;
   stateId?: string;
   typeId?: string;
+  
+  // ✅ NUEVO: Campo para cantidad total
+  totalQuantity?: number;
 }
 
 // ===== FILTROS Y BÚSQUEDA =====
@@ -159,7 +178,7 @@ export interface ResourceFilters {
   categoryId?: string;
   typeId?: string;
   locationId?: string;
-  availability?: 'available' | 'borrowed';
+  availability?: 'available' | 'borrowed' | 'all';
   authorId?: string;
   isbn?: string;
   googleBooksId?: string;
@@ -169,6 +188,10 @@ export interface ResourceFilters {
   limit?: number;
   sortBy?: string;
   sortOrder?: 'asc' | 'desc';
+  
+  // ✅ Filtros de cantidad
+  hasStock?: boolean;              // Filtro por disponibilidad de stock
+  minQuantity?: number;            // Cantidad mínima disponible
   
   // Filtros adicionales para búsquedas específicas
   hasISBN?: boolean;
@@ -196,6 +219,10 @@ export interface ResourceManagementFilters extends ResourceFilters {
   updatedBefore?: Date;
   createdBy?: string;
   lastUpdatedBy?: string;
+  
+  // ✅ Filtros de stock
+  lowStock?: boolean;              // Recursos con poco stock
+  noStock?: boolean;               // Recursos sin stock
 }
 
 // ===== RESPUESTAS DE LA API =====
@@ -259,9 +286,12 @@ export interface AvailabilityUpdate {
 export interface AvailabilityCheck {
   resourceId: string;
   available: boolean;
+  totalQuantity: number;
   currentLoans: number;
+  availableQuantity: number;
+  hasStock: boolean;
+  canLoan: boolean;
   maxConcurrentLoans: number;
-  reservations?: number;
 }
 
 // Para reportes de recursos
@@ -387,18 +417,23 @@ export interface ResourceModuleConfig {
     requirePublisher: boolean;
     allowDuplicateTitles: boolean;
     maxAuthorsPerResource: number;
+    minTotalQuantity: number;        // ✅ Cantidad mínima obligatoria
+    maxTotalQuantity: number;        // ✅ Cantidad máxima permitida
   };
   features: {
     googleBooksEnabled: boolean;
     bulkImportEnabled: boolean;
     advancedSearchEnabled: boolean;
     reservationsEnabled: boolean;
+    stockAlertsEnabled: boolean;     // ✅ Alertas de stock
   };
   defaults: {
     loanDuration: number;
     maxConcurrentLoans: number;
     defaultStateId: string;
     defaultLocationId: string;
+    defaultTotalQuantity: number;    // ✅ Cantidad por defecto
+    lowStockThreshold: number;       // ✅ Umbral de stock bajo
   };
   ui: {
     defaultPageSize: number;
@@ -406,5 +441,6 @@ export interface ResourceModuleConfig {
     enabledFilters: string[];
     defaultSortBy: string;
     defaultSortOrder: 'asc' | 'desc';
+    showStockIndicators: boolean;    // ✅ Mostrar indicadores de stock
   };
 }

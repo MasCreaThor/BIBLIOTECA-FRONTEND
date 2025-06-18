@@ -13,6 +13,7 @@ import {
   Breadcrumb,
   BreadcrumbItem,
   BreadcrumbLink,
+  useToast,
 } from '@chakra-ui/react';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
@@ -20,29 +21,32 @@ import { FiArrowLeft, FiBook, FiSearch } from 'react-icons/fi';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { ResourceForm } from '@/components/resources/ResourceForm/ResourceForm';
 import { useCreateResource } from '@/hooks/useResources';
-import type { CreateResourceRequest } from '@/types/resource.types';
+import type { CreateResourceRequest, UpdateResourceRequest } from '@/types/resource.types';
 
-export default function CreateResourcePage() {
+export default function NewResourcePage() {
   const router = useRouter();
-  const [showSuccessMessage, setShowSuccessMessage] = useState(false);
-  
+  const toast = useToast();
   const createMutation = useCreateResource();
 
   const handleCreateResource = async (data: CreateResourceRequest) => {
     try {
-      const newResource = await createMutation.mutateAsync(data);
-      
-      // Mostrar mensaje de éxito
-      setShowSuccessMessage(true);
-      
-      // Redirigir después de un momento
-      setTimeout(() => {
-        router.push(`/inventory/${newResource._id}`);
-      }, 2000);
-      
+      await createMutation.mutateAsync(data);
+      toast({
+        title: 'Recurso creado',
+        description: 'El recurso se ha creado exitosamente',
+        status: 'success',
+        duration: 5000,
+        isClosable: true,
+      });
+      router.push('/inventory');
     } catch (error) {
-      // Error manejado por el hook
-      throw error;
+      toast({
+        title: 'Error al crear el recurso',
+        description: error instanceof Error ? error.message : 'Ha ocurrido un error',
+        status: 'error',
+        duration: 5000,
+        isClosable: true,
+      });
     }
   };
 
@@ -53,22 +57,6 @@ export default function CreateResourcePage() {
   const handleNavigateToGoogleBooks = () => {
     router.push('/inventory/google-books');
   };
-
-  if (showSuccessMessage) {
-    return (
-      <DashboardLayout>
-        <VStack spacing={6} align="center" py={20}>
-          <Alert status="success" borderRadius="lg" maxW="md">
-            <AlertIcon />
-            <VStack align="start" spacing={2}>
-              <Text fontWeight="medium">¡Recurso creado exitosamente!</Text>
-              <Text fontSize="sm">Redirigiendo a los detalles del recurso...</Text>
-            </VStack>
-          </Alert>
-        </VStack>
-      </DashboardLayout>
-    );
-  }
 
   return (
     <DashboardLayout>
@@ -141,10 +129,8 @@ export default function CreateResourcePage() {
 
         {/* Formulario */}
         <ResourceForm
-          onSubmit={handleCreateResource}
-          onCancel={handleCancel}
-          isLoading={createMutation.isPending}
-          isEdit={false}
+          onSubmit={handleCreateResource as (data: UpdateResourceRequest) => Promise<void>}
+          isSubmitting={createMutation.isPending}
         />
       </VStack>
     </DashboardLayout>

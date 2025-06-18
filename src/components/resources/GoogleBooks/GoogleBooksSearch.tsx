@@ -24,9 +24,17 @@ import {
   Skeleton,
   SkeletonText,
   useToast,
+  FormControl,
+  FormLabel,
+  NumberInput,
+  NumberInputField,
+  NumberInputStepper,
+  NumberIncrementStepper,
+  NumberDecrementStepper,
+  Tooltip,
 } from '@chakra-ui/react';
 import { useState } from 'react';
-import { FiSearch, FiBook, FiPlus, FiExternalLink, FiX, FiCheck } from 'react-icons/fi';
+import { FiSearch, FiBook, FiPlus, FiExternalLink, FiX, FiCheck, FiInfo } from 'react-icons/fi';
 import { 
   useGoogleBooksSearch, 
   useGoogleBooks, 
@@ -184,8 +192,14 @@ export function GoogleBooksSearch({
   const [selectedBook, setSelectedBook] = useState<GoogleBooksVolume | null>(null);
   const [creatingVolumes, setCreatingVolumes] = useState<Set<string>>(new Set());
   
+  // ✅ NUEVO: Estado para la cantidad total (valor por defecto para registro rápido)
+  const [defaultQuantity, setDefaultQuantity] = useState(1);
+  
   const { isOpen: isPreviewOpen, onOpen: onPreviewOpen, onClose: onPreviewClose } = useDisclosure();
   const toast = useToast();
+  
+  // ✅ NUEVO: Definir canCreateResource
+  const canCreateResource = categoryId && locationId;
   
   // Hooks
   const { isApiAvailable } = useGoogleBooks();
@@ -235,6 +249,7 @@ export function GoogleBooksSearch({
         categoryId: categoryId,
         locationId: locationId,
         volumes: 1,
+        totalQuantity: defaultQuantity,
         notes: `Importado automáticamente desde Google Books (ID: ${volume.id})`,
       });
 
@@ -319,6 +334,35 @@ export function GoogleBooksSearch({
                   </Button>
                 </InputRightElement>
               </InputGroup>
+              
+              {/* ✅ NUEVO: Campo de cantidad por defecto */}
+              {canCreateResource && (
+                <FormControl>
+                  <FormLabel>
+                    <HStack spacing={2}>
+                      <Text fontSize="sm">Cantidad por defecto</Text>
+                      <Tooltip label="Cantidad que se usará para el registro rápido de libros">
+                        <Box>
+                          <FiInfo size={14} />
+                        </Box>
+                      </Tooltip>
+                    </HStack>
+                  </FormLabel>
+                  <NumberInput
+                    value={defaultQuantity}
+                    onChange={(_, valueAsNumber) => setDefaultQuantity(isNaN(valueAsNumber) ? 1 : valueAsNumber)}
+                    min={1}
+                    max={10000}
+                    size="md"
+                  >
+                    <NumberInputField />
+                    <NumberInputStepper>
+                      <NumberIncrementStepper />
+                      <NumberDecrementStepper />
+                    </NumberInputStepper>
+                  </NumberInput>
+                </FormControl>
+              )}
               
               <Text fontSize="sm" color="gray.600">
                 Busca libros por título, autor o ISBN. Haz clic en "Registrar Libro" para agregarlo automáticamente al inventario.

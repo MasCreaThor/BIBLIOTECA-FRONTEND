@@ -182,15 +182,42 @@ export default function ResourceDetailPage() {
     ? RESOURCE_TYPE_CONFIGS[resource.type.name as keyof typeof RESOURCE_TYPE_CONFIGS]
     : { icon: '📄', label: 'Recurso', color: 'gray' };
 
+  // ✅ MEJORADO: Validación más defensiva para evitar errores
+  const safeTypeConfig = typeConfig || { icon: '📄', label: 'Recurso', color: 'gray' };
+
   // Configuración del estado
   const stateConfig = resource.state
     ? RESOURCE_STATE_CONFIGS[resource.state.name as keyof typeof RESOURCE_STATE_CONFIGS]
     : { label: 'Estado desconocido', color: 'gray' };
 
+  // ✅ MEJORADO: Validación más defensiva para el estado
+  const safeStateConfig = stateConfig || { label: 'Estado desconocido', color: 'gray' };
+
   // Información de autores
   const authorsText = resource.authors && resource.authors.length > 0
     ? resource.authors.map(author => author.name).join(', ')
     : 'Sin autor especificado';
+
+  // ✅ DEBUG: Log para verificar datos del recurso
+  console.log('🔍 ResourceDetailPage - Datos del recurso:', {
+    id: resource._id,
+    title: resource.title,
+    authors: resource.authors,
+    authorIds: resource.authorIds,
+    hasAuthors: !!resource.authors,
+    authorsLength: resource.authors?.length || 0,
+    categoryId: resource.categoryId,
+    locationId: resource.locationId,
+    stateId: resource.stateId,
+    publisherId: resource.publisherId,
+    volumes: resource.volumes,
+    notes: resource.notes,
+    available: resource.available,
+    type: resource.type,
+    typeId: resource.typeId,
+    hasType: !!resource.type,
+    typeName: resource.type?.name,
+  });
 
   // ✅ NUEVO: Configuración de imagen
   const imageUrl = ImageUtils.getResourceImageUrl(resource);
@@ -221,16 +248,16 @@ export default function ResourceDetailPage() {
             <VStack align="start" spacing={3}>
               {/* Título y tipo */}
               <HStack spacing={3}>
-                <Box p={2} bg={`${typeConfig.color}.50`} borderRadius="lg">
-                  <Text fontSize="2xl">{typeConfig.icon}</Text>
+                <Box p={2} bg={`${safeTypeConfig.color}.50`} borderRadius="lg">
+                  <Text fontSize="2xl">{safeTypeConfig.icon}</Text>
                 </Box>
                 <VStack align="start" spacing={1}>
                   <Heading size="lg" color="gray.800" lineHeight="short">
                     {resource.title}
                   </Heading>
                   <HStack spacing={2}>
-                    <Badge colorScheme={typeConfig.color} variant="solid">
-                      {typeConfig.label}
+                    <Badge colorScheme={safeTypeConfig.color} variant="solid">
+                      {safeTypeConfig.label}
                     </Badge>
                     <Badge
                       colorScheme={resource.available ? 'green' : 'orange'}
@@ -238,8 +265,8 @@ export default function ResourceDetailPage() {
                     >
                       {resource.available ? 'Disponible' : 'Prestado'}
                     </Badge>
-                    <Badge colorScheme={stateConfig.color} variant="outline">
-                      {stateConfig.label}
+                    <Badge colorScheme={safeStateConfig.color} variant="outline">
+                      {safeStateConfig.label}
                     </Badge>
                   </HStack>
                 </VStack>
