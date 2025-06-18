@@ -229,15 +229,26 @@ export interface LoanStats {
   overdueLoans: number;
   lostLoans: number;
   averageLoanDuration: number;
+  onTimeReturnRate: number;
+  returnedThisMonth: number;
   topBorrowedResources: Array<{
     resourceId: string;
     title: string;
+    author?: string;
     count: number;
   }>;
   topBorrowers: Array<{
     personId: string;
     fullName: string;
     count: number;
+    activeLoans: number;
+    overdueLoans: number;
+  }>;
+  statusDistribution: Array<{
+    status: string;
+    count: number;
+    percentage: number;
+    color: string;
   }>;
 }
 

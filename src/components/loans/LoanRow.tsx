@@ -243,9 +243,9 @@ const LoanRow: React.FC<LoanRowProps> = ({
     <>
       <Tr _hover={{ bg: hoverBg }} transition="background-color 0.2s">
         {/* Información de la Persona */}
-        <Td px={4} py={4}>
+        <Td px={4} py={4} w="200px" textAlign="left">
           <VStack align="start" spacing={2} minH="60px" justify="center">
-            <Text fontWeight="semibold" fontSize="sm" color="gray.800">
+            <Text fontWeight="semibold" fontSize="sm" color="gray.800" noOfLines={2} maxW="180px">
               {loan.person?.fullName || 'N/A'}
             </Text>
             <HStack spacing={2} minH="20px">
@@ -264,9 +264,9 @@ const LoanRow: React.FC<LoanRowProps> = ({
         </Td>
 
         {/* Información del Recurso */}
-        <Td px={4} py={4}>
+        <Td px={4} py={4} w="200px" textAlign="left">
           <VStack align="start" spacing={2} minH="60px" justify="center">
-            <Text fontWeight="semibold" fontSize="sm" color="gray.800" noOfLines={2} maxW="200px">
+            <Text fontWeight="semibold" fontSize="sm" color="gray.800" noOfLines={2} maxW="180px">
               {loan.resource?.title || 'N/A'}
             </Text>
             <HStack spacing={2} minH="20px">
@@ -284,8 +284,8 @@ const LoanRow: React.FC<LoanRowProps> = ({
         </Td>
 
         {/* Fecha de Préstamo */}
-        <Td px={4} py={4}>
-          <HStack spacing={2} minH="60px" align="center">
+        <Td px={4} py={4} w="120px" textAlign="center">
+          <HStack spacing={2} minH="60px" align="center" justify="center">
             <Box p={1} bg="blue.100" rounded="md" color="blue.600" flexShrink={0}>
               <FiCalendar size={14} />
             </Box>
@@ -301,8 +301,8 @@ const LoanRow: React.FC<LoanRowProps> = ({
         </Td>
 
         {/* Fecha de Vencimiento */}
-        <Td px={4} py={4}>
-          <HStack spacing={2} minH="60px" align="center">
+        <Td px={4} py={4} w="120px" textAlign="center">
+          <HStack spacing={2} minH="60px" align="center" justify="center">
             <Box 
               p={1} 
               bg={loan.isOverdue ? "red.100" : "orange.100"} 
@@ -328,8 +328,8 @@ const LoanRow: React.FC<LoanRowProps> = ({
         </Td>
 
         {/* Estado */}
-        <Td px={4} py={4}>
-          <Box minH="60px" display="flex" alignItems="center">
+        <Td px={4} py={4} w="120px" textAlign="center">
+          <Box minH="60px" display="flex" alignItems="center" justifyContent="center">
             <Badge
               colorScheme={statusInfo.colorScheme}
               variant={statusInfo.variant}
@@ -348,8 +348,8 @@ const LoanRow: React.FC<LoanRowProps> = ({
         </Td>
 
         {/* Cantidad */}
-        <Td px={4} py={4}>
-          <Box minH="60px" display="flex" alignItems="center">
+        <Td px={4} py={4} w="100px" textAlign="center">
+          <Box minH="60px" display="flex" alignItems="center" justifyContent="center">
             <Badge 
               colorScheme="blue" 
               variant="subtle"
@@ -365,8 +365,8 @@ const LoanRow: React.FC<LoanRowProps> = ({
         </Td>
 
         {/* Acciones */}
-        <Td px={4} py={4}>
-          <Box minH="60px" display="flex" alignItems="center">
+        <Td px={4} py={4} w="150px" textAlign="center">
+          <Box minH="60px" display="flex" alignItems="center" justifyContent="center">
             <HStack spacing={2}>
               {/* Acciones Rápidas */}
               {canReturn && (

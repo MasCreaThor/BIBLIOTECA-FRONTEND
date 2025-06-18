@@ -32,7 +32,10 @@ import {
   FiClock,
   FiTrendingUp,
   FiTrendingDown,
-  FiActivity
+  FiActivity,
+  FiCalendar,
+  FiRotateCcw,
+  FiAlertOctagon
 } from 'react-icons/fi';
 
 // Importar hooks
@@ -295,6 +298,37 @@ export const LoanStatistics: React.FC = () => {
         </SimpleGrid>
       </StatsSection>
 
+      {/* ✅ NUEVO: Métricas de Calidad */}
+      <StatsSection title="Métricas de Calidad">
+        <SimpleGrid columns={{ base: 1, md: 2, lg: 4 }} spacing={6}>
+          <MetricCard
+            title="Tasa de Devolución a Tiempo"
+            value={stats?.onTimeReturnRate || 0}
+            icon={FiCheckCircle}
+            color="green"
+            suffix="%"
+          />
+          <MetricCard
+            title="Devoluciones Este Mes"
+            value={stats?.returnedThisMonth || 0}
+            icon={FiCalendar}
+            color="blue"
+          />
+          <MetricCard
+            title="Préstamos Devueltos"
+            value={stats?.returnedLoans || 0}
+            icon={FiRotateCcw}
+            color="green"
+          />
+          <MetricCard
+            title="Recursos Perdidos"
+            value={stats?.lostLoans || 0}
+            icon={FiAlertOctagon}
+            color="red"
+          />
+        </SimpleGrid>
+      </StatsSection>
+
       {/* Estadísticas de Stock */}
       {stockStats && (
         <StatsSection title="Estado del Stock">
@@ -330,10 +364,22 @@ export const LoanStatistics: React.FC = () => {
       {/* Gráficos */}
       <StatsSection title="Distribución y Análisis">
         <SimpleGrid columns={{ base: 1, lg: 2 }} spacing={6}>
-          <SimpleChart
-            data={loanStatusData}
-            title="Préstamos por Estado"
-          />
+          {/* ✅ MEJORADO: Usar datos del backend para distribución por estados */}
+          {stats?.statusDistribution && stats.statusDistribution.length > 0 ? (
+            <SimpleChart
+              data={stats.statusDistribution.map(item => ({
+                name: item.status,
+                value: item.count,
+                color: item.color
+              }))}
+              title="Distribución por Estados"
+            />
+          ) : (
+            <SimpleChart
+              data={loanStatusData}
+              title="Préstamos por Estado"
+            />
+          )}
           
           {overdueStats && (
             <SimpleChart
@@ -355,19 +401,26 @@ export const LoanStatistics: React.FC = () => {
               </Text>
               <VStack spacing={3} align="stretch">
                 {stats.topBorrowedResources.slice(0, 5).map((resource, index) => (
-                  <HStack key={resource.resourceId} justify="space-between">
-                    <HStack>
-                      <Badge colorScheme="blue" variant="solid">
-                        {index + 1}
-                      </Badge>
-                      <Text fontSize="sm" fontWeight="medium" noOfLines={1}>
-                        {resource.title}
+                  <Box key={resource.resourceId} p={3} bg="gray.50" rounded="md">
+                    <HStack justify="space-between" mb={1}>
+                      <HStack>
+                        <Badge colorScheme="blue" variant="solid">
+                          {index + 1}
+                        </Badge>
+                        <Text fontSize="sm" fontWeight="bold" noOfLines={1}>
+                          {resource.title}
+                        </Text>
+                      </HStack>
+                      <Text fontSize="sm" fontWeight="bold" color="blue.500">
+                        {resource.count} préstamos
                       </Text>
                     </HStack>
-                    <Text fontSize="sm" fontWeight="bold" color="blue.500">
-                      {resource.count} préstamos
-                    </Text>
-                  </HStack>
+                    {resource.author && (
+                      <Text fontSize="xs" color="gray.600" ml={8}>
+                        Autor: {resource.author}
+                      </Text>
+                    )}
+                  </Box>
                 ))}
               </VStack>
             </Box>
@@ -381,19 +434,29 @@ export const LoanStatistics: React.FC = () => {
               </Text>
               <VStack spacing={3} align="stretch">
                 {stats.topBorrowers.slice(0, 5).map((borrower, index) => (
-                  <HStack key={borrower.personId} justify="space-between">
-                    <HStack>
-                      <Badge colorScheme="green" variant="solid">
-                        {index + 1}
-                      </Badge>
-                      <Text fontSize="sm" fontWeight="medium" noOfLines={1}>
-                        {borrower.fullName}
+                  <Box key={borrower.personId} p={3} bg="gray.50" rounded="md">
+                    <HStack justify="space-between" mb={1}>
+                      <HStack>
+                        <Badge colorScheme="green" variant="solid">
+                          {index + 1}
+                        </Badge>
+                        <Text fontSize="sm" fontWeight="bold" noOfLines={1}>
+                          {borrower.fullName}
+                        </Text>
+                      </HStack>
+                      <Text fontSize="sm" fontWeight="bold" color="green.500">
+                        {borrower.count} total
                       </Text>
                     </HStack>
-                    <Text fontSize="sm" fontWeight="bold" color="green.500">
-                      {borrower.count} préstamos
-                    </Text>
-                  </HStack>
+                    <HStack spacing={4} ml={8}>
+                      <Text fontSize="xs" color="blue.600">
+                        Activos: {borrower.activeLoans}
+                      </Text>
+                      <Text fontSize="xs" color="red.600">
+                        Vencidos: {borrower.overdueLoans}
+                      </Text>
+                    </HStack>
+                  </Box>
                 ))}
               </VStack>
             </Box>

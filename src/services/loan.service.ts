@@ -139,16 +139,26 @@ export class LoanService {
         dateTo: formatDateForApi(filters.dateTo)
       };
 
+      console.log('🔍 LoanService: Parámetros enviados al backend:', params);
+      console.log('🔍 LoanService: URL del endpoint:', LOAN_ENDPOINTS.LOANS);
+
       const response = await axiosInstance.get<ApiResponse<PaginatedResponse<LoanWithDetails>>>(
         LOAN_ENDPOINTS.LOANS,
         { params }
       );
+      
+      console.log('🔍 LoanService: Respuesta del backend:', response.data);
       
       const result = handleApiResponse(response.data);
       console.log('✅ LoanService: Búsqueda completada:', result.pagination.total, 'préstamos');
       return result;
     } catch (error: any) {
       console.error('❌ LoanService: Error al buscar préstamos:', error);
+      console.error('❌ LoanService: Detalles del error:', {
+        message: error.message,
+        response: error.response?.data,
+        status: error.response?.status
+      });
       throw error;
     }
   }

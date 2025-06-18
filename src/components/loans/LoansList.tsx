@@ -3,7 +3,7 @@
 // COMPONENTE DE LISTA DE PRÉSTAMOS CON FILTROS - COMPLETO Y CORREGIDO
 // ================================================================
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   Box,
   VStack,
@@ -60,8 +60,6 @@ interface LocalFiltersState {
   isOverdue: boolean;
   dateFrom: string;
   dateTo: string;
-  personType: string;
-  resourceType: string;
 }
 
 interface LoanDetailsModalProps {
@@ -100,8 +98,6 @@ const LoansList: React.FC = () => {
     isOverdue: false,
     dateFrom: '',
     dateTo: '',
-    personType: '',
-    resourceType: ''
   });
 
   // Hooks de Chakra UI
@@ -141,11 +137,19 @@ const LoansList: React.FC = () => {
   useEffect(() => {
     const timeoutId = setTimeout(() => {
       const apiFilters: LoanSearchFilters = {
-        ...localFilters,
+        page: 1, // Resetear a página 1 cuando cambien los filtros
+        limit: 20,
+        search: localFilters.search.trim() || undefined,
         status: (['active', 'returned', 'overdue', 'lost'].includes(localFilters.status)
           ? localFilters.status
-          : undefined) as 'active' | 'returned' | 'overdue' | 'lost' | undefined
+          : undefined) as 'active' | 'returned' | 'overdue' | 'lost' | undefined,
+        isOverdue: localFilters.isOverdue || undefined,
+        dateFrom: localFilters.dateFrom || undefined,
+        dateTo: localFilters.dateTo || undefined
       };
+      
+      // ✅ CORRECCIÓN: Siempre actualizar filtros, incluso cuando están vacíos
+      console.log('🔍 Aplicando filtros:', apiFilters);
       updateFilters(apiFilters);
     }, 500);
 
@@ -165,9 +169,9 @@ const LoansList: React.FC = () => {
       isOverdue: false,
       dateFrom: '',
       dateTo: '',
-      personType: '',
-      resourceType: ''
     });
+    // Limpiar también los filtros del API
+    updateFilters({});
   };
 
   const handleSelectLoan = (loanId: string) => {
@@ -215,11 +219,14 @@ const LoansList: React.FC = () => {
     alert('Función de exportación en desarrollo');
   };
 
-  // ===== CÁLCULOS =====
+  // Calcular si hay filtros activos
+  const hasActiveFilters = useMemo(() => {
+    return Object.values(localFilters).some(value => 
+      typeof value === 'boolean' ? value : value !== ''
+    );
+  }, [localFilters]);
 
-  const hasActiveFilters = Object.values(localFilters).some(value => 
-    typeof value === 'boolean' ? value : value !== ''
-  );
+  // ===== CÁLCULOS =====
 
   const summaryStats = {
     total: loans?.length || 0,
@@ -312,14 +319,14 @@ const LoansList: React.FC = () => {
           flexWrap="wrap"
           gap={4}
         >
-          {/* Búsqueda */}
+          {/* Búsqueda Mejorada */}
           <Box flex="1" minW="300px">
             <InputGroup>
               <InputLeftElement>
                 <FiSearch color="gray.400" />
               </InputLeftElement>
               <Input
-                placeholder="Buscar por persona, recurso, documento..."
+                placeholder="Buscar por nombre de persona, documento, título de recurso, autor, ISBN..."
                 value={localFilters.search}
                 onChange={(e) => handleFilterChange('search', e.target.value)}
                 bg="white"
@@ -328,8 +335,17 @@ const LoansList: React.FC = () => {
                   borderColor: 'blue.500',
                   boxShadow: '0 0 0 1px var(--chakra-colors-blue-500)'
                 }}
+                _placeholder={{
+                  color: 'gray.400',
+                  fontSize: 'sm'
+                }}
               />
             </InputGroup>
+            {localFilters.search && (
+              <Text fontSize="xs" color="gray.500" mt={1}>
+                Buscando: "{localFilters.search}"
+              </Text>
+            )}
           </Box>
 
           {/* Acciones */}
@@ -362,6 +378,17 @@ const LoansList: React.FC = () => {
                 </Badge>
               )}
             </Button>
+
+            <Button
+              size="sm"
+              leftIcon={<FiRefreshCw />}
+              variant="outline"
+              onClick={refetch}
+              isLoading={loading}
+              borderRadius="md"
+            >
+              Actualizar
+            </Button>
           </HStack>
         </Flex>
 
@@ -369,7 +396,7 @@ const LoansList: React.FC = () => {
         <Collapse in={showFilters}>
           <Box p={6} bg="white" borderTop="1px" borderColor={borderColor}>
             <VStack spacing={6} align="stretch">
-              <SimpleGrid columns={{ base: 1, md: 2, lg: 4 }} spacing={6}>
+              <SimpleGrid columns={{ base: 1, md: 2, lg: 3 }} spacing={6}>
                 <Box>
                   <Text fontSize="sm" fontWeight="semibold" mb={3} color="gray.700">
                     Estado del Préstamo
@@ -389,26 +416,6 @@ const LoansList: React.FC = () => {
                     <option value="returned">Devueltos</option>
                     <option value="overdue">Vencidos</option>
                     <option value="lost">Perdidos</option>
-                  </Select>
-                </Box>
-
-                <Box>
-                  <Text fontSize="sm" fontWeight="semibold" mb={3} color="gray.700">
-                    Tipo de Persona
-                  </Text>
-                  <Select
-                    value={localFilters.personType}
-                    onChange={(e) => handleFilterChange('personType', e.target.value)}
-                    bg="white"
-                    borderColor="gray.300"
-                    _focus={{
-                      borderColor: 'blue.500',
-                      boxShadow: '0 0 0 1px var(--chakra-colors-blue-500)'
-                    }}
-                  >
-                    <option value="">Todos</option>
-                    <option value="student">Estudiantes</option>
-                    <option value="teacher">Profesores</option>
                   </Select>
                 </Box>
 
@@ -460,17 +467,31 @@ const LoansList: React.FC = () => {
                   </Checkbox>
                 </HStack>
 
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={handleClearFilters}
-                  isDisabled={!hasActiveFilters}
-                  colorScheme="gray"
-                  borderRadius="md"
-                  leftIcon={<FiX />}
-                >
-                  Limpiar Filtros
-                </Button>
+                <HStack spacing={3}>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={handleClearFilters}
+                    isDisabled={!hasActiveFilters}
+                    colorScheme="gray"
+                    borderRadius="md"
+                    leftIcon={<FiX />}
+                  >
+                    Limpiar Filtros
+                  </Button>
+                  
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={refetch}
+                    isLoading={loading}
+                    colorScheme="blue"
+                    borderRadius="md"
+                    leftIcon={<FiRefreshCw />}
+                  >
+                    Actualizar
+                  </Button>
+                </HStack>
               </Flex>
             </VStack>
           </Box>
@@ -495,10 +516,10 @@ const LoansList: React.FC = () => {
           </Flex>
         ) : (loans && loans.length > 0) ? (
           <Box overflowX="auto">
-            <Table variant="unstyled" size="md">
+            <Table variant="unstyled" size="md" sx={{ tableLayout: 'fixed' }}>
               <Thead>
                 <Tr bg={useColorModeValue('gray.50', 'gray.700')} borderBottom="2px" borderColor={borderColor}>
-                  <Th px={4} py={4}>
+                  <Th px={4} py={4} w="50px" textAlign="center">
                     <Checkbox
                       isChecked={loans && selectedLoans.length === loans.length && loans.length > 0}
                       isIndeterminate={selectedLoans.length > 0 && loans && selectedLoans.length < loans.length}
@@ -506,25 +527,25 @@ const LoansList: React.FC = () => {
                       colorScheme="blue"
                     />
                   </Th>
-                  <Th px={4} py={4} fontSize="sm" fontWeight="bold" color="gray.700" textTransform="uppercase" letterSpacing="wide">
+                  <Th px={4} py={4} fontSize="sm" fontWeight="bold" color="gray.700" textTransform="uppercase" letterSpacing="wide" w="200px" textAlign="left">
                     Persona
                   </Th>
-                  <Th px={4} py={4} fontSize="sm" fontWeight="bold" color="gray.700" textTransform="uppercase" letterSpacing="wide">
+                  <Th px={4} py={4} fontSize="sm" fontWeight="bold" color="gray.700" textTransform="uppercase" letterSpacing="wide" w="200px" textAlign="left">
                     Recurso
                   </Th>
-                  <Th px={4} py={4} fontSize="sm" fontWeight="bold" color="gray.700" textTransform="uppercase" letterSpacing="wide">
+                  <Th px={4} py={4} fontSize="sm" fontWeight="bold" color="gray.700" textTransform="uppercase" letterSpacing="wide" w="120px" textAlign="center">
                     F. Préstamo
                   </Th>
-                  <Th px={4} py={4} fontSize="sm" fontWeight="bold" color="gray.700" textTransform="uppercase" letterSpacing="wide">
+                  <Th px={4} py={4} fontSize="sm" fontWeight="bold" color="gray.700" textTransform="uppercase" letterSpacing="wide" w="120px" textAlign="center">
                     F. Vencimiento
                   </Th>
-                  <Th px={4} py={4} fontSize="sm" fontWeight="bold" color="gray.700" textTransform="uppercase" letterSpacing="wide">
+                  <Th px={4} py={4} fontSize="sm" fontWeight="bold" color="gray.700" textTransform="uppercase" letterSpacing="wide" w="120px" textAlign="center">
                     Estado
                   </Th>
-                  <Th px={4} py={4} fontSize="sm" fontWeight="bold" color="gray.700" textTransform="uppercase" letterSpacing="wide">
+                  <Th px={4} py={4} fontSize="sm" fontWeight="bold" color="gray.700" textTransform="uppercase" letterSpacing="wide" w="100px" textAlign="center">
                     Cantidad
                   </Th>
-                  <Th px={4} py={4} fontSize="sm" fontWeight="bold" color="gray.700" textTransform="uppercase" letterSpacing="wide">
+                  <Th px={4} py={4} fontSize="sm" fontWeight="bold" color="gray.700" textTransform="uppercase" letterSpacing="wide" w="150px" textAlign="center">
                     Acciones
                   </Th>
                 </Tr>
@@ -543,7 +564,7 @@ const LoansList: React.FC = () => {
                       borderColor={useColorModeValue('gray.100', 'gray.600')}
                       bg={index % 2 === 0 ? useColorModeValue('white', 'gray.800') : useColorModeValue('gray.25', 'gray.750')}
                     >
-                      <Td px={4} py={4}>
+                      <Td px={4} py={4} w="50px" textAlign="center">
                         <Checkbox
                           isChecked={selectedLoans.includes(loan._id)}
                           onChange={() => handleSelectLoan(loan._id)}
@@ -607,6 +628,9 @@ const LoansList: React.FC = () => {
               </Text>
               <Text fontSize="xs" color="gray.500">
                 Total de {pagination.total} préstamos
+                {hasActiveFilters && (
+                  <span> (filtrados)</span>
+                )}
               </Text>
             </VStack>
 

@@ -32,8 +32,11 @@ class LoanServiceWrapper {
   // Wrapper para obtener préstamos con filtros
   static async findAll(filters: LoanSearchFilters) {
     try {
+      console.log('🔍 LoanServiceWrapper: Llamando a findAll con filtros:', filters);
+      
       // Usar searchLoans si existe
       if (typeof LoanService.searchLoans === 'function') {
+        console.log('✅ LoanServiceWrapper: Usando LoanService.searchLoans');
         const response = await LoanService.searchLoans(filters);
         
         // ✅ CORRECCIÓN: Validar la respuesta
@@ -41,9 +44,15 @@ class LoanServiceWrapper {
           throw new Error('Respuesta inválida del servidor');
         }
         
+        console.log('✅ LoanServiceWrapper: Respuesta exitosa:', {
+          total: response.pagination?.total,
+          loansCount: response.data?.length
+        });
+        
         return response;
       }
       
+      console.log('⚠️ LoanServiceWrapper: LoanService.searchLoans no disponible, usando fallback');
       // Último fallback: crear respuesta mock
       return {
         data: [],
@@ -57,7 +66,7 @@ class LoanServiceWrapper {
         }
       };
     } catch (error) {
-      console.error('Error en LoanServiceWrapper.findAll:', error);
+      console.error('❌ LoanServiceWrapper: Error en findAll:', error);
       
       // ✅ CORRECCIÓN: Retornar respuesta de error en lugar de lanzar excepción
       return {
@@ -90,6 +99,14 @@ class LoanServiceWrapper {
         overdueLoans: 0,
         lostLoans: 0,
         averageLoanDuration: 0,
+        onTimeReturnRate: 0,
+        returnedThisMonth: 0,
+        statusDistribution: [
+          { status: 'active', count: 0, percentage: 0, color: '#10B981' },
+          { status: 'returned', count: 0, percentage: 0, color: '#3B82F6' },
+          { status: 'overdue', count: 0, percentage: 0, color: '#F59E0B' },
+          { status: 'lost', count: 0, percentage: 0, color: '#EF4444' }
+        ],
         topBorrowedResources: [],
         topBorrowers: []
       };
@@ -236,6 +253,8 @@ export const useLoans = (initialFilters: LoanSearchFilters = {}) => {
     
     try {
       const finalFilters = searchFilters || filters;
+      console.log('🔍 useLoans: Ejecutando fetchLoans con filtros:', finalFilters);
+      
       // FIX: Usar el wrapper que maneja diferentes implementaciones
       const response = await LoanServiceWrapper.findAll(finalFilters);
       
@@ -243,6 +262,11 @@ export const useLoans = (initialFilters: LoanSearchFilters = {}) => {
       if (!response || !response.data) {
         throw new Error('Respuesta inválida del servidor');
       }
+      
+      console.log('✅ useLoans: Respuesta recibida:', {
+        total: response.pagination?.total,
+        loansCount: response.data?.length
+      });
       
       setState(prev => ({ 
         ...prev, 
@@ -258,7 +282,7 @@ export const useLoans = (initialFilters: LoanSearchFilters = {}) => {
         loading: false 
       }));
     } catch (error: any) {
-      console.error('Error fetching loans:', error);
+      console.error('❌ useLoans: Error fetching loans:', error);
       setState(prev => ({ 
         ...prev, 
         loading: false, 
@@ -291,6 +315,7 @@ export const useLoans = (initialFilters: LoanSearchFilters = {}) => {
   }, []);
 
   const updateFilters = useCallback((newFilters: LoanSearchFilters) => {
+    console.log('🔄 useLoans: Actualizando filtros:', newFilters);
     setFilters(prev => ({ ...prev, ...newFilters }));
   }, []);
 
@@ -306,9 +331,11 @@ export const useLoans = (initialFilters: LoanSearchFilters = {}) => {
     fetchLoans();
   }, [fetchLoans]);
 
+  // ✅ CORRECCIÓN: Ejecutar fetchLoans cuando cambien los filtros
   useEffect(() => {
+    console.log('🔄 useLoans: Filtros cambiaron, ejecutando fetchLoans');
     fetchLoans();
-  }, [fetchLoans]);
+  }, [filters, fetchLoans]);
 
   return {
     ...state,
