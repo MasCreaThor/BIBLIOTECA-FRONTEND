@@ -209,8 +209,6 @@ export class PDFService {
 
   static generateReport(options: PDFReportOptions): void {
     try {
-      console.log('Iniciando generación de PDF con datos:', options.data.length, 'personas');
-      
       // Crear el documento PDF
       const doc = new jsPDF('p', 'mm', 'a4');
       
@@ -224,12 +222,8 @@ export class PDFService {
       const timestamp = new Date().toISOString().slice(0, 10);
       const fileName = `reporte_${options.filterType.toLowerCase().replace(/\s+/g, '_')}_${timestamp}.pdf`;
       
-      console.log('PDF generado exitosamente, guardando como:', fileName);
-      
       // Descargar el PDF
       doc.save(fileName);
-      
-      console.log('PDF descargado exitosamente');
     } catch (error) {
       console.error('Error en generateReport:', error);
       throw new Error(`Error al generar el PDF: ${error instanceof Error ? error.message : 'Error desconocido'}`);
