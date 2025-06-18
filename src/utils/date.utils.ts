@@ -96,3 +96,6 @@ export class DateUtils {
       return new Date(dateObj.getFullYear(), dateObj.getMonth(), dateObj.getDate(), 23, 59, 59, 999);
     }
   }
+
+// Exportación directa para facilitar la importación
+export const formatDate = DateUtils.format;

@@ -68,5 +68,8 @@ export type {
   ReturnLoanRequest
 } from './loan.types';
 
+// Exportar tipos de reportes
+export * from './reports.types';
+
 // Exportar tipos del dashboard
 export * from './dashboard.types';

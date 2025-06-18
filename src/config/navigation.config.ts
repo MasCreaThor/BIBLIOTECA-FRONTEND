@@ -4,7 +4,6 @@ import {
     FiUsers,
     FiBook,
     FiBookOpen,
-    FiFileText,
     FiBarChart,
     FiSettings,
   } from 'react-icons/fi';
@@ -51,21 +50,10 @@ import {
       isActive: (pathname) => pathname.startsWith('/loans'),
     },
     {
-      name: 'Solicitudes',
-      href: '/requests',
-      icon: FiFileText,
-      description: 'Recursos solicitados',
-      badge: 'Próximamente',
-      badgeColor: 'orange',
-      isActive: (pathname) => pathname.startsWith('/requests'),
-    },
-    {
       name: 'Reportes',
       href: '/reports',
       icon: FiBarChart,
       description: 'Estadísticas e informes',
-      badge: 'Próximamente',
-      badgeColor: 'orange',
       isActive: (pathname) => pathname.startsWith('/reports'),
     },
     {
