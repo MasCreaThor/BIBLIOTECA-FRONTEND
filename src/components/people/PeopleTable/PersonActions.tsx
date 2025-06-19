@@ -46,13 +46,6 @@ export function PersonActions({ person, onActionClick }: PersonActionsProps) {
           </MenuItem>
         </SafeLink>
         
-        <MenuItem
-          icon={<FiEdit />}
-          onClick={() => onActionClick('edit')}
-        >
-          Editar
-        </MenuItem>
-
         <MenuDivider />
 
         {person.active ? (

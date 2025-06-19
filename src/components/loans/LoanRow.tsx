@@ -61,6 +61,8 @@ interface LoanRowProps {
   onUpdate?: () => void;
   onViewDetails?: (loan: LoanWithDetails) => void;
   onReturnLoan?: (loan: LoanWithDetails) => void;
+  hidePerson?: boolean;
+  hideActions?: boolean;
 }
 
 // ===== COMPONENTE PRINCIPAL =====
@@ -69,7 +71,9 @@ const LoanRow: React.FC<LoanRowProps> = ({
   loan, 
   onUpdate, 
   onViewDetails,
-  onReturnLoan 
+  onReturnLoan,
+  hidePerson = false,
+  hideActions = false
 }) => {
   const toast = useToast();
   const { isOpen, onOpen, onClose } = useDisclosure();
@@ -243,25 +247,27 @@ const LoanRow: React.FC<LoanRowProps> = ({
     <>
       <Tr _hover={{ bg: hoverBg }} transition="background-color 0.2s">
         {/* Información de la Persona */}
-        <Td px={4} py={4} w="200px" textAlign="left">
-          <VStack align="start" spacing={2} minH="60px" justify="center">
-            <Text fontWeight="semibold" fontSize="sm" color="gray.800" noOfLines={2} maxW="180px">
-              {loan.person?.fullName || 'N/A'}
-            </Text>
-            <HStack spacing={2} minH="20px">
-              {getPersonTypeBadge(loan.person?.personType)}
-              {loan.person?.documentNumber ? (
-                <Text fontSize="xs" color="gray.500" bg="gray.100" px={2} py={1} rounded="md">
-                  {loan.person.documentNumber}
-                </Text>
-              ) : (
-                <Text fontSize="xs" color="gray.400" bg="gray.50" px={2} py={1} rounded="md" fontStyle="italic">
-                  Sin documento
-                </Text>
-              )}
-            </HStack>
-          </VStack>
-        </Td>
+        {!hidePerson && (
+          <Td px={4} py={4} w="200px" textAlign="left">
+            <VStack align="start" spacing={2} minH="60px" justify="center">
+              <Text fontWeight="semibold" fontSize="sm" color="gray.800" noOfLines={2} maxW="180px">
+                {loan.person?.fullName || 'N/A'}
+              </Text>
+              <HStack spacing={2} minH="20px">
+                {getPersonTypeBadge(loan.person?.personType)}
+                {loan.person?.documentNumber ? (
+                  <Text fontSize="xs" color="gray.500" bg="gray.100" px={2} py={1} rounded="md">
+                    {loan.person.documentNumber}
+                  </Text>
+                ) : (
+                  <Text fontSize="xs" color="gray.400" bg="gray.50" px={2} py={1} rounded="md" fontStyle="italic">
+                    Sin documento
+                  </Text>
+                )}
+              </HStack>
+            </VStack>
+          </Td>
+        )}
 
         {/* Información del Recurso */}
         <Td px={4} py={4} w="200px" textAlign="left">
@@ -269,17 +275,11 @@ const LoanRow: React.FC<LoanRowProps> = ({
             <Text fontWeight="semibold" fontSize="sm" color="gray.800" noOfLines={2} maxW="180px">
               {loan.resource?.title || 'N/A'}
             </Text>
-            <HStack spacing={2} minH="20px">
-              {loan.resource?.author ? (
-                <Text fontSize="xs" color="gray.600" noOfLines={1} maxW="180px">
-                  {loan.resource.author}
-                </Text>
-              ) : (
-                <Text fontSize="xs" color="gray.400" fontStyle="italic">
-                  Sin autor
-                </Text>
-              )}
-            </HStack>
+            {loan.resource?.author && (
+              <Text fontSize="xs" color="gray.600" noOfLines={1} maxW="180px">
+                {loan.resource.author}
+              </Text>
+            )}
           </VStack>
         </Td>
 
@@ -365,6 +365,7 @@ const LoanRow: React.FC<LoanRowProps> = ({
         </Td>
 
         {/* Acciones */}
+        {!hideActions && (
         <Td px={4} py={4} w="150px" textAlign="center">
           <Box minH="60px" display="flex" alignItems="center" justifyContent="center">
             <HStack spacing={2}>
@@ -434,6 +435,7 @@ const LoanRow: React.FC<LoanRowProps> = ({
             </HStack>
           </Box>
         </Td>
+        )}
       </Tr>
 
       {/* Diálogo de Confirmación de Devolución Rápida */}

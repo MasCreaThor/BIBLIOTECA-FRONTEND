@@ -61,7 +61,7 @@ import {
       href: '/admin',
       icon: FiSettings,
       adminOnly: true,
-      description: 'Gestión de usuarios del sistema',
+      description: 'Gestión de recursos auxiliares del sistema',
       badgeColor: 'orange',
       isActive: (pathname) => pathname.startsWith('/admin'),
     },

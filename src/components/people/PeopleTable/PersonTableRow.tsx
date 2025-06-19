@@ -18,6 +18,7 @@ import { PersonActions } from './PersonActions';
 import { DeleteConfirmDialog, DeactivateConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { usePersonTypes } from '@/hooks/usePeople';
 import type { Person } from '@/types/api.types';
+import { useRouter } from 'next/navigation';
 
 interface PersonTableRowProps {
   person: Person;
@@ -45,6 +46,7 @@ export function PersonTableRow({
   const [selectedAction, setSelectedAction] = useState<'delete' | 'deactivate' | null>(null);
   const { isOpen: isDeleteOpen, onOpen: onDeleteOpen, onClose: onDeleteClose } = useDisclosure();
   const { isOpen: isDeactivateOpen, onOpen: onDeactivateOpen, onClose: onDeactivateClose } = useDisclosure();
+  const router = useRouter();
   
   // Obtener tipos de persona para fallback
   const { data: personTypes } = usePersonTypes();
@@ -128,8 +130,9 @@ export function PersonTableRow({
   return (
     <>
       <Tr
-        _hover={{ bg: 'gray.50' }}
+        _hover={{ bg: 'gray.50', cursor: 'pointer' }}
         opacity={person.active ? 1 : 0.6}
+        onClick={() => router.push(`/people/${person._id}`)}
       >
         {/* Avatar y nombre */}
         <Td>
@@ -201,7 +204,7 @@ export function PersonTableRow({
 
         {/* Acciones */}
         {showActions && (
-          <Td>
+          <Td onClick={e => e.stopPropagation()}>
             <PersonActions
               person={person}
               onActionClick={handleActionClick}

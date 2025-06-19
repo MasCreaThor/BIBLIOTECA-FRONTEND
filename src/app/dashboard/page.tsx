@@ -48,14 +48,14 @@ import { SafeLink } from '@/components/ui/SafeLink';
 const quickActions = [
   {
     name: 'Nuevo Préstamo',
-    href: '/loans/new',
+    href: '/loans',
     icon: FiBookOpen,
     description: 'Registrar un nuevo préstamo',
     color: 'blue',
   },
   {
     name: 'Devolver Recurso',
-    href: '/loans/return',
+    href: '/loans',
     icon: FiArrowRight,
     description: 'Procesar una devolución',
     color: 'green',
@@ -416,14 +416,6 @@ export default function DashboardPage() {
                 href="/inventory?availability=false"
               />
               <StatCard
-                label="Total de Unidades"
-                value={data.resources.total || 0}
-                helpText="Todas las unidades del inventario"
-                icon={FiBook}
-                color="blue"
-                href="/inventory"
-              />
-              <StatCard
                 label="Tipos de Recursos"
                 value={data.resources.byType?.length || 0}
                 helpText="Diferentes categorías disponibles"
@@ -596,25 +588,6 @@ export default function DashboardPage() {
                 </Alert>
               )}
             </Grid>
-          </Box>
-        )}
-
-        {/* Acceso rápido para administradores */}
-        {isAdmin && (
-          <Box>
-            <Heading size="md" color="gray.800" mb={4}>
-              Administración
-            </Heading>
-            <SafeLink href="/admin">
-              <Button
-                colorScheme="red"
-                variant="outline"
-                leftIcon={<Icon as={FiUsers} />}
-                size="lg"
-              >
-                Gestionar Usuarios del Sistema
-              </Button>
-            </SafeLink>
           </Box>
         )}
       </VStack>
