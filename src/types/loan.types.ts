@@ -111,10 +111,12 @@ export interface ReturnLoanRequest {
   returnDate?: string;
   resourceCondition?: string;
   returnObservations?: string;
+  lostQuantity?: number;
 }
 
 export interface MarkAsLostRequest {
   observations: string;
+  lostQuantity?: number;
 }
 
 // ===== FILTROS Y BÚSQUEDA =====

@@ -283,6 +283,17 @@ export const CreateLoanModal: React.FC<CreateLoanModalProps> = ({
       let localPersonValid = true;
       let localQuantityValid = true;
 
+      // ✅ CORRECCIÓN: Obtener disponibilidad actualizada del backend
+      let currentAvailability = null;
+      try {
+        currentAvailability = await checkResourceAvailability(watchedValues.resourceId);
+        console.log('🔍 Disponibilidad actualizada del backend:', currentAvailability);
+      } catch (error) {
+        console.error('🔍 Error obteniendo disponibilidad:', error);
+        localErrors.push('No se pudo verificar la disponibilidad del recurso');
+        localResourceValid = false;
+      }
+
       // Validar estado del recurso
       if (selectedResource) {
         console.log('🔍 Validando estado del recurso:', selectedResource.stateId);
@@ -297,16 +308,29 @@ export const CreateLoanModal: React.FC<CreateLoanModalProps> = ({
           }
         }
 
-        // Validar disponibilidad
-        if ((selectedResource.availableQuantity || 0) <= 0) {
-          localErrors.push('No hay unidades disponibles del recurso');
-          localResourceValid = false;
-        }
+        // ✅ CORRECCIÓN: Usar disponibilidad del backend en lugar de datos locales
+        if (currentAvailability) {
+          if (!currentAvailability.canLoan) {
+            localErrors.push('Recurso no disponible: stock insuficiente');
+            localResourceValid = false;
+          }
 
-        // Validar cantidad vs disponibilidad
-        if (watchedValues.quantity > (selectedResource.availableQuantity || 0)) {
-          localErrors.push(`Cantidad solicitada (${watchedValues.quantity}) excede la disponibilidad (${selectedResource.availableQuantity || 0})`);
-          localQuantityValid = false;
+          // Validar cantidad vs disponibilidad real
+          if (watchedValues.quantity > currentAvailability.availableQuantity) {
+            localErrors.push(`Cantidad solicitada (${watchedValues.quantity}) excede la disponibilidad (${currentAvailability.availableQuantity})`);
+            localQuantityValid = false;
+          }
+        } else {
+          // Fallback a datos locales si no se pudo obtener del backend
+          if ((selectedResource.availableQuantity || 0) <= 0) {
+            localErrors.push('No hay unidades disponibles del recurso');
+            localResourceValid = false;
+          }
+
+          if (watchedValues.quantity > (selectedResource.availableQuantity || 0)) {
+            localErrors.push(`Cantidad solicitada (${watchedValues.quantity}) excede la disponibilidad (${selectedResource.availableQuantity || 0})`);
+            localQuantityValid = false;
+          }
         }
       }
 

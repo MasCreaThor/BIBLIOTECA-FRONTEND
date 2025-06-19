@@ -63,7 +63,17 @@ const returnLoanSchema = z.object({
   resourceCondition: z.enum(['good', 'damaged', 'lost'], {
     errorMap: () => ({ message: 'Debe seleccionar el estado del recurso' })
   }),
-  returnObservations: z.string().optional()
+  returnObservations: z.string().optional(),
+  lostQuantity: z.number().optional()
+}).refine((data) => {
+  // Si el estado es "lost", la cantidad perdida es requerida
+  if (data.resourceCondition === 'lost') {
+    return data.lostQuantity !== undefined && data.lostQuantity > 0;
+  }
+  return true;
+}, {
+  message: 'La cantidad perdida es requerida cuando se marca como perdido',
+  path: ['lostQuantity']
 });
 
 type ReturnLoanFormData = z.infer<typeof returnLoanSchema>;
@@ -110,7 +120,8 @@ const ReturnModal: React.FC<ReturnModalProps> = ({
     defaultValues: {
       returnDate: format(new Date(), 'yyyy-MM-dd'),
       resourceCondition: 'good',
-      returnObservations: ''
+      returnObservations: '',
+      lostQuantity: 0
     }
   });
 
@@ -124,7 +135,8 @@ const ReturnModal: React.FC<ReturnModalProps> = ({
       reset({
         returnDate: format(new Date(), 'yyyy-MM-dd'),
         resourceCondition: 'good',
-        returnObservations: ''
+        returnObservations: '',
+        lostQuantity: 0
       });
       
       // Verificar si necesita calcular multa
@@ -195,7 +207,8 @@ const ReturnModal: React.FC<ReturnModalProps> = ({
         loanId: loan._id,
         returnDate: data.returnDate,
         resourceCondition: data.resourceCondition,
-        returnObservations: data.returnObservations || undefined
+        returnObservations: data.returnObservations || undefined,
+        lostQuantity: data.lostQuantity
       };
 
       await returnLoan(request);
@@ -395,6 +408,29 @@ const ReturnModal: React.FC<ReturnModalProps> = ({
                     <FormErrorMessage>{errors.resourceCondition?.message}</FormErrorMessage>
                   </FormControl>
 
+                  {/* Cantidad Perdida - Solo mostrar cuando se selecciona "lost" */}
+                  {watchedCondition === 'lost' && (
+                    <FormControl isInvalid={!!errors.lostQuantity} isRequired>
+                      <FormLabel>
+                        <HStack>
+                          <FiAlertTriangle />
+                          <Text>Cantidad Perdida</Text>
+                        </HStack>
+                      </FormLabel>
+                      <Input
+                        type="number"
+                        min={1}
+                        max={loan.quantity}
+                        {...register('lostQuantity', { valueAsNumber: true })}
+                        placeholder={`Máximo: ${loan.quantity} copias`}
+                      />
+                      <FormErrorMessage>{errors.lostQuantity?.message}</FormErrorMessage>
+                      <Text fontSize="xs" color="gray.500" mt={1}>
+                        Cantidad prestada: {loan.quantity} copias
+                      </Text>
+                    </FormControl>
+                  )}
+
                   {/* Información del Estado Seleccionado */}
                   <Box
                     p={3}
@@ -460,9 +496,16 @@ const ReturnModal: React.FC<ReturnModalProps> = ({
               {watchedCondition === 'lost' && (
                 <Alert status="error">
                   <AlertIcon />
-                  <Text fontSize="sm">
-                    El recurso se marcará como perdido y se iniciará el proceso de reposición.
-                  </Text>
+                  <VStack align="start" spacing={1}>
+                    <Text fontSize="sm" fontWeight="medium">
+                      Recurso Perdido
+                    </Text>
+                    <Text fontSize="xs">
+                      • Se marcará como perdido solo la cantidad especificada
+                      • Si quedan copias disponibles, el recurso seguirá disponible para préstamos
+                      • Si se pierden todas las copias, el recurso se marcará como completamente perdido
+                    </Text>
+                  </VStack>
                 </Alert>
               )}
             </VStack>

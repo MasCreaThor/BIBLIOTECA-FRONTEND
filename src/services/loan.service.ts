@@ -296,12 +296,13 @@ export class LoanService {
    */
   static async markAsLost(loanId: string, data: MarkAsLostRequest): Promise<LoanWithDetails> {
     try {
-      console.log('📝 LoanService: Marcando como perdido:', loanId);
+      console.log('📝 LoanService: Marcando como perdido:', loanId, 'lostQuantity:', data.lostQuantity);
 
       const response = await axiosInstance.put<ApiResponse<LoanWithDetails>>(
         LOAN_ENDPOINTS.MARK_AS_LOST(loanId),
         {
-          observations: data.observations.trim()
+          observations: data.observations.trim(),
+          lostQuantity: data.lostQuantity
         }
       );
       
