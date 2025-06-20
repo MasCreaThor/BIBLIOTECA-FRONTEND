@@ -85,10 +85,8 @@ export function DashboardLayout({
             </Container>
           </Box>
         </Flex>
-
-        {/* Debug info en desarrollo */}
-        <DebugInfo />
       </Flex>
+      {/* <DebugInfo /> */}
     </AuthenticatedRoute>
   );
 }

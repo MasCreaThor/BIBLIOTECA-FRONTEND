@@ -75,8 +75,26 @@ export function Providers({ children }: { children: React.ReactNode }) {
             }}
           />
           
-          {/* React Query DevTools - solo en desarrollo */}
-          {process.env.NODE_ENV === 'development' && <ReactQueryDevtools initialIsOpen={false} />}
+          {/* React Query DevTools - reposicionado y más pequeño */}
+          {process.env.NODE_ENV === 'development' && (
+            <>
+              <style jsx global>{`
+                .react-query-devtools-button {
+                  transform: scale(0.7) !important;
+                  bottom: 20px !important;
+                  left: 20px !important;
+                }
+                .react-query-devtools-panel {
+                  transform: scale(0.9) !important;
+                  transform-origin: bottom left !important;
+                }
+              `}</style>
+              <ReactQueryDevtools 
+                initialIsOpen={false} 
+                position="left"
+              />
+            </>
+          )}
         </AuthProvider>
       </ChakraProvider>
     </QueryClientProvider>

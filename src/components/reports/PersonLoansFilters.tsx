@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { FiSearch, FiFilter, FiRefreshCw } from 'react-icons/fi';
 import { reportsService } from '@/services/reports.service';
 import { PersonLoanSummary, PersonLoansQuery, LoanStatusFilter } from '@/types/reports.types';
@@ -24,6 +24,15 @@ export function PersonLoansFilters({ onDataLoaded, onLoadingChange }: PersonLoan
     { value: LoanStatusFilter.RETURNED, label: 'Préstamos Devueltos' },
     { value: LoanStatusFilter.LOST, label: 'Libros Perdidos' },
   ];
+
+  const availableYears = useMemo(() => {
+    const currentYear = new Date().getFullYear();
+    const years = [];
+    for (let year = currentYear + 1; year >= currentYear; year--) {
+      years.push(year);
+    }
+    return years;
+  }, []);
 
   const loadData = useCallback(async () => {
     setIsLoading(true);
@@ -126,14 +135,11 @@ export function PersonLoansFilters({ onDataLoaded, onLoadingChange }: PersonLoan
                 onChange={(e) => setYear(e.target.value)}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               >
-                {Array.from({ length: 5 }, (_, i) => {
-                  const yearValue = new Date().getFullYear() - i;
-                  return (
-                    <option key={yearValue} value={yearValue.toString()}>
-                      {yearValue}
-                    </option>
-                  );
-                })}
+                {availableYears.map(yearValue => (
+                  <option key={yearValue} value={yearValue.toString()}>
+                    {yearValue}
+                  </option>
+                ))}
               </select>
             </div>
 

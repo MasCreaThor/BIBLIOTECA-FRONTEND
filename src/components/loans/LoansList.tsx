@@ -61,6 +61,7 @@ interface LocalFiltersState {
   isOverdue: boolean;
   dateFrom: string;
   dateTo: string;
+  year: string;
 }
 
 // ===== COMPONENTE PRINCIPAL =====
@@ -74,6 +75,7 @@ const LoansList: React.FC = () => {
     isOverdue: false,
     dateFrom: '',
     dateTo: '',
+    year: '',
   });
 
   // Hooks de Chakra UI
@@ -121,7 +123,7 @@ const LoansList: React.FC = () => {
           : undefined) as 'active' | 'returned' | 'overdue' | 'lost' | undefined,
         isOverdue: localFilters.isOverdue || undefined,
         dateFrom: localFilters.dateFrom || undefined,
-        dateTo: localFilters.dateTo || undefined
+        dateTo: localFilters.dateTo || undefined,
       };
       
       // ✅ CORRECCIÓN: Siempre actualizar filtros, incluso cuando están vacíos
@@ -135,7 +137,18 @@ const LoansList: React.FC = () => {
   // ===== MANEJADORES =====
 
   const handleFilterChange = (key: keyof LocalFiltersState, value: string | boolean) => {
-    setLocalFilters(prev => ({ ...prev, [key]: value }));
+    if (key === 'year') {
+      const year = value as string;
+      if (year) {
+        const dateFrom = `${year}-01-01`;
+        const dateTo = `${year}-12-31`;
+        setLocalFilters(prev => ({ ...prev, year, dateFrom, dateTo }));
+      } else {
+        setLocalFilters(prev => ({ ...prev, year: '', dateFrom: '', dateTo: '' }));
+      }
+    } else {
+      setLocalFilters(prev => ({ ...prev, [key]: value, year: '' })); // Si cambia otra cosa, resetea el año
+    }
   };
 
   const handleClearFilters = () => {
@@ -145,6 +158,7 @@ const LoansList: React.FC = () => {
       isOverdue: false,
       dateFrom: '',
       dateTo: '',
+      year: '',
     });
     // Limpiar también los filtros del API
     updateFilters({});
@@ -186,6 +200,16 @@ const LoansList: React.FC = () => {
   }, [localFilters]);
 
   // ===== CÁLCULOS =====
+
+  const availableYears = useMemo(() => {
+    const currentYear = new Date().getFullYear();
+    const years = [];
+    // Mostrar solo desde el año actual hasta el siguiente
+    for (let year = currentYear + 1; year >= currentYear; year--) {
+      years.push(year);
+    }
+    return years;
+  }, []);
 
   const summaryStats = {
     total: loans?.length || 0,
@@ -342,7 +366,27 @@ const LoansList: React.FC = () => {
         <Collapse in={showFilters}>
           <Box p={6} bg="white" borderTop="1px" borderColor={borderColor}>
             <VStack spacing={6} align="stretch">
-              <SimpleGrid columns={{ base: 1, md: 2, lg: 3 }} spacing={6}>
+              <SimpleGrid columns={{ base: 1, md: 2, lg: 4 }} spacing={6}>
+                <Box>
+                  <Text fontSize="sm" fontWeight="semibold" mb={3} color="gray.700">
+                    Filtrar por Año
+                  </Text>
+                  <Select
+                    value={localFilters.year}
+                    onChange={(e) => handleFilterChange('year', e.target.value)}
+                    bg="white"
+                    borderColor="gray.300"
+                    _focus={{
+                      borderColor: 'blue.500',
+                      boxShadow: '0 0 0 1px var(--chakra-colors-blue-500)'
+                    }}
+                    placeholder="Seleccionar año"
+                  >
+                    {availableYears.map(year => (
+                      <option key={year} value={year}>{year}</option>
+                    ))}
+                  </Select>
+                </Box>
                 <Box>
                   <Text fontSize="sm" fontWeight="semibold" mb={3} color="gray.700">
                     Estado del Préstamo
