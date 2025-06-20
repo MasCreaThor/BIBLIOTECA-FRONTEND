@@ -8,11 +8,11 @@ import {
   Text,
   useColorModeValue,
 } from '@chakra-ui/react';
-import { FiBook } from 'react-icons/fi';
 import { NavigationItem } from './NavigationItem';
 import { ServerStatus } from '@/components/ui/ServerStatus';
 import { getFilteredNavigation } from '@/config/navigation.config';
 import { useRole } from '@/hooks/useAuth';
+import { useSystemConfig } from '@/contexts/SystemConfigContext';
 
 interface SidebarProps {
   onItemClick?: () => void;
@@ -20,9 +20,13 @@ interface SidebarProps {
 
 export function Sidebar({ onItemClick }: SidebarProps) {
   const { isAdmin } = useRole();
+  const { config, getIconComponent } = useSystemConfig();
   const borderColor = useColorModeValue('gray.200', 'gray.700');
   
   const filteredNavigation = getFilteredNavigation(isAdmin);
+  
+  // Obtener el componente de icono dinámicamente
+  const IconComponent = getIconComponent(config.sidebarIcon);
 
   return (
     <VStack spacing={0} align="stretch" h="full">
@@ -38,15 +42,15 @@ export function Sidebar({ onItemClick }: SidebarProps) {
             alignItems="center"
             justifyContent="center"
           >
-            <FiBook color="white" size={20} />
+            <IconComponent color="white" size={20} />
           </Box>
           <VStack spacing={0} align="start">
             <Text fontWeight="bold" fontSize="lg" color="gray.800">
-              Biblioteca Escolar
+              {config.sidebarTitle}
             </Text>
             <HStack spacing={2}>
               <Text fontSize="sm" color="gray.600">
-                Sistema de Biblioteca
+                {config.sidebarSubtitle}
               </Text>
               <ServerStatus variant="minimal" showText={false} />
             </HStack>
@@ -68,7 +72,7 @@ export function Sidebar({ onItemClick }: SidebarProps) {
       {/* Footer del sidebar */}
       <Box p={4} borderTop="1px" borderColor={borderColor}>
         <Text fontSize="xs" color="gray.500" textAlign="center">
-          Versión 1.0.0
+          Versión {config.version}
         </Text>
       </Box>
     </VStack>

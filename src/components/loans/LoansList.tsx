@@ -180,18 +180,6 @@ const LoansList: React.FC = () => {
     refetch(); // Actualizar la lista
   };
 
-  const handleRenewLoan = async (loan: LoanWithDetails) => {
-    try {
-      // Aquí se implementaría la lógica de renovación
-      // Por ahora, solo mostraremos un mensaje
-      console.log('Renovando préstamo:', loan._id);
-      alert('Función de renovación en desarrollo');
-      refetch(); // Actualizar la lista
-    } catch (error) {
-      console.error('Error al renovar préstamo:', error);
-    }
-  };
-
   // Calcular si hay filtros activos
   const hasActiveFilters = useMemo(() => {
     return Object.values(localFilters).some(value => 
@@ -506,52 +494,49 @@ const LoansList: React.FC = () => {
           </Flex>
         ) : (loans && loans.length > 0) ? (
           <Box overflowX="auto">
-            <Table variant="unstyled" size="md" sx={{ tableLayout: 'fixed' }}>
+            <Table 
+              variant="unstyled" 
+              size="md" 
+              sx={{ 
+                tableLayout: 'fixed',
+                borderCollapse: 'separate',
+                borderSpacing: 0
+              }}
+            >
               <Thead>
                 <Tr bg={useColorModeValue('gray.50', 'gray.700')} borderBottom="2px" borderColor={borderColor}>
-                  <Th px={4} py={4} fontSize="sm" fontWeight="bold" color="gray.700" textTransform="uppercase" letterSpacing="wide" w="200px" textAlign="left">
+                  <Th px={4} py={6} fontSize="sm" fontWeight="bold" color="gray.700" textTransform="uppercase" letterSpacing="wide" w="200px" textAlign="left" verticalAlign="middle">
                     Persona
                   </Th>
-                  <Th px={4} py={4} fontSize="sm" fontWeight="bold" color="gray.700" textTransform="uppercase" letterSpacing="wide" w="200px" textAlign="left">
+                  <Th px={4} py={6} fontSize="sm" fontWeight="bold" color="gray.700" textTransform="uppercase" letterSpacing="wide" w="200px" textAlign="left" verticalAlign="middle">
                     Recurso
                   </Th>
-                  <Th px={4} py={4} fontSize="sm" fontWeight="bold" color="gray.700" textTransform="uppercase" letterSpacing="wide" w="120px" textAlign="center">
+                  <Th px={4} py={6} fontSize="sm" fontWeight="bold" color="gray.700" textTransform="uppercase" letterSpacing="wide" w="120px" textAlign="center" verticalAlign="middle">
                     F. Préstamo
                   </Th>
-                  <Th px={4} py={4} fontSize="sm" fontWeight="bold" color="gray.700" textTransform="uppercase" letterSpacing="wide" w="120px" textAlign="center">
+                  <Th px={4} py={6} fontSize="sm" fontWeight="bold" color="gray.700" textTransform="uppercase" letterSpacing="wide" w="120px" textAlign="center" verticalAlign="middle">
                     F. Vencimiento
                   </Th>
-                  <Th px={4} py={4} fontSize="sm" fontWeight="bold" color="gray.700" textTransform="uppercase" letterSpacing="wide" w="120px" textAlign="center">
+                  <Th px={4} py={6} fontSize="sm" fontWeight="bold" color="gray.700" textTransform="uppercase" letterSpacing="wide" w="120px" textAlign="center" verticalAlign="middle">
                     Estado
                   </Th>
-                  <Th px={4} py={4} fontSize="sm" fontWeight="bold" color="gray.700" textTransform="uppercase" letterSpacing="wide" w="100px" textAlign="center">
+                  <Th px={4} py={6} fontSize="sm" fontWeight="bold" color="gray.700" textTransform="uppercase" letterSpacing="wide" w="100px" textAlign="center" verticalAlign="middle">
                     Cantidad
                   </Th>
-                  <Th px={4} py={4} fontSize="sm" fontWeight="bold" color="gray.700" textTransform="uppercase" letterSpacing="wide" w="150px" textAlign="center">
+                  <Th px={4} py={6} fontSize="sm" fontWeight="bold" color="gray.700" textTransform="uppercase" letterSpacing="wide" w="150px" textAlign="center" verticalAlign="middle">
                     Acciones
                   </Th>
                 </Tr>
               </Thead>
               <Tbody>
                 {loans.map((loan: LoanWithDetails, index: number) => (
-                  <Tr 
-                    _hover={{ 
-                      bg: useColorModeValue('blue.50', 'blue.900'),
-                      transform: 'translateY(-1px)',
-                      boxShadow: 'sm'
-                    }}
-                    transition="all 0.2s"
-                    borderBottom="1px"
-                    borderColor={useColorModeValue('gray.100', 'gray.600')}
-                    bg={index % 2 === 0 ? useColorModeValue('white', 'gray.800') : useColorModeValue('gray.25', 'gray.750')}
-                  >
-                    <LoanRow
-                      loan={loan}
-                      onUpdate={refetch}
-                      onViewDetails={handleViewDetails}
-                      onReturnLoan={handleReturnLoan}
-                    />
-                  </Tr>
+                  <LoanRow
+                    key={loan._id}
+                    loan={loan}
+                    onUpdate={refetch}
+                    onViewDetails={handleViewDetails}
+                    onReturnLoan={handleReturnLoan}
+                  />
                 ))}
               </Tbody>
             </Table>

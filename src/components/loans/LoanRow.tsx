@@ -40,7 +40,6 @@ import {
   FiXCircle,
   FiEye,
   FiRotateCcw,
-  FiRefreshCw,
   FiMoreHorizontal,
   FiCheck,
   FiX
@@ -78,7 +77,6 @@ const LoanRow: React.FC<LoanRowProps> = ({
   const toast = useToast();
   const { isOpen, onOpen, onClose } = useDisclosure();
   const [processing, setProcessing] = useState(false);
-  const [renewLoading, setRenewLoading] = useState(false);
   const cancelRef = React.useRef<HTMLButtonElement>(null);
 
   // Hooks
@@ -199,33 +197,6 @@ const LoanRow: React.FC<LoanRowProps> = ({
     }
   };
 
-  const handleRenewLoan = async () => {
-    setRenewLoading(true);
-    try {
-      await LoanService.renewLoan(loan._id);
-      
-      toast({
-        title: 'Éxito',
-        description: 'Préstamo renovado por 15 días más',
-        status: 'success',
-        duration: 3000,
-        isClosable: true
-      });
-      
-      onUpdate?.();
-    } catch (error: any) {
-      toast({
-        title: 'Error',
-        description: error.message || 'Error al renovar el préstamo',
-        status: 'error',
-        duration: 5000,
-        isClosable: true
-      });
-    } finally {
-      setRenewLoading(false);
-    }
-  };
-
   const handleViewDetails = () => {
     onViewDetails?.(loan);
   };
@@ -239,17 +210,26 @@ const LoanRow: React.FC<LoanRowProps> = ({
   const statusInfo = getStatusInfo(loan);
   const StatusIcon = statusInfo.icon;
   const canReturn = loan.status?.name === 'active' || loan.isOverdue;
-  const canRenew = loan.status?.name === 'active' && !loan.isOverdue;
 
   // ===== RENDER =====
 
   return (
     <>
-      <Tr _hover={{ bg: hoverBg }} transition="background-color 0.2s">
+      <Tr 
+        _hover={{ 
+          bg: useColorModeValue('blue.50', 'blue.900'),
+          transform: 'translateY(-1px)',
+          boxShadow: 'sm'
+        }}
+        transition="all 0.2s"
+        borderBottom="1px"
+        borderColor={useColorModeValue('gray.100', 'gray.600')}
+        bg={useColorModeValue('white', 'gray.800')}
+      >
         {/* Información de la Persona */}
         {!hidePerson && (
-          <Td px={4} py={4} w="200px" textAlign="left">
-            <VStack align="start" spacing={2} minH="60px" justify="center">
+          <Td px={4} py={6} w="200px" textAlign="left" verticalAlign="middle">
+            <VStack align="start" spacing={2} minH="70px" justify="center">
               <Text fontWeight="semibold" fontSize="sm" color="gray.800" noOfLines={2} maxW="180px">
                 {loan.person?.fullName || 'N/A'}
               </Text>
@@ -270,8 +250,8 @@ const LoanRow: React.FC<LoanRowProps> = ({
         )}
 
         {/* Información del Recurso */}
-        <Td px={4} py={4} w="200px" textAlign="left">
-          <VStack align="start" spacing={2} minH="60px" justify="center">
+        <Td px={4} py={6} w="200px" textAlign="left" verticalAlign="middle">
+          <VStack align="start" spacing={2} minH="70px" justify="center">
             <Text fontWeight="semibold" fontSize="sm" color="gray.800" noOfLines={2} maxW="180px">
               {loan.resource?.title || 'N/A'}
             </Text>
@@ -284,8 +264,8 @@ const LoanRow: React.FC<LoanRowProps> = ({
         </Td>
 
         {/* Fecha de Préstamo */}
-        <Td px={4} py={4} w="120px" textAlign="center">
-          <HStack spacing={2} minH="60px" align="center" justify="center">
+        <Td px={4} py={6} w="120px" textAlign="center" verticalAlign="middle">
+          <HStack spacing={2} minH="70px" align="center" justify="center">
             <Box p={1} bg="blue.100" rounded="md" color="blue.600" flexShrink={0}>
               <FiCalendar size={14} />
             </Box>
@@ -301,8 +281,8 @@ const LoanRow: React.FC<LoanRowProps> = ({
         </Td>
 
         {/* Fecha de Vencimiento */}
-        <Td px={4} py={4} w="120px" textAlign="center">
-          <HStack spacing={2} minH="60px" align="center" justify="center">
+        <Td px={4} py={6} w="120px" textAlign="center" verticalAlign="middle">
+          <HStack spacing={2} minH="70px" align="center" justify="center">
             <Box 
               p={1} 
               bg={loan.isOverdue ? "red.100" : "orange.100"} 
@@ -328,8 +308,8 @@ const LoanRow: React.FC<LoanRowProps> = ({
         </Td>
 
         {/* Estado */}
-        <Td px={4} py={4} w="120px" textAlign="center">
-          <Box minH="60px" display="flex" alignItems="center" justifyContent="center">
+        <Td px={4} py={6} w="120px" textAlign="center" verticalAlign="middle">
+          <Box minH="70px" display="flex" alignItems="center" justifyContent="center">
             <Badge
               colorScheme={statusInfo.colorScheme}
               variant={statusInfo.variant}
@@ -348,8 +328,8 @@ const LoanRow: React.FC<LoanRowProps> = ({
         </Td>
 
         {/* Cantidad */}
-        <Td px={4} py={4} w="100px" textAlign="center">
-          <Box minH="60px" display="flex" alignItems="center" justifyContent="center">
+        <Td px={4} py={6} w="100px" textAlign="center" verticalAlign="middle">
+          <Box minH="70px" display="flex" alignItems="center" justifyContent="center">
             <Badge 
               colorScheme="blue" 
               variant="subtle"
@@ -366,8 +346,8 @@ const LoanRow: React.FC<LoanRowProps> = ({
 
         {/* Acciones */}
         {!hideActions && (
-        <Td px={4} py={4} w="150px" textAlign="center">
-          <Box minH="60px" display="flex" alignItems="center" justifyContent="center">
+        <Td px={4} py={6} w="150px" textAlign="center" verticalAlign="middle">
+          <Box minH="70px" display="flex" alignItems="center" justifyContent="center">
             <HStack spacing={2}>
               {/* Acciones Rápidas */}
               {canReturn && (
@@ -414,16 +394,6 @@ const LoanRow: React.FC<LoanRowProps> = ({
                       onClick={handleProcessReturn}
                     >
                       Procesar Devolución
-                    </MenuItem>
-                  )}
-                  
-                  {canRenew && (
-                    <MenuItem
-                      icon={<FiRefreshCw />}
-                      onClick={handleRenewLoan}
-                      isDisabled={renewLoading}
-                    >
-                      {renewLoading ? 'Renovando...' : 'Renovar Préstamo'}
                     </MenuItem>
                   )}
                   

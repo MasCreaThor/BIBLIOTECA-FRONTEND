@@ -42,3 +42,6 @@ export type {
   UpdateResourceStateRequest,
   ResourceStateFilters,
 } from '@/services/resourceState.service';
+
+// Editor de configuración del sistema
+export { SystemConfigEditor } from './SystemConfigEditor';

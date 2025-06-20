@@ -36,6 +36,15 @@ export interface AdminQuickAction {
 
 const adminActions: AdminQuickAction[] = [
   {
+    title: 'Configuración del Sistema',
+    description: 'Personalizar título, subtítulo e icono',
+    icon: FiSettings,
+    href: '/admin/system-config',
+    color: 'teal',
+    badge: 'Sistema',
+    badgeColor: 'red',
+  },
+  {
     title: 'Categorías',
     description: 'Gestionar categorías de recursos',
     icon: FiGrid,
@@ -67,7 +76,6 @@ const adminActions: AdminQuickAction[] = [
     badge: 'Sistema',
     badgeColor: 'red',
   },
-
 ];
 
 interface AdminNavigationProps {
@@ -159,12 +167,12 @@ export function AdminNavigation({
 
   return (
     <VStack spacing={6} align="stretch">
-      {/* Gestión de Recursos */}
+      {/* Gestión General */}
       <Box>
         <Text fontWeight="medium" color="gray.700" mb={3} fontSize="sm">
-          Gestión de Recursos
+          Gestión General
         </Text>
-        <SimpleGrid columns={{ base: 1, md: 2, lg: 2, xl: 4 }} spacing={4}>
+        <SimpleGrid columns={{ base: 1, sm: 2, md: 3, lg: 4 }} spacing={4}>
           {adminActions.map((action) => (
             <ActionCard
               key={action.href}
@@ -190,6 +198,7 @@ export function AdminNavigation({
                   Panel de Administración
                 </Text>
                 <Text fontSize="xs" color="blue.700" lineHeight="tall">
+                  • Configuración del Sistema: Personaliza la apariencia del menú lateral<br />
                   • Categorías y Ubicaciones: Gestionables por bibliotecarios<br />
                   • Tipos y Estados: Solo administradores pueden modificar<br />
                   • Los cambios afectan todo el sistema, úsalos con cuidado

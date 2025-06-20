@@ -38,7 +38,8 @@ import {
   Textarea,
   useToast,
   useDisclosure,
-  useColorModeValue
+  useColorModeValue,
+  Flex
 } from '@chakra-ui/react';
 
 import {
@@ -365,29 +366,64 @@ export const ReturnsManagement: React.FC = () => {
     <VStack spacing={6} align="stretch">
       {/* Estadísticas Resumen */}
       <SimpleGrid columns={{ base: 1, md: 2, lg: 4 }} spacing={4}>
-        <Stat bg="white" p={4} rounded="lg" shadow="sm" border="1px" borderColor="gray.200">
-          <StatLabel>Préstamos Activos</StatLabel>
-          <StatNumber color="blue.500">{summaryStats.totalActive}</StatNumber>
+        <Stat 
+          bg={useColorModeValue('white', 'gray.800')} 
+          p={6} 
+          rounded="xl" 
+          shadow="sm" 
+          border="1px" 
+          borderColor={useColorModeValue('gray.200', 'gray.600')}
+        >
+          <StatLabel fontSize="sm" color="gray.600" fontWeight="medium">Préstamos Activos</StatLabel>
+          <StatNumber color="blue.500" fontSize="2xl" fontWeight="bold">{summaryStats.totalActive}</StatNumber>
         </Stat>
         
-        <Stat bg="white" p={4} rounded="lg" shadow="sm" border="1px" borderColor="gray.200">
-          <StatLabel>Vencidos</StatLabel>
-          <StatNumber color="red.500">{summaryStats.overdueCount}</StatNumber>
+        <Stat 
+          bg={useColorModeValue('white', 'gray.800')} 
+          p={6} 
+          rounded="xl" 
+          shadow="sm" 
+          border="1px" 
+          borderColor={useColorModeValue('gray.200', 'gray.600')}
+        >
+          <StatLabel fontSize="sm" color="gray.600" fontWeight="medium">Vencidos</StatLabel>
+          <StatNumber color="red.500" fontSize="2xl" fontWeight="bold">{summaryStats.overdueCount}</StatNumber>
         </Stat>
         
-        <Stat bg="white" p={4} rounded="lg" shadow="sm" border="1px" borderColor="gray.200">
-          <StatLabel>Vencen Hoy</StatLabel>
-          <StatNumber color="orange.500">{summaryStats.dueToday}</StatNumber>
+        <Stat 
+          bg={useColorModeValue('white', 'gray.800')} 
+          p={6} 
+          rounded="xl" 
+          shadow="sm" 
+          border="1px" 
+          borderColor={useColorModeValue('gray.200', 'gray.600')}
+        >
+          <StatLabel fontSize="sm" color="gray.600" fontWeight="medium">Vencen Hoy</StatLabel>
+          <StatNumber color="orange.500" fontSize="2xl" fontWeight="bold">{summaryStats.dueToday}</StatNumber>
         </Stat>
         
-        <Stat bg="white" p={4} rounded="lg" shadow="sm" border="1px" borderColor="gray.200">
-          <StatLabel>Vencen Pronto</StatLabel>
-          <StatNumber color="yellow.500">{summaryStats.dueSoon}</StatNumber>
+        <Stat 
+          bg={useColorModeValue('white', 'gray.800')} 
+          p={6} 
+          rounded="xl" 
+          shadow="sm" 
+          border="1px" 
+          borderColor={useColorModeValue('gray.200', 'gray.600')}
+        >
+          <StatLabel fontSize="sm" color="gray.600" fontWeight="medium">Vencen Pronto</StatLabel>
+          <StatNumber color="yellow.500" fontSize="2xl" fontWeight="bold">{summaryStats.dueSoon}</StatNumber>
         </Stat>
       </SimpleGrid>
 
       {/* Filtros */}
-      <Box bg="white" p={6} rounded="lg" shadow="md" border="1px" borderColor="gray.200">
+      <Box 
+        bg={useColorModeValue('white', 'gray.800')} 
+        rounded="xl" 
+        shadow="sm" 
+        border="1px" 
+        borderColor={useColorModeValue('gray.200', 'gray.600')}
+        p={6}
+      >
         <VStack spacing={4} align="stretch">
           <HStack justify="space-between">
             <Text fontSize="lg" fontWeight="bold" color="gray.700">
@@ -398,6 +434,8 @@ export const ReturnsManagement: React.FC = () => {
               variant="outline"
               leftIcon={<FiFilter />}
               onClick={handleClearFilters}
+              colorScheme="gray"
+              borderRadius="md"
             >
               Limpiar Filtros
             </Button>
@@ -410,6 +448,12 @@ export const ReturnsManagement: React.FC = () => {
                 placeholder="Buscar por persona o recurso..."
                 value={localFilters.search}
                 onChange={(e) => handleFilterChange('search', e.target.value)}
+                bg="white"
+                borderColor="gray.300"
+                _focus={{
+                  borderColor: 'blue.500',
+                  boxShadow: '0 0 0 1px var(--chakra-colors-blue-500)'
+                }}
               />
             </Box>
 
@@ -418,6 +462,12 @@ export const ReturnsManagement: React.FC = () => {
               <Select
                 value={localFilters.status}
                 onChange={(e) => handleFilterChange('status', e.target.value)}
+                bg="white"
+                borderColor="gray.300"
+                _focus={{
+                  borderColor: 'blue.500',
+                  boxShadow: '0 0 0 1px var(--chakra-colors-blue-500)'
+                }}
               >
                 <option value="active">Activos</option>
                 <option value="overdue">Vencidos</option>
@@ -431,6 +481,12 @@ export const ReturnsManagement: React.FC = () => {
                 type="date"
                 value={localFilters.dateFrom}
                 onChange={(e) => handleFilterChange('dateFrom', e.target.value)}
+                bg="white"
+                borderColor="gray.300"
+                _focus={{
+                  borderColor: 'blue.500',
+                  boxShadow: '0 0 0 1px var(--chakra-colors-blue-500)'
+                }}
               />
             </Box>
 
@@ -440,6 +496,12 @@ export const ReturnsManagement: React.FC = () => {
                 type="date"
                 value={localFilters.dateTo}
                 onChange={(e) => handleFilterChange('dateTo', e.target.value)}
+                bg="white"
+                borderColor="gray.300"
+                _focus={{
+                  borderColor: 'blue.500',
+                  boxShadow: '0 0 0 1px var(--chakra-colors-blue-500)'
+                }}
               />
             </Box>
           </SimpleGrid>
@@ -453,137 +515,244 @@ export const ReturnsManagement: React.FC = () => {
           onClick={refetch}
           isLoading={loading}
           size="sm"
+          colorScheme="blue"
+          variant="outline"
+          borderRadius="md"
         >
           Actualizar
         </Button>
       </HStack>
 
       {/* Tabla de Préstamos Activos */}
-      <Box bg="white" rounded="lg" shadow="md" border="1px" borderColor="gray.200" overflow="hidden">
+      <Box 
+        bg={useColorModeValue('white', 'gray.800')} 
+        rounded="xl" 
+        shadow="sm" 
+        border="1px" 
+        borderColor={useColorModeValue('gray.200', 'gray.600')} 
+        overflow="hidden"
+      >
         {loading ? (
-          <HStack justify="center" p={8}>
-            <Spinner size="lg" />
-            <Text>Cargando préstamos activos...</Text>
-          </HStack>
+          <Flex justify="center" p={12}>
+            <VStack spacing={6}>
+              <Spinner size="xl" color="blue.500" thickness="3px" />
+              <Text color="gray.600" fontSize="lg">Cargando préstamos activos...</Text>
+            </VStack>
+          </Flex>
         ) : activeLoans.length === 0 ? (
-          <Box p={8} textAlign="center">
-            <FiCheck size={48} color="green" />
-            <Text mt={4} fontSize="lg" fontWeight="medium" color="gray.600">
-              No hay préstamos activos
-            </Text>
-            <Text fontSize="sm" color="gray.500">
-              {Object.keys(filters).length > 1 
-                ? 'Intenta ajustar los filtros de búsqueda'
-                : 'Todos los préstamos han sido devueltos'
-              }
-            </Text>
-          </Box>
+          <Flex justify="center" p={12}>
+            <VStack spacing={6}>
+              <Box 
+                p={6} 
+                bg={useColorModeValue('gray.100', 'gray.700')} 
+                rounded="full"
+                color={useColorModeValue('gray.400', 'gray.500')}
+              >
+                <FiCheck size={48} />
+              </Box>
+              <VStack spacing={2}>
+                <Text fontSize="xl" fontWeight="semibold" color="gray.600">
+                  No hay préstamos activos
+                </Text>
+                <Text fontSize="sm" color="gray.500" textAlign="center" maxW="md">
+                  {Object.keys(filters).length > 1 
+                    ? 'Intenta ajustar los filtros de búsqueda para encontrar más resultados'
+                    : 'Todos los préstamos han sido devueltos. Comienza creando un nuevo préstamo.'
+                  }
+                </Text>
+              </VStack>
+            </VStack>
+          </Flex>
         ) : (
-          <Table variant="simple">
-            <Thead bg="gray.50">
-              <Tr>
-                <Th>Persona</Th>
-                <Th>Recurso</Th>
-                <Th>Fecha Préstamo</Th>
-                <Th>Fecha Vencimiento</Th>
-                <Th>Estado</Th>
-                <Th>Cantidad</Th>
-                <Th>Acciones</Th>
-              </Tr>
-            </Thead>
-            <Tbody>
-              {/* FIX: Tipo explícito para el parámetro loan */}
-              {activeLoans.map((loan: LoanWithDetails) => {
-                const isOverdue = loan.isOverdue;
-                const isDueToday = new Date(loan.dueDate).toDateString() === new Date().toDateString();
-                
-                return (
-                  <Tr key={loan._id} _hover={{ bg: 'gray.50' }}>
-                    <Td>
-                      <VStack align="start" spacing={1}>
-                        <Text fontWeight="medium">
-                          {loan.person?.fullName || 'N/A'}
-                        </Text>
-                        <HStack>
-                          {loan.person?.personType && (
-                            <Badge 
-                              size="sm" 
-                              colorScheme={getPersonTypeBadgeColor(loan.person.personType.name)}
-                            >
-                              {loan.person.personType.name === 'student' ? 'Estudiante' : 'Profesor'}
-                            </Badge>
-                          )}
-                          {loan.person?.grade && (
-                            <Badge size="sm" variant="outline">
-                              {loan.person.grade}
-                            </Badge>
-                          )}
-                        </HStack>
-                      </VStack>
-                    </Td>
-                    <Td>
-                      <VStack align="start" spacing={1}>
-                        <Text fontWeight="medium" noOfLines={1}>
-                          {loan.resource?.title || 'N/A'}
-                        </Text>
-                        {loan.resource?.author && (
-                          <Text fontSize="sm" color="gray.600" noOfLines={1}>
-                            {loan.resource.author}
+          <Box overflowX="auto">
+            <Table 
+              variant="unstyled" 
+              size="md" 
+              sx={{ 
+                tableLayout: 'fixed',
+                borderCollapse: 'separate',
+                borderSpacing: 0
+              }}
+            >
+              <Thead>
+                <Tr bg={useColorModeValue('gray.50', 'gray.700')} borderBottom="2px" borderColor={useColorModeValue('gray.200', 'gray.600')}>
+                  <Th px={4} py={6} fontSize="sm" fontWeight="bold" color="gray.700" textTransform="uppercase" letterSpacing="wide" w="200px" textAlign="left" verticalAlign="middle">
+                    Persona
+                  </Th>
+                  <Th px={4} py={6} fontSize="sm" fontWeight="bold" color="gray.700" textTransform="uppercase" letterSpacing="wide" w="200px" textAlign="left" verticalAlign="middle">
+                    Recurso
+                  </Th>
+                  <Th px={4} py={6} fontSize="sm" fontWeight="bold" color="gray.700" textTransform="uppercase" letterSpacing="wide" w="120px" textAlign="center" verticalAlign="middle">
+                    F. Préstamo
+                  </Th>
+                  <Th px={4} py={6} fontSize="sm" fontWeight="bold" color="gray.700" textTransform="uppercase" letterSpacing="wide" w="120px" textAlign="center" verticalAlign="middle">
+                    F. Vencimiento
+                  </Th>
+                  <Th px={4} py={6} fontSize="sm" fontWeight="bold" color="gray.700" textTransform="uppercase" letterSpacing="wide" w="120px" textAlign="center" verticalAlign="middle">
+                    Estado
+                  </Th>
+                  <Th px={4} py={6} fontSize="sm" fontWeight="bold" color="gray.700" textTransform="uppercase" letterSpacing="wide" w="100px" textAlign="center" verticalAlign="middle">
+                    Cantidad
+                  </Th>
+                  <Th px={4} py={6} fontSize="sm" fontWeight="bold" color="gray.700" textTransform="uppercase" letterSpacing="wide" w="150px" textAlign="center" verticalAlign="middle">
+                    Acciones
+                  </Th>
+                </Tr>
+              </Thead>
+              <Tbody>
+                {activeLoans.map((loan: LoanWithDetails) => {
+                  const isOverdue = loan.isOverdue;
+                  const isDueToday = new Date(loan.dueDate).toDateString() === new Date().toDateString();
+                  
+                  return (
+                    <Tr 
+                      key={loan._id} 
+                      _hover={{ 
+                        bg: useColorModeValue('blue.50', 'blue.900'),
+                        transform: 'translateY(-1px)',
+                        boxShadow: 'sm'
+                      }}
+                      transition="all 0.2s"
+                      borderBottom="1px"
+                      borderColor={useColorModeValue('gray.100', 'gray.600')}
+                      bg={useColorModeValue('white', 'gray.800')}
+                    >
+                      <Td px={4} py={6} w="200px" textAlign="left" verticalAlign="middle">
+                        <VStack align="start" spacing={2} minH="70px" justify="center">
+                          <Text fontWeight="semibold" fontSize="sm" color="gray.800" noOfLines={2} maxW="180px">
+                            {loan.person?.fullName || 'N/A'}
                           </Text>
-                        )}
-                      </VStack>
-                    </Td>
-                    <Td>
-                      <HStack>
-                        <FiCalendar size={14} color="gray" />
-                        <Text fontSize="sm">{formatDate(loan.loanDate)}</Text>
-                      </HStack>
-                    </Td>
-                    <Td>
-                      <HStack>
-                        <FiClock size={14} color={isOverdue ? "red" : isDueToday ? "orange" : "gray"} />
-                        <Text 
-                          fontSize="sm" 
-                          color={isOverdue ? "red.500" : isDueToday ? "orange.500" : "gray.600"}
-                        >
-                          {formatDate(loan.dueDate)}
-                        </Text>
-                      </HStack>
-                    </Td>
-                    <Td>
-                      <Badge 
-                        colorScheme={getStatusBadgeColor(isOverdue)}
-                        variant="solid"
-                      >
-                        {isOverdue ? `Vencido (${loan.daysOverdue} días)` : 
-                         isDueToday ? 'Vence hoy' : 'Vigente'}
-                      </Badge>
-                    </Td>
-                    <Td>
-                      <Badge colorScheme="blue" variant="outline">
-                        {loan.quantity}
-                      </Badge>
-                    </Td>
-                    <Td>
-                      <HStack spacing={2}>
-                        <Button 
-                          size="xs" 
-                          colorScheme="green" 
-                          leftIcon={<FiCheck />}
-                          onClick={() => handleProcessReturn(loan)}
-                        >
-                          Devolver
-                        </Button>
-                        <Button size="xs" variant="outline" leftIcon={<FiEye />} onClick={() => handleViewDetails(loan)}>
-                          Ver
-                        </Button>
-                      </HStack>
-                    </Td>
-                  </Tr>
-                );
-              })}
-            </Tbody>
-          </Table>
+                          <HStack spacing={2} minH="20px">
+                            {loan.person?.personType && (
+                              <Badge 
+                                size="sm" 
+                                colorScheme={getPersonTypeBadgeColor(loan.person.personType.name)}
+                                variant="subtle"
+                              >
+                                {loan.person.personType.name === 'student' ? 'Estudiante' : 'Profesor'}
+                              </Badge>
+                            )}
+                            {loan.person?.grade && (
+                              <Badge size="sm" variant="outline" colorScheme="gray">
+                                {loan.person.grade}
+                              </Badge>
+                            )}
+                          </HStack>
+                        </VStack>
+                      </Td>
+                      <Td px={4} py={6} w="200px" textAlign="left" verticalAlign="middle">
+                        <VStack align="start" spacing={2} minH="70px" justify="center">
+                          <Text fontWeight="semibold" fontSize="sm" color="gray.800" noOfLines={2} maxW="180px">
+                            {loan.resource?.title || 'N/A'}
+                          </Text>
+                          {loan.resource?.author && (
+                            <Text fontSize="xs" color="gray.600" noOfLines={1} maxW="180px">
+                              {loan.resource.author}
+                            </Text>
+                          )}
+                        </VStack>
+                      </Td>
+                      <Td px={4} py={6} w="120px" textAlign="center" verticalAlign="middle">
+                        <HStack spacing={2} minH="70px" align="center" justify="center">
+                          <Box p={1} bg="blue.100" rounded="md" color="blue.600" flexShrink={0}>
+                            <FiCalendar size={14} />
+                          </Box>
+                          <VStack align="start" spacing={0} flex="1">
+                            <Text fontSize="sm" fontWeight="medium" color="gray.800">
+                              {formatDate(loan.loanDate)}
+                            </Text>
+                            <Text fontSize="xs" color="gray.500">
+                              Préstamo
+                            </Text>
+                          </VStack>
+                        </HStack>
+                      </Td>
+                      <Td px={4} py={6} w="120px" textAlign="center" verticalAlign="middle">
+                        <HStack spacing={2} minH="70px" align="center" justify="center">
+                          <Box 
+                            p={1} 
+                            bg={isOverdue ? "red.100" : isDueToday ? "orange.100" : "gray.100"} 
+                            rounded="md" 
+                            color={isOverdue ? "red.600" : isDueToday ? "orange.600" : "gray.600"}
+                            flexShrink={0}
+                          >
+                            <FiClock size={14} />
+                          </Box>
+                          <VStack align="start" spacing={0} flex="1">
+                            <Text 
+                              fontSize="sm" 
+                              fontWeight="medium"
+                              color={isOverdue ? "red.600" : isDueToday ? "orange.600" : "gray.800"}
+                            >
+                              {formatDate(loan.dueDate)}
+                            </Text>
+                            <Text fontSize="xs" color="gray.500">
+                              Vencimiento
+                            </Text>
+                          </VStack>
+                        </HStack>
+                      </Td>
+                      <Td px={4} py={6} w="120px" textAlign="center" verticalAlign="middle">
+                        <Box minH="70px" display="flex" alignItems="center" justifyContent="center">
+                          <Badge 
+                            colorScheme={getStatusBadgeColor(isOverdue)}
+                            variant="solid"
+                            px={3}
+                            py={2}
+                            borderRadius="full"
+                            fontSize="xs"
+                            fontWeight="semibold"
+                          >
+                            {isOverdue ? `Vencido (${loan.daysOverdue} días)` : 
+                             isDueToday ? 'Vence hoy' : 'Vigente'}
+                          </Badge>
+                        </Box>
+                      </Td>
+                      <Td px={4} py={6} w="100px" textAlign="center" verticalAlign="middle">
+                        <Box minH="70px" display="flex" alignItems="center" justifyContent="center">
+                          <Badge 
+                            colorScheme="blue" 
+                            variant="subtle"
+                            px={3}
+                            py={2}
+                            borderRadius="md"
+                            fontSize="sm"
+                            fontWeight="bold"
+                          >
+                            {loan.quantity} {loan.quantity === 1 ? 'unidad' : 'unidades'}
+                          </Badge>
+                        </Box>
+                      </Td>
+                      <Td px={4} py={6} w="150px" textAlign="center" verticalAlign="middle">
+                        <Box minH="70px" display="flex" alignItems="center" justifyContent="center">
+                          <HStack spacing={3}>
+                            <Button 
+                              size="xs" 
+                              colorScheme="green" 
+                              leftIcon={<FiCheck />}
+                              onClick={() => handleProcessReturn(loan)}
+                              borderRadius="md"
+                            >
+                              Devolver
+                            </Button>
+                            <Button 
+                              size="xs" 
+                              variant="outline" 
+                              leftIcon={<FiEye />} 
+                              onClick={() => handleViewDetails(loan)}
+                              borderRadius="md"
+                            >
+                              Ver
+                            </Button>
+                          </HStack>
+                        </Box>
+                      </Td>
+                    </Tr>
+                  );
+                })}
+              </Tbody>
+            </Table>
+          </Box>
         )}
       </Box>
 
