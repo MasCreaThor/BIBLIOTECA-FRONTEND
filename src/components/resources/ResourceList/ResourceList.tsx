@@ -95,6 +95,7 @@ const ResourceCard: React.FC<ResourceCardProps> = ({
   showStockIndicators,
   layout,
 }) => {
+  const { isOpen, onOpen, onClose } = useDisclosure();
   const cardBg = useColorModeValue('white', 'gray.800');
   const borderColor = useColorModeValue('gray.200', 'gray.600');
 
@@ -127,180 +128,162 @@ const ResourceCard: React.FC<ResourceCardProps> = ({
 
   if (layout === 'list') {
     return (
-      <Card 
-        bg={cardBg} 
-        borderColor={borderColor} 
-        borderWidth="1px"
-        cursor={onSelect ? "pointer" : "default"}
-        onClick={() => onSelect?.(resource)}
-        _hover={onSelect ? { 
-          shadow: "md", 
-          borderColor: "blue.300",
-          bg: "blue.50"
-        } : {}}
-        transition="all 0.2s"
+      <Grid
+        templateColumns="auto 1fr auto auto"
+        gap={4}
+        p={4}
+        bg={cardBg}
+        border="1px"
+        borderColor={borderColor}
+        borderRadius="lg"
+        alignItems="center"
+        _hover={{ shadow: 'md' }}
+        transition="box-shadow 0.2s"
+        position="relative"
+        zIndex={isOpen ? 2 : 1}
       >
-        <CardBody p={4}>
-          <Grid templateColumns="1fr auto auto" gap={4} alignItems="center">
-            {/* Información principal */}
-            <GridItem>
-              <VStack align="start" spacing={2}>
-                <HStack spacing={3}>
-                  <VStack align="start" spacing={1}>
-                    <Text fontWeight="bold" fontSize="md" noOfLines={1}>
-                      {resource.title}
+        <GridItem>
+          <Image
+            src={resource.coverImageUrl}
+            alt={resource.title}
+            h="120px"
+            w="full"
+            objectFit="cover"
+            borderRadius="md"
+            fallback={
+              <Box
+                h="120px"
+                bg="gray.100"
+                borderRadius="md"
+                display="flex"
+                alignItems="center"
+                justifyContent="center"
+              >
+                <FiBookOpen size={32} color="gray.400" />
+              </Box>
+            }
+          />
+        </GridItem>
+        <GridItem>
+          <VStack align="start" spacing={2}>
+            <HStack spacing={3}>
+              <VStack align="start" spacing={1}>
+                <Text fontWeight="bold" fontSize="md" noOfLines={1}>
+                  {resource.title}
+                </Text>
+                <HStack spacing={4} fontSize="sm" color="gray.600">
+                  <HStack spacing={1}>
+                    <FiUser size={12} />
+                    <Text noOfLines={1}>{authorsText}</Text>
+                  </HStack>
+                  <HStack spacing={1}>
+                    <FiMapPin size={12} />
+                    <Text>{resource.location?.name || 'Sin ubicación'}</Text>
+                  </HStack>
+                  <HStack spacing={1}>
+                    <FiCalendar size={12} />
+                    <Text>
+                      {format(new Date(resource.createdAt), 'dd/MM/yyyy', { locale: es })}
                     </Text>
-                    <HStack spacing={4} fontSize="sm" color="gray.600">
-                      <HStack spacing={1}>
-                        <FiUser size={12} />
-                        <Text noOfLines={1}>{authorsText}</Text>
-                      </HStack>
-                      <HStack spacing={1}>
-                        <FiMapPin size={12} />
-                        <Text>{resource.location?.name || 'Sin ubicación'}</Text>
-                      </HStack>
-                      <HStack spacing={1}>
-                        <FiCalendar size={12} />
-                        <Text>
-                          {format(new Date(resource.createdAt), 'dd/MM/yyyy', { locale: es })}
-                        </Text>
-                      </HStack>
-                    </HStack>
-                  </VStack>
-                </HStack>
-
-                {/* Información de categoría y tipo */}
-                <HStack spacing={2}>
-                  <Badge colorScheme="blue" size="sm">
-                    {resource.type?.description || 'Tipo N/A'}
-                  </Badge>
-                  <Badge colorScheme="purple" size="sm">
-                    {resource.category?.name || 'Categoría N/A'}
-                  </Badge>
-                  {resource.isbn && (
-                    <Badge colorScheme="gray" size="sm">
-                      ISBN: {resource.isbn}
-                    </Badge>
-                  )}
+                  </HStack>
                 </HStack>
               </VStack>
-            </GridItem>
+            </HStack>
 
-            {/* Indicadores de stock */}
-            {showStockIndicators && (
-              <GridItem>
-                <VStack spacing={2} align="center" minW="120px">
-                  <Badge colorScheme={stockStatus.color} size="sm">
-                    {stockStatus.label}
-                  </Badge>
-                  
-                  <VStack spacing={1} fontSize="xs">
-                    <HStack spacing={3}>
-                      <Text>Disponible: <strong>{availableQuantity}</strong></Text>
-                      <Text>Total: <strong>{totalQuantity}</strong></Text>
-                    </HStack>
-                    <Progress
-                      value={stockPercentage}
-                      colorScheme={stockStatus.color}
-                      size="sm"
-                      w="100px"
-                      bg="gray.100"
-                    />
-                  </VStack>
-                </VStack>
-              </GridItem>
-            )}
+            {/* Información de categoría y tipo */}
+            <HStack spacing={2}>
+              <Badge colorScheme="blue" size="sm">
+                {resource.type?.description || 'Tipo N/A'}
+              </Badge>
+              <Badge colorScheme="purple" size="sm">
+                {resource.category?.name || 'Categoría N/A'}
+              </Badge>
+              {resource.isbn && (
+                <Badge colorScheme="gray" size="sm">
+                  ISBN: {resource.isbn}
+                </Badge>
+              )}
+            </HStack>
+          </VStack>
+        </GridItem>
 
-            {/* ✅ MEJORADO: Acciones con mejor UX */}
-            <GridItem>
-              <HStack spacing={2}>
-                {/* ✅ NUEVO: Botón de "Ver detalles" más prominente */}
-                {onSelect && (
-                  <Button
-                    size="sm"
-                    colorScheme="blue"
-                    variant="outline"
-                    leftIcon={<FiEye />}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onSelect(resource);
-                    }}
-                  >
-                    Ver
-                  </Button>
-                )}
-                
-                <Menu>
-                  <MenuButton
-                    as={IconButton}
-                    icon={<FiMoreVertical />}
-                    variant="ghost"
-                    size="sm"
-                    onClick={(e) => e.stopPropagation()}
-                  />
-                  <MenuList>
-                    {onSelect && (
-                      <MenuItem icon={<FiEye />} onClick={() => onSelect(resource)}>
-                        Ver Detalles
-                      </MenuItem>
-                    )}
-                    <MenuItem icon={<FiEdit />} onClick={() => onEdit(resource)}>
-                      Editar
-                    </MenuItem>
-                    <MenuItem 
-                      icon={<FiTrash2 />} 
-                      onClick={() => onDelete(resource)}
-                      color="red.500"
-                    >
-                      Eliminar
-                    </MenuItem>
-                  </MenuList>
-                </Menu>
-              </HStack>
-            </GridItem>
-          </Grid>
-        </CardBody>
-      </Card>
+        {/* Indicadores de stock */}
+        {showStockIndicators && (
+          <GridItem>
+            <VStack spacing={2} align="center" minW="120px">
+              <Badge colorScheme={stockStatus.color} size="sm">
+                {stockStatus.label}
+              </Badge>
+              
+              <VStack spacing={1} fontSize="xs">
+                <HStack spacing={3}>
+                  <Text>Disponible: <strong>{availableQuantity}</strong></Text>
+                  <Text>Total: <strong>{totalQuantity}</strong></Text>
+                </HStack>
+                <Progress
+                  value={stockPercentage}
+                  colorScheme={stockStatus.color}
+                  size="sm"
+                  w="100px"
+                  bg="gray.100"
+                />
+              </VStack>
+            </VStack>
+          </GridItem>
+        )}
+
+        {/* ✅ MEJORADO: Acciones con mejor UX */}
+        <GridItem>
+          <HStack spacing={2}>
+            {/* ✅ NUEVO: Botón de "Ver detalles" más prominente */}
+            <Tooltip label="Ver Detalles">
+              <IconButton aria-label="Ver Detalles" icon={<FiEye />} size="sm" onClick={() => onSelect?.(resource)} />
+            </Tooltip>
+            
+            <Menu isOpen={isOpen} onOpen={onOpen} onClose={onClose}>
+              <MenuButton
+                as={IconButton}
+                aria-label="Más opciones"
+                icon={<FiMoreVertical />}
+                variant="ghost"
+                size="sm"
+                onClick={(e) => {
+                  e.stopPropagation();
+                }}
+              />
+              <MenuList zIndex={3}>
+                <MenuItem icon={<FiEdit />} onClick={() => onEdit(resource)}>
+                  Editar Recurso
+                </MenuItem>
+                <MenuItem 
+                  icon={<FiTrash2 />} 
+                  onClick={() => onDelete(resource)}
+                  color="red.500"
+                >
+                  Eliminar
+                </MenuItem>
+              </MenuList>
+            </Menu>
+          </HStack>
+        </GridItem>
+      </Grid>
     );
   }
 
   // Layout de grid (tarjetas)
   return (
-    <Card 
-      bg={cardBg} 
-      borderColor={borderColor} 
-      borderWidth="1px"
-      cursor={onSelect ? "pointer" : "default"}
-      onClick={() => onSelect?.(resource)}
-      _hover={onSelect ? { 
-        shadow: "lg", 
-        transform: "translateY(-2px)",
-        borderColor: "blue.300"
-      } : {}}
+    <Card
+      bg={cardBg}
+      shadow="sm"
+      border="1px"
+      borderColor="transparent"
+      _hover={{ shadow: 'md', borderColor: 'gray.200' }}
       transition="all 0.2s"
       position="relative"
+      zIndex={isOpen ? 2 : 1}
     >
-      {/* ✅ NUEVO: Indicador visual de que es clickeable */}
-      {onSelect && (
-        <Box
-          position="absolute"
-          top={2}
-          right={2}
-          zIndex={2}
-          bg="blue.500"
-          color="white"
-          borderRadius="full"
-          p={1}
-          opacity={0}
-          _groupHover={{ opacity: 1 }}
-          transition="opacity 0.2s"
-        >
-          <FiEye size={12} />
-        </Box>
-      )}
-      
-      <CardBody p={4}>
-        <VStack align="stretch" spacing={4}>
+      <CardBody>
+        <VStack align="stretch" spacing={3}>
           {/* Imagen y badges principales */}
           <Box position="relative">
             {resource.coverImageUrl ? (
@@ -412,48 +395,26 @@ const ResourceCard: React.FC<ResourceCardProps> = ({
           {/* ✅ MEJORADO: Acciones con mejor UX */}
           <HStack spacing={2} justify="flex-end">
             {/* ✅ NUEVO: Botón de "Ver detalles" más prominente */}
-            {onSelect && (
-              <Button
-                size="sm"
-                colorScheme="blue"
-                variant="outline"
-                leftIcon={<FiEye />}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onSelect(resource);
-                }}
-                flex={1}
-              >
-                Ver Detalles
+            <HStack>
+              <Button leftIcon={<FiEye />} size="sm" variant="ghost" onClick={() => onSelect?.(resource)}>
+                Detalles
               </Button>
-            )}
-            
-            <Tooltip label="Editar recurso">
-              <IconButton
-                aria-label="Editar"
-                icon={<FiEdit />}
-                size="sm"
-                variant="ghost"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onEdit(resource);
-                }}
-              />
-            </Tooltip>
-            <Menu>
+            </HStack>
+            <Menu isOpen={isOpen} onOpen={onOpen} onClose={onClose}>
               <MenuButton
                 as={IconButton}
+                aria-label="Más opciones"
                 icon={<FiMoreVertical />}
                 variant="ghost"
                 size="sm"
-                onClick={(e) => e.stopPropagation()}
+                onClick={(e) => {
+                  e.stopPropagation();
+                }}
               />
-              <MenuList>
-                {onSelect && (
-                  <MenuItem icon={<FiEye />} onClick={() => onSelect(resource)}>
-                    Ver Detalles
-                  </MenuItem>
-                )}
+              <MenuList zIndex={3}>
+                <MenuItem icon={<FiEdit />} onClick={() => onEdit(resource)}>
+                  Editar Recurso
+                </MenuItem>
                 <MenuItem 
                   icon={<FiTrash2 />} 
                   onClick={() => onDelete(resource)}
