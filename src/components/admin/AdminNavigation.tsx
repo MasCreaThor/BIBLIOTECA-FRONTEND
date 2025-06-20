@@ -67,15 +67,6 @@ const adminActions: AdminQuickAction[] = [
     badge: 'Sistema',
     badgeColor: 'red',
   },
-  {
-    title: 'Estados de Recursos',
-    description: 'Gestionar estados de conservación',
-    icon: FiCheckCircle,
-    href: '/admin/resource-states',
-    color: 'orange',
-    badge: 'Sistema',
-    badgeColor: 'red',
-  },
 ];
 
 interface AdminNavigationProps {
@@ -200,7 +191,8 @@ export function AdminNavigation({
                 <Text fontSize="xs" color="blue.700" lineHeight="tall">
                   • Configuración del Sistema: Personaliza la apariencia del menú lateral<br />
                   • Categorías y Ubicaciones: Gestionables por bibliotecarios<br />
-                  • Tipos y Estados: Solo administradores pueden modificar<br />
+                  • Tipos de Recursos: Solo administradores pueden modificar<br />
+                  • Estados de Recursos: Se inicializan automáticamente al arrancar el sistema<br />
                   • Los cambios afectan todo el sistema, úsalos con cuidado
                 </Text>
               </VStack>

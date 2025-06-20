@@ -36,12 +36,5 @@ export type {
   ResourceTypeFilters,
 } from '@/services/resourceType.service';
 
-export type {
-  ResourceState,
-  CreateResourceStateRequest,
-  UpdateResourceStateRequest,
-  ResourceStateFilters,
-} from '@/services/resourceState.service';
-
 // Editor de configuración del sistema
 export { SystemConfigEditor } from './SystemConfigEditor';
