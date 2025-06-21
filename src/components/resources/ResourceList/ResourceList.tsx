@@ -54,6 +54,7 @@ import {
   FiPlus,
   FiSearch,
   FiX,
+  FiRefreshCw,
 } from 'react-icons/fi';
 
 import { format } from 'date-fns';
@@ -141,6 +142,8 @@ const ResourceCard: React.FC<ResourceCardProps> = ({
         transition="box-shadow 0.2s"
         position="relative"
         zIndex={isOpen ? 2 : 1}
+        cursor="pointer"
+        onClick={() => onSelect?.(resource)}
       >
         <GridItem>
           <Image
@@ -237,7 +240,15 @@ const ResourceCard: React.FC<ResourceCardProps> = ({
           <HStack spacing={2}>
             {/* ✅ NUEVO: Botón de "Ver detalles" más prominente */}
             <Tooltip label="Ver Detalles">
-              <IconButton aria-label="Ver Detalles" icon={<FiEye />} size="sm" onClick={() => onSelect?.(resource)} />
+              <IconButton 
+                aria-label="Ver Detalles" 
+                icon={<FiEye />} 
+                size="sm" 
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onSelect?.(resource);
+                }} 
+              />
             </Tooltip>
             
             <Menu isOpen={isOpen} onOpen={onOpen} onClose={onClose}>
@@ -281,6 +292,8 @@ const ResourceCard: React.FC<ResourceCardProps> = ({
       transition="all 0.2s"
       position="relative"
       zIndex={isOpen ? 2 : 1}
+      cursor="pointer"
+      onClick={() => onSelect?.(resource)}
     >
       <CardBody>
         <VStack align="stretch" spacing={3}>
@@ -396,7 +409,15 @@ const ResourceCard: React.FC<ResourceCardProps> = ({
           <HStack spacing={2} justify="flex-end">
             {/* ✅ NUEVO: Botón de "Ver detalles" más prominente */}
             <HStack>
-              <Button leftIcon={<FiEye />} size="sm" variant="ghost" onClick={() => onSelect?.(resource)}>
+              <Button 
+                leftIcon={<FiEye />} 
+                size="sm" 
+                variant="ghost" 
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onSelect?.(resource);
+                }}
+              >
                 Detalles
               </Button>
             </HStack>
@@ -461,7 +482,7 @@ export const ResourceList: React.FC<ResourceListProps> = ({
     search: debouncedSearchTerm.trim() || undefined,
   };
 
-  const { data: resourcesResponse, isLoading } = useResources(combinedFilters);
+  const { data: resourcesResponse, isLoading, refetch } = useResources(combinedFilters);
   const deleteMutation = useDeleteResource();
   const resources = resourcesResponse?.data || [];
 
@@ -495,55 +516,60 @@ export const ResourceList: React.FC<ResourceListProps> = ({
 
   return (
     <VStack spacing={4} align="stretch">
-      {/* ✅ NUEVO: Barra de búsqueda */}
-      <Box>
-        <InputGroup size="md">
-          <InputLeftElement pointerEvents="none">
-            <FiSearch color="gray.400" />
-          </InputLeftElement>
-          <Input
-            placeholder="Buscar por título"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            bg="white"
-            borderColor="gray.300"
-            _hover={{ borderColor: 'gray.400' }}
-            _focus={{ borderColor: 'blue.500', boxShadow: 'outline' }}
-          />
-          {searchTerm && (
-            <InputRightElement>
-              <IconButton
-                aria-label="Limpiar búsqueda"
-                icon={<FiX />}
-                size="sm"
-                variant="ghost"
-                onClick={handleClearSearch}
-              />
-            </InputRightElement>
-          )}
-        </InputGroup>
-        {debouncedSearchTerm && (
-          <Text fontSize="sm" color="gray.600" mt={2}>
-            Buscando: "{debouncedSearchTerm}" • {resources.length} resultados
-          </Text>
-        )}
-      </Box>
+      {/* ✅ NUEVO: Barra de búsqueda con botón de refrescar */}
+      <HStack spacing={3}>
+        <Box flex={1}>
+          <InputGroup size="md">
+            <InputLeftElement pointerEvents="none">
+              <FiSearch color="gray.400" />
+            </InputLeftElement>
+            <Input
+              placeholder="Buscar por título"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              bg="white"
+              borderColor="gray.300"
+              _hover={{ borderColor: 'gray.400' }}
+              _focus={{ borderColor: 'blue.500', boxShadow: 'outline' }}
+            />
+            {searchTerm && (
+              <InputRightElement>
+                <IconButton
+                  aria-label="Limpiar búsqueda"
+                  icon={<FiX />}
+                  size="sm"
+                  variant="ghost"
+                  onClick={handleClearSearch}
+                />
+              </InputRightElement>
+            )}
+          </InputGroup>
+        </Box>
+        
+        {/* ✅ NUEVO: Botón de refrescar */}
+        <IconButton
+          aria-label="Refrescar lista"
+          icon={<FiRefreshCw />}
+          size="md"
+          variant="outline"
+          onClick={() => refetch()}
+          isLoading={isLoading}
+          colorScheme="blue"
+          _hover={{ bg: 'blue.50' }}
+        />
+      </HStack>
+      
+      {debouncedSearchTerm && (
+        <Text fontSize="sm" color="gray.600" mt={2}>
+          Buscando: "{debouncedSearchTerm}" • {resources.length} resultados
+        </Text>
+      )}
 
       {showActions && (
         <HStack justify="space-between">
           <Text fontSize="lg" fontWeight="medium">
             Recursos ({resources.length})
           </Text>
-          {onCreate && (
-            <Button
-              leftIcon={<FiPlus />}
-              colorScheme="blue"
-              size="sm"
-              onClick={onCreate}
-            >
-              Agregar Recurso
-            </Button>
-          )}
         </HStack>
       )}
 

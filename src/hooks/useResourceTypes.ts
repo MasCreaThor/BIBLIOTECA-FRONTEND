@@ -6,19 +6,29 @@
 import { useQuery, useMutation, useQueryClient, UseQueryOptions } from '@tanstack/react-query';
 import axiosInstance from '@/lib/axios';
 import type { 
-  ResourceType, 
   ApiResponse, 
   PaginatedResponse 
 } from '@/types/api.types';
 import toast from 'react-hot-toast';
 
 // ===== INTERFACES =====
+export interface ResourceType {
+  _id: string;
+  name: string;
+  description: string;
+  active: boolean;
+  isSystem: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
 export interface CreateResourceTypeRequest {
-  name: 'book' | 'game' | 'map' | 'bible';
+  name: string;
   description: string;
 }
 
 export interface UpdateResourceTypeRequest {
+  name?: string;
   description?: string;
   active?: boolean;
 }
@@ -26,6 +36,7 @@ export interface UpdateResourceTypeRequest {
 export interface ResourceTypeFilters {
   search?: string;
   active?: boolean;
+  isSystem?: boolean;
   page?: number;
   limit?: number;
   sortBy?: string;
@@ -51,6 +62,7 @@ class ResourceTypeService {
       
       if (filters.search) params.append('search', filters.search);
       if (filters.active !== undefined) params.append('active', filters.active.toString());
+      if (filters.isSystem !== undefined) params.append('isSystem', filters.isSystem.toString());
       if (filters.page) params.append('page', filters.page.toString());
       if (filters.limit) params.append('limit', filters.limit.toString());
       if (filters.sortBy) params.append('sortBy', filters.sortBy);
@@ -93,6 +105,7 @@ class ResourceTypeService {
             name: 'book',
             description: 'Libros',
             active: true,
+            isSystem: true,
             createdAt: new Date(),
             updatedAt: new Date(),
           },
@@ -101,6 +114,7 @@ class ResourceTypeService {
             name: 'game',
             description: 'Juegos Educativos',
             active: true,
+            isSystem: true,
             createdAt: new Date(),
             updatedAt: new Date(),
           },
@@ -109,6 +123,7 @@ class ResourceTypeService {
             name: 'map',
             description: 'Mapas',
             active: true,
+            isSystem: true,
             createdAt: new Date(),
             updatedAt: new Date(),
           },
@@ -117,6 +132,7 @@ class ResourceTypeService {
             name: 'bible',
             description: 'Biblias',
             active: true,
+            isSystem: true,
             createdAt: new Date(),
             updatedAt: new Date(),
           },
@@ -387,7 +403,7 @@ export function useActiveResourceTypes() {
  * Hook para obtener tipos con iconos (utilidad para UI)
  */
 export function useResourceTypesWithIcons() {
-  const typeIcons = {
+  const typeIcons: Record<string, string> = {
     book: '📚',
     game: '🎲',
     map: '🗺️',

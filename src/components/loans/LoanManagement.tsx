@@ -3,7 +3,7 @@
 // COMPONENTE PRINCIPAL DE GESTIÓN DE PRÉSTAMOS - COMPLETO Y CORREGIDO
 // ================================================================
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Box,
   Flex,
@@ -20,6 +20,7 @@ import {
   useDisclosure,
   Container
 } from '@chakra-ui/react';
+import { useSearchParams } from 'next/navigation';
 
 // FIX: Usar react-icons/fi en lugar de lucide-react
 import { 
@@ -51,6 +52,17 @@ interface TabInfo {
 const LoanManagement: React.FC = () => {
   const [activeTabIndex, setActiveTabIndex] = useState(0);
   const { isOpen, onOpen, onClose } = useDisclosure();
+  const searchParams = useSearchParams();
+
+  // ✅ NUEVO: Obtener resourceId desde URL parameters
+  const resourceId = searchParams.get('resourceId');
+
+  // ✅ NUEVO: Abrir modal automáticamente si hay resourceId
+  useEffect(() => {
+    if (resourceId) {
+      onOpen();
+    }
+  }, [resourceId, onOpen]);
 
   // Valores de color mode
   const bgColor = useColorModeValue('white', 'gray.800');
@@ -89,10 +101,30 @@ const LoanManagement: React.FC = () => {
   // ===== MANEJADORES =====
 
   const handleLoanCreated = () => {
+    // ✅ CORREGIDO: Limpiar URL y cerrar modal sin recargar página
+    if (resourceId) {
+      const url = new URL(window.location.href);
+      url.searchParams.delete('resourceId');
+      window.history.replaceState({}, '', url.toString());
+    }
     onClose();
-    // Aquí podrías disparar un evento global para refrescar las listas
-    // O usar un context/estado global para manejar la actualización
-    window.location.reload(); // Temporal - mejor usar estado/context
+    
+    // ✅ MEJORADO: En lugar de recargar, podríamos usar un estado global o context
+    // Por ahora, recargamos solo si no hay resourceId (préstamo normal)
+    if (!resourceId) {
+      window.location.reload();
+    }
+  };
+
+  // ✅ NUEVO: Handler para cerrar modal y limpiar URL
+  const handleCloseModal = () => {
+    onClose();
+    // Limpiar el parámetro resourceId de la URL
+    if (resourceId) {
+      const url = new URL(window.location.href);
+      url.searchParams.delete('resourceId');
+      window.history.replaceState({}, '', url.toString());
+    }
   };
 
   // ===== RENDER =====
@@ -224,8 +256,9 @@ const LoanManagement: React.FC = () => {
       {/* Modal de Crear Préstamo */}
       <CreateLoanModal
         isOpen={isOpen}
-        onClose={onClose}
+        onClose={handleCloseModal}
         onSuccess={handleLoanCreated}
+        preSelectedResourceId={resourceId || undefined}
       />
     </Box>
   );

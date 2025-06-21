@@ -351,82 +351,6 @@ export default function DashboardPage() {
           </Grid>
         </Box>
 
-        {/* ✅ MEJORADO: Estadísticas de Calidad de Préstamos */}
-        <Box>
-          <Heading size="md" color="gray.800" mb={4}>
-            Calidad de Préstamos
-          </Heading>
-          <Grid templateColumns="repeat(auto-fit, minmax(250px, 1fr))" gap={6}>
-            <StatCard
-              label="Tasa de Devolución a Tiempo"
-              value={`${data.stats?.loanQuality?.onTimeReturnRate || 0}%`}
-              helpText="Porcentaje de devoluciones puntuales"
-              icon={FiCheckCircle}
-              color="green"
-              isLoading={isLoading}
-            />
-            <StatCard
-              label="Devoluciones Este Mes"
-              value={data.stats?.loanQuality?.returnedThisMonth || 0}
-              helpText="Préstamos devueltos en el mes actual"
-              icon={FiCalendar}
-              color="blue"
-              isLoading={isLoading}
-            />
-            <StatCard
-              label="Duración Promedio"
-              value={`${data.stats?.loanQuality?.averageLoanDuration || 0} días`}
-              helpText="Tiempo promedio de préstamos"
-              icon={FiClock}
-              color="purple"
-              isLoading={isLoading}
-            />
-            <StatCard
-              label="Recursos Perdidos"
-              value={data.stats?.loanQuality?.lostLoans || 0}
-              helpText="Préstamos marcados como perdidos"
-              icon={FiAlertOctagon}
-              color="red"
-              isLoading={isLoading}
-            />
-          </Grid>
-        </Box>
-
-        {/* ✅ NUEVO: Estadísticas de Stock */}
-        {data.resources && !isLoading && (
-          <Box>
-            <Heading size="md" color="gray.800" mb={4}>
-              Estado del Inventario
-            </Heading>
-            <Grid templateColumns="repeat(auto-fit, minmax(250px, 1fr))" gap={6}>
-              <StatCard
-                label="Recursos Disponibles"
-                value={data.resources.available || 0}
-                helpText="Recursos listos para préstamo"
-                icon={FiCheckCircle}
-                color="green"
-                href="/inventory?availability=true"
-              />
-              <StatCard
-                label="Recursos Prestados"
-                value={data.resources.borrowed || 0}
-                helpText="Recursos actualmente en préstamo"
-                icon={FiBookOpen}
-                color="orange"
-                href="/inventory?availability=false"
-              />
-              <StatCard
-                label="Tipos de Recursos"
-                value={data.resources.byType?.length || 0}
-                helpText="Diferentes categorías disponibles"
-                icon={FiBook}
-                color="purple"
-                href="/admin/resource-types"
-              />
-            </Grid>
-          </Box>
-        )}
-
         {/* Estadísticas detalladas por tipo */}
         {data.people && !isLoading && (
           <Box>
@@ -455,32 +379,6 @@ export default function DashboardPage() {
         {/* Estadísticas de usuarios (solo admin) */}
         {isAdmin && adminData.users?.data && (
           <Box>
-            <Heading size="md" color="gray.800" mb={4}>
-              Gestión de Usuarios
-            </Heading>
-            <Grid templateColumns="repeat(auto-fit, minmax(200px, 1fr))" gap={4}>
-              <StatCard
-                label="Usuarios Activos"
-                value={adminData.users.data.active}
-                icon={FiUsers}
-                color="green"
-                href="/admin/users?status=active"
-              />
-              <StatCard
-                label="Administradores"
-                value={adminData.users.data.admins}
-                icon={FiUsers}
-                color="red"
-                href="/admin/users?role=admin"
-              />
-              <StatCard
-                label="Bibliotecarios"
-                value={adminData.users.data.librarians}
-                icon={FiUsers}
-                color="blue"
-                href="/admin/users?role=librarian"
-              />
-            </Grid>
           </Box>
         )}
 
@@ -493,47 +391,6 @@ export default function DashboardPage() {
             {quickActions.map((action) => (
               <QuickActionCard key={action.name} {...action} />
             ))}
-          </Grid>
-        </Box>
-
-        {/* ✅ MEJORADO: Actividad Reciente */}
-        <Box>
-          <Heading size="md" color="gray.800" mb={4}>
-            Actividad Reciente
-          </Heading>
-          <Grid templateColumns="repeat(auto-fit, minmax(200px, 1fr))" gap={4}>
-            <StatCard
-              label="Préstamos del Día"
-              value={data.stats?.recentActivity?.loans || 0}
-              helpText="Nuevos préstamos registrados hoy"
-              icon={FiBookOpen}
-              color="blue"
-              isLoading={isLoading}
-            />
-            <StatCard
-              label="Devoluciones del Día"
-              value={data.stats?.recentActivity?.returns || 0}
-              helpText="Préstamos devueltos hoy"
-              icon={FiArrowRight}
-              color="green"
-              isLoading={isLoading}
-            />
-            <StatCard
-              label="Recursos Agregados"
-              value={data.stats?.recentActivity?.newResources || 0}
-              helpText="Nuevos recursos al inventario"
-              icon={FiPlus}
-              color="purple"
-              isLoading={isLoading}
-            />
-            <StatCard
-              label="Personas Registradas"
-              value={data.stats?.recentActivity?.newPeople || 0}
-              helpText="Nuevas personas registradas"
-              icon={FiUsers}
-              color="orange"
-              isLoading={isLoading}
-            />
           </Grid>
         </Box>
 

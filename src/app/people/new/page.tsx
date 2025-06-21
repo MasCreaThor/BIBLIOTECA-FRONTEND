@@ -10,9 +10,6 @@ import {
   Button,
   Card,
   CardBody,
-  Breadcrumb,
-  BreadcrumbItem,
-  BreadcrumbLink,
   Alert,
   AlertIcon,
   AlertTitle,
@@ -22,10 +19,8 @@ import {
 } from '@chakra-ui/react';
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import Link from 'next/link';
 import {
   FiUsers,
-  FiChevronRight,
   FiArrowLeft,
   FiCheck,
   FiInfo,
@@ -128,24 +123,6 @@ export default function NewPersonPage() {
   return (
     <DashboardLayout>
       <VStack spacing={6} align="stretch" maxW="4xl" mx="auto">
-        {/* Breadcrumbs */}
-        <Breadcrumb
-          spacing={2}
-          separator={<FiChevronRight color="gray.500" size={14} />}
-          fontSize="sm"
-        >
-          <BreadcrumbItem>
-            <BreadcrumbLink as={Link} href="/people" color="blue.600">
-              Personas
-            </BreadcrumbLink>
-          </BreadcrumbItem>
-          <BreadcrumbItem isCurrentPage>
-            <Text color="gray.600" fontWeight="medium">
-              Nueva Persona
-            </Text>
-          </BreadcrumbItem>
-        </Breadcrumb>
-
         {/* Header */}
         <Box>
           <HStack spacing={4} mb={2}>
@@ -216,9 +193,6 @@ export default function NewPersonPage() {
               <VStack align="start" spacing={1} fontSize="sm" color="gray.600">
                 <Text>
                   <strong>Para estudiantes:</strong> Asegúrate de incluir el grado académico correcto (ej: 1A, 5B, Jardín)
-                </Text>
-                <Text>
-                  <strong>Para docentes:</strong> Puedes especificar el área de enseñanza o cargo en el campo "Área"
                 </Text>
                 <Text>
                   <strong>Documentos duplicados:</strong> El sistema verificará automáticamente si ya existe una persona con el mismo número de documento

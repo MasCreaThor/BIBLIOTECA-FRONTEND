@@ -123,7 +123,6 @@ export default function ResourceTypesPage() {
           {/* Lista de tipos de recursos */}
           <ResourceTypeList
             onResourceTypeEdit={handleResourceTypeEdit}
-            onCreate={onCreateOpen}
             showActions={true}
           />
         </VStack>

@@ -58,7 +58,8 @@ import {
   FiInfo,
   FiClock,
   FiShield,
-  FiX
+  FiX,
+  FiPlus
 } from 'react-icons/fi';
 
 import { useForm, Controller } from 'react-hook-form';
@@ -72,6 +73,7 @@ import { ResourceService } from '@/services/resource.service';
 import type { CreateLoanRequest, LoanWithDetails } from '@/types/loan.types';
 import type { Person } from '@/types/api.types';
 import type { Resource } from '@/types/resource.types';
+import { useRouter } from 'next/navigation';
 
 // ===== ESQUEMA DE VALIDACIÓN =====
 
@@ -94,6 +96,7 @@ interface CreateLoanModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSuccess?: (loan: LoanWithDetails) => void;
+  preSelectedResourceId?: string;
 }
 
 // Usar el tipo Person directamente ya que ya incluye personType
@@ -116,9 +119,11 @@ interface ValidationState {
 export const CreateLoanModal: React.FC<CreateLoanModalProps> = ({
   isOpen,
   onClose,
-  onSuccess
+  onSuccess,
+  preSelectedResourceId
 }) => {
   const toast = useToast();
+  const router = useRouter();
   
   // Estados
   const [people, setPeople] = useState<PersonWithType[]>([]);
@@ -177,8 +182,13 @@ export const CreateLoanModal: React.FC<CreateLoanModalProps> = ({
     if (isOpen) {
       setPeople([]); // Limpiar resultados al abrir
       loadResources();
+      
+      // ✅ NUEVO: Pre-seleccionar recurso si se proporciona un ID
+      if (preSelectedResourceId) {
+        preSelectResource(preSelectedResourceId);
+      }
     }
-  }, [isOpen]);
+  }, [isOpen, preSelectedResourceId]);
 
   // Validación automática cuando cambian los valores
   useEffect(() => {
@@ -254,6 +264,24 @@ export const CreateLoanModal: React.FC<CreateLoanModalProps> = ({
         isClosable: true
       });
       setResources([]);
+    } finally {
+      setLoadingResources(false);
+    }
+  };
+
+  // ✅ NUEVO: Función para pre-seleccionar un recurso
+  const preSelectResource = async (resourceId: string) => {
+    try {
+      setLoadingResources(true);
+      const resource = await ResourceService.getResourceById(resourceId);
+      if (resource) {
+        setSelectedResource(resource);
+        setValue('resourceId', resource._id);
+        setSearchResource(resource.title);
+        setShowResourceResults(false);
+      }
+    } catch (error) {
+      console.error('Error pre-seleccionando recurso:', error);
     } finally {
       setLoadingResources(false);
     }
@@ -701,7 +729,22 @@ export const CreateLoanModal: React.FC<CreateLoanModalProps> = ({
                               </Box>
                             ) : people.length === 0 ? (
                               <Box p={2} textAlign="center">
-                                <Text fontSize="xs" color="gray.500">No se encontraron personas</Text>
+                                <VStack spacing={2}>
+                                  <Text fontSize="xs" color="gray.500">No se encontraron personas</Text>
+                                  <Button
+                                    size="xs"
+                                    colorScheme="blue"
+                                    variant="outline"
+                                    leftIcon={<FiPlus size={12} />}
+                                    onClick={() => {
+                                      setShowPersonResults(false);
+                                      setSearchPerson('');
+                                      router.push('/people/new');
+                                    }}
+                                  >
+                                    Registrar nueva persona
+                                  </Button>
+                                </VStack>
                               </Box>
                             ) : (
                               <List spacing={0}>
@@ -728,6 +771,25 @@ export const CreateLoanModal: React.FC<CreateLoanModalProps> = ({
                                     </VStack>
                                   </ListItem>
                                 ))}
+                                <ListItem
+                                  p={2}
+                                  cursor="pointer"
+                                  _hover={{ bg: "gray.50" }}
+                                  borderTop="1px solid"
+                                  borderColor="gray.100"
+                                  onClick={() => {
+                                    setShowPersonResults(false);
+                                    setSearchPerson('');
+                                    router.push('/people/new');
+                                  }}
+                                >
+                                  <HStack spacing={2} justify="center">
+                                    <FiPlus size={14} />
+                                    <Text fontSize="sm" color="blue.600" fontWeight="medium">
+                                      Registrar nueva persona
+                                    </Text>
+                                  </HStack>
+                                </ListItem>
                               </List>
                             )}
                           </Box>

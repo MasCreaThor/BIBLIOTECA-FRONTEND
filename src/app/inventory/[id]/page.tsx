@@ -17,9 +17,6 @@ import {
   AlertIcon,
   Skeleton,
   SkeletonText,
-  Breadcrumb,
-  BreadcrumbItem,
-  BreadcrumbLink,
   useDisclosure,
   Modal,
   ModalOverlay,
@@ -42,7 +39,8 @@ import {
   FiCalendar,
   FiBook,
   FiImage,
-  FiExternalLink
+  FiExternalLink,
+  FiUserCheck
 } from 'react-icons/fi';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { ResourceForm } from '@/components/resources/ResourceForm/ResourceForm';
@@ -56,6 +54,7 @@ import {
 import { DateUtils } from '@/utils';
 import { ImageUtils } from '@/utils/imageUtils';
 import type { Resource, UpdateResourceRequest } from '@/types/resource.types';
+import type { Resource as ApiResource } from '@/types/api.types';
 
 const RESOURCE_TYPE_CONFIGS = {
   book: { icon: '📚', label: 'Libro', color: 'blue' },
@@ -110,6 +109,11 @@ export default function ResourceDetailPage() {
     } catch (error) {
       // Error manejado por el hook
     }
+  };
+
+  const handleCreateLoan = () => {
+    // Redirigir a la página de préstamos con el recurso pre-seleccionado
+    router.push(`/loans?resourceId=${resourceId}`);
   };
 
   const handleDeleteResource = async () => {
@@ -221,7 +225,8 @@ export default function ResourceDetailPage() {
 
   // ✅ NUEVO: Configuración de imagen
   const imageUrl = ImageUtils.getResourceImageUrl(resource);
-  const placeholderUrl = ImageUtils.getPlaceholderImageUrl(resource.type?.name || 'book');
+  const resourceTypeName = resource.type?.name as 'book' | 'game' | 'map' | 'bible' | undefined;
+  const placeholderUrl = ImageUtils.getPlaceholderImageUrl(resourceTypeName || 'book');
 
   const isMutating = updateMutation.isPending || 
                    updateAvailabilityMutation.isPending || 
@@ -230,18 +235,6 @@ export default function ResourceDetailPage() {
   return (
     <DashboardLayout>
       <VStack spacing={6} align="stretch">
-        {/* Navegación */}
-        <Box>
-          <Breadcrumb spacing={2} fontSize="sm" color="gray.600">
-            <BreadcrumbItem>
-              <BreadcrumbLink href="/inventory">Inventario</BreadcrumbLink>
-            </BreadcrumbItem>
-            <BreadcrumbItem isCurrentPage>
-              <Text>{resource.title}</Text>
-            </BreadcrumbItem>
-          </Breadcrumb>
-        </Box>
-
         {/* Header */}
         <Box>
           <HStack justify="space-between" align="start" mb={4}>
@@ -399,15 +392,15 @@ export default function ResourceDetailPage() {
               </Button>
               
               <Button
-                leftIcon={resource.available ? <FiToggleLeft /> : <FiToggleRight />}
-                colorScheme={resource.available ? 'orange' : 'green'}
+                leftIcon={resource.available ? <FiUserCheck /> : <FiToggleRight />}
+                colorScheme={resource.available ? 'green' : 'green'}
                 variant="outline"
-                onClick={handleToggleAvailability}
+                onClick={resource.available ? handleCreateLoan : handleToggleAvailability}
                 isLoading={updateAvailabilityMutation.isPending}
                 loadingText="Actualizando..."
                 isDisabled={isMutating}
               >
-                {resource.available ? 'Marcar como prestado' : 'Marcar como disponible'}
+                {resource.available ? 'Prestar Recurso' : 'Marcar como disponible'}
               </Button>
 
               <Button
@@ -524,7 +517,7 @@ export default function ResourceDetailPage() {
           <ModalCloseButton />
           <ModalBody pb={6}>
             <ResourceForm
-              resource={resource}
+              resource={resource as ApiResource}
               onSubmit={handleUpdateResource}
               onCancel={onEditClose}
               isLoading={updateMutation.isPending}

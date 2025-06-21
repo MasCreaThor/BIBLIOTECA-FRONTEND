@@ -10,8 +10,8 @@ import {
 } from '@chakra-ui/react';
 import { FiSettings } from 'react-icons/fi';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
-import { AdminRoute } from '@/components/auth/ProtectedRoute';
 import { SystemConfigEditor } from '@/components/admin/SystemConfigEditor';
+import { AdminRoute } from '@/components/auth/ProtectedRoute';
 
 export default function SystemConfigPage() {
   return (

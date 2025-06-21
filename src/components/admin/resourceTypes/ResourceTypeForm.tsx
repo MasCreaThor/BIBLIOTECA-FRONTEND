@@ -1,4 +1,4 @@
-// src/components/admin/resourceTypes/ResourceTypeForm.tsx - CORREGIDO
+// src/components/admin/resourceTypes/ResourceTypeForm.tsx - ACTUALIZADO PARA TIPOS PERSONALIZADOS
 'use client';
 
 import {
@@ -13,7 +13,7 @@ import {
   FormLabel,
   FormErrorMessage,
   FormHelperText,
-  Select,
+  Input,
   Textarea,
   Switch,
   Grid,
@@ -35,13 +35,15 @@ import type {
 } from '@/services/resourceType.service';
 
 const resourceTypeSchema = z.object({
-  name: z.enum(['book', 'game', 'map', 'bible'], {
-    errorMap: () => ({ message: 'Selecciona un tipo de recurso válido' })
-  }),
+  name: z
+    .string()
+    .min(2, 'El nombre debe tener al menos 2 caracteres')
+    .max(50, 'El nombre no puede exceder 50 caracteres')
+    .transform(val => val.trim().toLowerCase()),
   description: z
     .string()
     .min(5, 'La descripción debe tener al menos 5 caracteres')
-    .max(100, 'La descripción no puede exceder 100 caracteres')
+    .max(200, 'La descripción no puede exceder 200 caracteres')
     .transform(val => val.trim()),
   active: z.boolean().default(true),
 });
@@ -66,7 +68,8 @@ interface ResourceTypeFormEditProps {
 
 type ResourceTypeFormProps = ResourceTypeFormCreateProps | ResourceTypeFormEditProps;
 
-const RESOURCE_TYPE_OPTIONS = [
+// ✅ TIPOS PREDEFINIDOS DEL SISTEMA PARA REFERENCIA
+const SYSTEM_RESOURCE_TYPES = [
   {
     value: 'book',
     label: '📚 Libros',
@@ -101,7 +104,7 @@ export function ResourceTypeForm(props: ResourceTypeFormProps) {
   const form = useForm<ResourceTypeFormData>({
     resolver: zodResolver(resourceTypeSchema),
     defaultValues: {
-      name: resourceType?.name || 'book',
+      name: resourceType?.name || '',
       description: resourceType?.description || '',
       active: resourceType?.active ?? true,
     },
@@ -110,8 +113,8 @@ export function ResourceTypeForm(props: ResourceTypeFormProps) {
 
   const { register, handleSubmit, watch, formState: { errors, isValid, isDirty } } = form;
   
-  const selectedType = watch('name');
-  const selectedTypeConfig = RESOURCE_TYPE_OPTIONS.find(opt => opt.value === selectedType);
+  const selectedName = watch('name');
+  const isSystemType = resourceType?.isSystem || SYSTEM_RESOURCE_TYPES.some(type => type.value === selectedName);
 
   const handleFormSubmit = handleSubmit(async (data: ResourceTypeFormData) => {
     const cleanData = {
@@ -121,8 +124,9 @@ export function ResourceTypeForm(props: ResourceTypeFormProps) {
     };
 
     if (isEdit) {
-      // Para edición, solo enviar descripción y estado activo
+      // Para edición, permitir cambiar nombre, descripción y estado activo
       const updateData: UpdateResourceTypeRequest = {
+        name: cleanData.name,
         description: cleanData.description,
         active: cleanData.active,
       };
@@ -154,164 +158,147 @@ export function ResourceTypeForm(props: ResourceTypeFormProps) {
               </HStack>
               <Text fontSize="sm" color="gray.600">
                 {isEdit 
-                  ? 'Modifica la descripción del tipo de recurso'
-                  : 'Los tipos de recursos definen las categorías principales de materiales en la biblioteca'
+                  ? 'Modifica la información del tipo de recurso'
+                  : 'Crea un nuevo tipo de recurso para categorizar los materiales de la biblioteca'
                 }
               </Text>
             </Box>
 
             <Divider />
 
-            {/* Información sobre sistema */}
-            <Alert status="warning" borderRadius="md">
-              <AlertIcon />
-              <Box>
-                <Text fontSize="sm" fontWeight="medium">
-                  Configuración del Sistema
-                </Text>
-                <Text fontSize="xs">
-                  Los tipos de recursos son configuraciones fundamentales. 
-                  {isEdit 
-                    ? ' Solo puedes modificar la descripción y el estado.'
-                    : ' Selecciona el tipo apropiado y personaliza su descripción.'
-                  }
-                </Text>
-              </Box>
-            </Alert>
+            {/* Información sobre tipos del sistema */}
+            {isSystemType && (
+              <Alert status="info" borderRadius="md">
+                <AlertIcon />
+                <Box>
+                  <Text fontSize="sm" fontWeight="medium">
+                    Tipo del Sistema
+                  </Text>
+                  <Text fontSize="xs">
+                    Este es un tipo de recurso predefinido del sistema. 
+                    {isEdit && ' Solo puedes modificar la descripción y el estado activo.'}
+                  </Text>
+                </Box>
+              </Alert>
+            )}
 
             <VStack spacing={4} align="stretch">
               <Text fontWeight="medium" color="gray.700" fontSize="md">
                 Información del Tipo
               </Text>
 
-              {/* Tipo de recurso (solo para crear) */}
-              {!isEdit && (
-                <FormControl isInvalid={!!errors.name} isRequired>
-                  <FormLabel>Tipo de Recurso</FormLabel>
-                  <Select
-                    {...register('name')}
-                    size="lg"
-                  >
-                    {RESOURCE_TYPE_OPTIONS.map((option) => (
-                      <option key={option.value} value={option.value}>
-                        {option.label}
-                      </option>
-                    ))}
-                  </Select>
-                  <FormErrorMessage>{errors.name?.message}</FormErrorMessage>
-                  <FormHelperText>
-                    Selecciona el tipo de recurso que quieres configurar
-                  </FormHelperText>
-                </FormControl>
-              )}
+              {/* Nombre del tipo de recurso */}
+              <FormControl isInvalid={!!errors.name} isRequired>
+                <FormLabel>Nombre del Tipo</FormLabel>
+                <Input
+                  {...register('name')}
+                  placeholder="Ej: revista, dvd, cd, revista, etc."
+                  size="lg"
+                  isDisabled={isEdit && isSystemType}
+                />
+                <FormHelperText>
+                  {isEdit && isSystemType 
+                    ? 'No se puede cambiar el nombre de un tipo del sistema'
+                    : 'Ingresa un nombre corto y descriptivo (ej: revista, dvd, cd)'
+                  }
+                </FormHelperText>
+                <FormErrorMessage>{errors.name?.message}</FormErrorMessage>
+              </FormControl>
 
-              {/* Mostrar tipo actual si es edición - CORREGIDO */}
-              {isEdit && selectedTypeConfig && (
+              {/* Descripción */}
+              <FormControl isInvalid={!!errors.description} isRequired>
+                <FormLabel>Descripción</FormLabel>
+                <Textarea
+                  {...register('description')}
+                  placeholder="Describe brevemente este tipo de recurso..."
+                  size="lg"
+                  rows={3}
+                />
+                <FormHelperText>
+                  Explica qué tipo de materiales incluye esta categoría
+                </FormHelperText>
+                <FormErrorMessage>{errors.description?.message}</FormErrorMessage>
+              </FormControl>
+
+              {/* Estado activo (solo para edición) */}
+              {isEdit && (
                 <FormControl>
-                  <FormLabel>Tipo de Recurso (No editable)</FormLabel>
-                  <HStack spacing={3} p={3} bg="gray.50" borderRadius="md">
-                    <Badge colorScheme={selectedTypeConfig.color} variant="solid">
-                      {selectedTypeConfig.label}
-                    </Badge>
+                  <FormLabel>Estado</FormLabel>
+                  <HStack spacing={4}>
+                    <Switch
+                      {...register('active')}
+                      colorScheme="green"
+                      size="lg"
+                    />
                     <Text fontSize="sm" color="gray.600">
-                      {selectedTypeConfig.description}
+                      {watch('active') ? 'Activo' : 'Inactivo'}
                     </Text>
                   </HStack>
                   <FormHelperText>
-                    El tipo no se puede cambiar una vez creado
+                    Los tipos inactivos no aparecerán en las listas de selección
                   </FormHelperText>
-                </FormControl>
-              )}
-
-              {/* Descripción personalizada */}
-              <FormControl isInvalid={!!errors.description} isRequired>
-                <FormLabel>Descripción Personalizada</FormLabel>
-                <Textarea
-                  {...register('description')}
-                  placeholder={selectedTypeConfig?.description || 'Describe este tipo de recurso...'}
-                  rows={3}
-                  resize="vertical"
-                />
-                <FormErrorMessage>{errors.description?.message}</FormErrorMessage>
-                <FormHelperText>
-                  Personaliza la descripción que aparecerá en el sistema
-                </FormHelperText>
-              </FormControl>
-
-              {/* Estado (solo para edición) */}
-              {isEdit && (
-                <FormControl>
-                  <HStack justify="space-between">
-                    <VStack align="start" spacing={0}>
-                      <FormLabel mb={0}>Estado del Tipo</FormLabel>
-                      <FormHelperText mt={0}>
-                        Los tipos inactivos no aparecen en los formularios
-                      </FormHelperText>
-                    </VStack>
-                    <Switch
-                      {...register('active')}
-                      colorScheme="purple"
-                      size="lg"
-                    />
-                  </HStack>
                 </FormControl>
               )}
             </VStack>
 
-            {/* Preview */}
-            <Box>
-              <Text fontWeight="medium" color="gray.700" fontSize="md" mb={3}>
-                Vista Previa
-              </Text>
-              <Card bg="gray.50" size="sm">
-                <CardBody>
-                  <HStack spacing={3}>
-                    <Text fontSize="lg">
-                      {selectedTypeConfig?.label.split(' ')[0] || '📄'}
-                    </Text>
-                    <VStack align="start" spacing={0} flex={1}>
-                      <HStack spacing={2}>
-                        <Text fontWeight="medium" fontSize="sm">
-                          {selectedTypeConfig?.label || 'Tipo de Recurso'}
+            <Divider />
+
+            {/* Tipos predefinidos del sistema (solo para referencia) */}
+            {!isEdit && (
+              <Box>
+                <Text fontWeight="medium" color="gray.700" fontSize="md" mb={3}>
+                  Tipos Predefinidos del Sistema
+                </Text>
+                <Text fontSize="sm" color="gray.600" mb={3}>
+                  Estos tipos ya están disponibles automáticamente:
+                </Text>
+                <Grid templateColumns="repeat(auto-fit, minmax(200px, 1fr))" gap={3}>
+                  {SYSTEM_RESOURCE_TYPES.map((type) => (
+                    <GridItem key={type.value}>
+                      <Box
+                        p={3}
+                        border="1px"
+                        borderColor="gray.200"
+                        borderRadius="md"
+                        bg="gray.50"
+                      >
+                        <HStack spacing={2} mb={1}>
+                          <Text fontSize="sm" fontWeight="medium">
+                            {type.label}
+                          </Text>
+                          <Badge colorScheme="blue" size="sm">Sistema</Badge>
+                        </HStack>
+                        <Text fontSize="xs" color="gray.600">
+                          {type.description}
                         </Text>
-                        <Badge 
-                          colorScheme={selectedTypeConfig?.color || 'gray'} 
-                          variant="subtle" 
-                          fontSize="xs"
-                        >
-                          {selectedType}
-                        </Badge>
-                      </HStack>
-                      <Text fontSize="xs" color="gray.600">
-                        {watch('description') || 'Descripción del tipo de recurso'}
-                      </Text>
-                    </VStack>
-                  </HStack>
-                </CardBody>
-              </Card>
-            </Box>
+                      </Box>
+                    </GridItem>
+                  ))}
+                </Grid>
+              </Box>
+            )}
 
             <Divider />
 
             {/* Botones de acción */}
             <HStack spacing={3} justify="flex-end">
               <Button
-                variant="outline"
                 onClick={onCancel}
-                disabled={isLoading}
-                leftIcon={<Icon as={FiX} />}
+                variant="outline"
+                leftIcon={<FiX />}
+                isDisabled={isLoading}
               >
                 Cancelar
               </Button>
               <Button
                 type="submit"
                 colorScheme="purple"
+                leftIcon={<FiCheck />}
                 isLoading={isLoading}
-                loadingText={isEdit ? 'Actualizando...' : 'Creando...'}
-                disabled={!canSubmit}
-                leftIcon={<Icon as={FiCheck} />}
+                loadingText="Guardando..."
+                isDisabled={!canSubmit}
               >
-                {isEdit ? 'Actualizar Tipo' : 'Crear Tipo'}
+                {isEdit ? 'Actualizar' : 'Crear'} Tipo
               </Button>
             </HStack>
           </VStack>
