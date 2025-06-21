@@ -26,17 +26,18 @@ import {
   NumberIncrementStepper,
   NumberDecrementStepper,
   Tooltip,
+  Select,
 } from '@chakra-ui/react';
 import { useState } from 'react';
 import { FiBook, FiPlus, FiExternalLink, FiInfo } from 'react-icons/fi';
 import { GoogleBooksUtils, useCreateResourceFromGoogleBooks } from '@/hooks/useGoogleBooks';
+import { useActiveResourceStates } from '@/hooks/useResourceStates';
 import type { GoogleBooksVolume } from '@/types/resource.types';
 
 interface BookPreviewModalProps {
   volume: GoogleBooksVolume;
   isOpen: boolean;
   onClose: () => void;
-  onSelect: () => void;
   categoryId?: string;
   locationId?: string;
 }
@@ -45,7 +46,6 @@ export function BookPreviewModal({
   volume,
   isOpen,
   onClose,
-  onSelect,
   categoryId,
   locationId,
 }: BookPreviewModalProps) {
@@ -53,6 +53,12 @@ export function BookPreviewModal({
   
   // ✅ NUEVO: Estado para la cantidad total
   const [totalQuantity, setTotalQuantity] = useState(1);
+
+  // ✅ NUEVO: Estado para el estado del recurso
+  const [selectedStateId, setSelectedStateId] = useState<string>('');
+
+  // ✅ NUEVO: Hook para obtener estados de recursos
+  const { data: resourceStates = [], isLoading: isLoadingStates } = useActiveResourceStates();
 
   // Datos del libro
   const imageUrl = GoogleBooksUtils.getBestImageUrl(volume);
@@ -71,6 +77,7 @@ export function BookPreviewModal({
         googleBooksId: volume.id,
         categoryId: categoryId!,
         locationId: locationId!,
+        stateId: selectedStateId || undefined,
         volumes: 1,
         totalQuantity: totalQuantity, // ✅ NUEVO: Incluir cantidad total
         notes: `Importado desde Google Books (ID: ${volume.id})`,
@@ -214,31 +221,59 @@ export function BookPreviewModal({
         {canCreateResource && (
           <Box px={6} pb={4}>
             <Divider mb={4} />
-            <FormControl>
-              <FormLabel>
-                <HStack spacing={2}>
-                  <Text>Cantidad Total</Text>
-                  <Tooltip label="Número total de unidades disponibles">
-                    <Box>
-                      <FiInfo />
-                    </Box>
-                  </Tooltip>
-                </HStack>
-              </FormLabel>
-              <NumberInput
-                value={totalQuantity}
-                onChange={(_, valueAsNumber) => setTotalQuantity(isNaN(valueAsNumber) ? 1 : valueAsNumber)}
-                min={1}
-                max={10000}
-                isDisabled={createFromGoogleBooksMutation.isPending}
-              >
-                <NumberInputField />
-                <NumberInputStepper>
-                  <NumberIncrementStepper />
-                  <NumberDecrementStepper />
-                </NumberInputStepper>
-              </NumberInput>
-            </FormControl>
+            <VStack spacing={4}>
+              <FormControl>
+                <FormLabel>
+                  <HStack spacing={2}>
+                    <Text>Cantidad Total</Text>
+                    <Tooltip label="Número total de unidades disponibles">
+                      <Box>
+                        <FiInfo />
+                      </Box>
+                    </Tooltip>
+                  </HStack>
+                </FormLabel>
+                <NumberInput
+                  value={totalQuantity}
+                  onChange={(_, valueAsNumber) => setTotalQuantity(isNaN(valueAsNumber) ? 1 : valueAsNumber)}
+                  min={1}
+                  max={10000}
+                  isDisabled={createFromGoogleBooksMutation.isPending}
+                >
+                  <NumberInputField />
+                  <NumberInputStepper>
+                    <NumberIncrementStepper />
+                    <NumberDecrementStepper />
+                  </NumberInputStepper>
+                </NumberInput>
+              </FormControl>
+
+              {/* ✅ NUEVO: Selector de estado del recurso */}
+              <FormControl>
+                <FormLabel>
+                  <HStack spacing={2}>
+                    <Text>Estado del recurso</Text>
+                    <Tooltip label="Estado físico del libro al momento del registro">
+                      <Box>
+                        <FiInfo />
+                      </Box>
+                    </Tooltip>
+                  </HStack>
+                </FormLabel>
+                <Select
+                  value={selectedStateId}
+                  onChange={(e) => setSelectedStateId(e.target.value)}
+                  placeholder="Selecciona el estado del libro"
+                  isDisabled={isLoadingStates || createFromGoogleBooksMutation.isPending}
+                >
+                  {resourceStates.map((state) => (
+                    <option key={state._id} value={state._id}>
+                      {state.description}
+                    </option>
+                  ))}
+                </Select>
+              </FormControl>
+            </VStack>
           </Box>
         )}
 
@@ -246,14 +281,6 @@ export function BookPreviewModal({
           <HStack spacing={3}>
             <Button variant="outline" onClick={onClose}>
               Cerrar
-            </Button>
-            
-            <Button
-              leftIcon={<FiExternalLink />}
-              variant="outline"
-              onClick={onSelect}
-            >
-              Usar para formulario
             </Button>
 
             {canCreateResource && (

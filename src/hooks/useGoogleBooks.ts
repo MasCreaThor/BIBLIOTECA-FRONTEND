@@ -60,7 +60,8 @@ export function useCreateResourceFromGoogleBooks() {
         newResource
       );
 
-      toast.success(`Libro "${newResource.title}" agregado desde Google Books`);
+      // ✅ ELIMINADO: Notificación toast.success para evitar duplicación
+      // La notificación se maneja en el componente GoogleBooksSearch
     },
     onError: (error: any) => {
       const errorMessage = error?.response?.data?.message || error?.message || 'Error al crear recurso desde Google Books';

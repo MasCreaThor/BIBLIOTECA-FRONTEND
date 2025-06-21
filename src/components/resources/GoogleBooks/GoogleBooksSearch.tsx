@@ -32,6 +32,7 @@ import {
   NumberIncrementStepper,
   NumberDecrementStepper,
   Tooltip,
+  Select,
 } from '@chakra-ui/react';
 import { useState } from 'react';
 import { FiSearch, FiBook, FiPlus, FiExternalLink, FiX, FiCheck, FiInfo } from 'react-icons/fi';
@@ -41,6 +42,7 @@ import {
   useCreateResourceFromGoogleBooks,
   GoogleBooksUtils 
 } from '@/hooks/useGoogleBooks';
+import { useActiveResourceStates } from '@/hooks/useResourceStates';
 import { BookPreviewModal } from './BookPreviewModal';
 import { GoogleBooksVolume } from '@/types/resource.types';
 
@@ -195,6 +197,9 @@ export function GoogleBooksSearch({
   // ✅ NUEVO: Estado para la cantidad total (valor por defecto para registro rápido)
   const [defaultQuantity, setDefaultQuantity] = useState(1);
   
+  // ✅ NUEVO: Estado para el estado del recurso
+  const [selectedStateId, setSelectedStateId] = useState<string>('');
+  
   const { isOpen: isPreviewOpen, onOpen: onPreviewOpen, onClose: onPreviewClose } = useDisclosure();
   const toast = useToast();
   
@@ -208,6 +213,9 @@ export function GoogleBooksSearch({
     isLoading, 
     error 
   } = useGoogleBooksSearch(searchTerm, 12, isApiAvailable);
+
+  // ✅ NUEVO: Hook para obtener estados de recursos
+  const { data: resourceStates = [], isLoading: isLoadingStates } = useActiveResourceStates();
 
   const createFromGoogleBooksMutation = useCreateResourceFromGoogleBooks();
 
@@ -248,6 +256,7 @@ export function GoogleBooksSearch({
         googleBooksId: volume.id,
         categoryId: categoryId,
         locationId: locationId,
+        stateId: selectedStateId || undefined,
         volumes: 1,
         totalQuantity: defaultQuantity,
         notes: `Importado automáticamente desde Google Books (ID: ${volume.id})`,
@@ -363,6 +372,35 @@ export function GoogleBooksSearch({
                   </NumberInput>
                 </FormControl>
               )}
+
+              {/* ✅ NUEVO: Selector de estado del recurso */}
+              {canCreateResource && (
+                <FormControl>
+                  <FormLabel>
+                    <HStack spacing={2}>
+                      <Text fontSize="sm">Estado del recurso</Text>
+                      <Tooltip label="Estado físico del libro al momento del registro">
+                        <Box>
+                          <FiInfo size={14} />
+                        </Box>
+                      </Tooltip>
+                    </HStack>
+                  </FormLabel>
+                  <Select
+                    value={selectedStateId}
+                    onChange={(e) => setSelectedStateId(e.target.value)}
+                    placeholder="Selecciona el estado del libro"
+                    isDisabled={isLoadingStates}
+                    size="md"
+                  >
+                    {resourceStates.map((state) => (
+                      <option key={state._id} value={state._id}>
+                        {state.description}
+                      </option>
+                    ))}
+                  </Select>
+                </FormControl>
+              )}
               
               <Text fontSize="sm" color="gray.600">
                 Busca libros por título, autor o ISBN. Haz clic en "Registrar Libro" para agregarlo automáticamente al inventario.
@@ -450,10 +488,6 @@ export function GoogleBooksSearch({
           volume={selectedBook}
           isOpen={isPreviewOpen}
           onClose={onPreviewClose}
-          onSelect={() => {
-            handleQuickSelect(selectedBook);
-            onPreviewClose();
-          }}
           categoryId={categoryId}
           locationId={locationId}
         />
