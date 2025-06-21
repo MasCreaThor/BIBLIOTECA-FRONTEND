@@ -32,7 +32,7 @@ export function DashboardHeader({ onMenuClick }: DashboardHeaderProps) {
       justifyContent="space-between"
       position="sticky"
       top={0}
-      zIndex={10}
+      zIndex={5}
       shadow="sm"
     >
       <HStack spacing={4} flex={1} minW={0}>
