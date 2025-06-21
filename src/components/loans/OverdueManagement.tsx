@@ -30,7 +30,8 @@ import {
   StatNumber,
   StatHelpText,
   useToast,
-  useColorModeValue
+  useColorModeValue,
+  useDisclosure
 } from '@chakra-ui/react';
 
 import {
@@ -42,7 +43,8 @@ import {
   FiUser,
   FiBook,
   FiCalendar,
-  FiClock
+  FiClock,
+  FiCheck
 } from 'react-icons/fi';
 
 import { format } from 'date-fns';
@@ -51,6 +53,8 @@ import { es } from 'date-fns/locale';
 // Importar hooks y tipos
 import { useOverdue } from '@/hooks/useLoans';
 import type { OverdueFilters, LoanWithDetails, OverdueStats } from '@/types/loan.types';
+import LoanDetailsModal from './LoanDetailsModal';
+import ReturnModal from './ReturnModal';
 
 // ===== INTERFACES =====
 
@@ -66,6 +70,11 @@ interface OverdueFiltersData {
 interface OverdueStatsCardProps {
   stats: OverdueStats | null;
   loading: boolean;
+}
+
+interface OverdueManagementProps {
+  preSelectedLoanId?: string;
+  onLoanDetailsClosed?: () => void;
 }
 
 // ===== COMPONENTE DE ESTADÍSTICAS =====
@@ -121,7 +130,7 @@ const OverdueStatsCard: React.FC<OverdueStatsCardProps> = ({ stats, loading }) =
 
 // ===== COMPONENTE PRINCIPAL =====
 
-export const OverdueManagement: React.FC = () => {
+export const OverdueManagement: React.FC<OverdueManagementProps> = ({ preSelectedLoanId, onLoanDetailsClosed }) => {
   const toast = useToast();
   
   // FIX: Estado con tipos específicos
@@ -136,6 +145,22 @@ export const OverdueManagement: React.FC = () => {
 
   const [selectedLoans, setSelectedLoans] = useState<string[]>([]);
 
+  // ✅ NUEVO: Estados para el modal de detalles
+  const [selectedLoan, setSelectedLoan] = useState<LoanWithDetails | null>(null);
+  const { 
+    isOpen: showDetailsModal, 
+    onOpen: openDetailsModal, 
+    onClose: closeDetailsModal 
+  } = useDisclosure();
+
+  // ✅ NUEVO: Estados para el modal de devolución
+  const [loanToReturn, setLoanToReturn] = useState<LoanWithDetails | null>(null);
+  const { 
+    isOpen: showReturnModal, 
+    onOpen: openReturnModal, 
+    onClose: closeReturnModal 
+  } = useDisclosure();
+
   // Hooks
   const {
     overdueLoans,
@@ -149,6 +174,17 @@ export const OverdueManagement: React.FC = () => {
   } = useOverdue();
 
   // ===== EFECTOS =====
+
+  // ✅ NUEVO: Efecto para abrir automáticamente el modal de detalles cuando se recibe un loanId
+  useEffect(() => {
+    if (preSelectedLoanId && overdueLoans && overdueLoans.length > 0) {
+      const loan = overdueLoans.find(l => l._id === preSelectedLoanId);
+      if (loan) {
+        setSelectedLoan(loan);
+        openDetailsModal();
+      }
+    }
+  }, [preSelectedLoanId, overdueLoans, openDetailsModal]);
 
   useEffect(() => {
     const timeoutId = setTimeout(() => {
@@ -218,6 +254,39 @@ export const OverdueManagement: React.FC = () => {
     } else {
       setSelectedLoans(overdueLoans.map((loan: LoanWithDetails) => loan._id));
     }
+  };
+
+  // ✅ NUEVO: Handler para ver detalles de un préstamo
+  const handleViewDetails = (loan: LoanWithDetails) => {
+    setSelectedLoan(loan);
+    openDetailsModal();
+  };
+
+  // ✅ NUEVO: Handler para cerrar el modal de detalles y limpiar la URL
+  const handleDetailsModalClose = () => {
+    closeDetailsModal();
+    setSelectedLoan(null);
+    if (onLoanDetailsClosed) {
+      onLoanDetailsClosed();
+    }
+  };
+
+  // ✅ NUEVO: Handler para abrir el modal de devolución
+  const handleReturnLoan = (loan: LoanWithDetails) => {
+    setLoanToReturn(loan);
+    openReturnModal();
+  };
+
+  // ✅ NUEVO: Handler para cerrar el modal de devolución
+  const handleReturnModalClose = () => {
+    closeReturnModal();
+    setLoanToReturn(null);
+  };
+
+  // ✅ NUEVO: Handler para cuando se completa la devolución exitosamente
+  const handleReturnSuccess = () => {
+    // Recargar la lista de préstamos vencidos
+    refetch();
   };
 
   // ===== CÁLCULOS =====
@@ -472,10 +541,16 @@ export const OverdueManagement: React.FC = () => {
                   </Td>
                   <Td>
                     <HStack spacing={2}>
-                      <Button size="xs" colorScheme="orange" variant="outline">
-                        Recordar
+                      <Button 
+                        size="xs" 
+                        colorScheme="green" 
+                        variant="outline" 
+                        leftIcon={<FiCheck />}
+                        onClick={() => handleReturnLoan(loan)}
+                      >
+                        Devolver
                       </Button>
-                      <Button size="xs" colorScheme="blue" variant="outline">
+                      <Button size="xs" colorScheme="blue" variant="outline" onClick={() => handleViewDetails(loan)}>
                         Ver Detalles
                       </Button>
                     </HStack>
@@ -509,6 +584,21 @@ export const OverdueManagement: React.FC = () => {
           </Button>
         </HStack>
       )}
+
+      {/* ✅ NUEVO: Modal de detalles del préstamo */}
+      <LoanDetailsModal
+        loan={selectedLoan}
+        isOpen={showDetailsModal}
+        onClose={handleDetailsModalClose}
+      />
+
+      {/* ✅ NUEVO: Modal de devolución */}
+      <ReturnModal
+        loan={loanToReturn}
+        isOpen={showReturnModal}
+        onClose={handleReturnModalClose}
+        onSuccess={handleReturnSuccess}
+      />
     </VStack>
   );
 };

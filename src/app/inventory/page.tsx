@@ -248,7 +248,7 @@ export default function InventoryPage() {
           <ModalBody pb={6}>
             {editingResource && (
               <ResourceForm
-                resource={editingResource}
+                resource={editingResource as unknown as import('@/types/api.types').Resource}
                 onSubmit={handleUpdateResource}
                 onCancel={onEditClose}
                 isLoading={updateMutation.isPending}

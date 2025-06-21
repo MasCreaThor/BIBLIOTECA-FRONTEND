@@ -61,6 +61,11 @@ interface StatsSectionProps {
   children: React.ReactNode;
 }
 
+interface LoanStatisticsProps {
+  preSelectedLoanId?: string;
+  onLoanDetailsClosed?: () => void;
+}
+
 // ===== COMPONENTE DE TARJETA DE MÉTRICA =====
 
 // FIX: Tipos explícitos para todos los parámetros
@@ -182,7 +187,7 @@ const SimpleChart: React.FC<SimpleChartProps> = ({ data, title }) => {
 
 // ===== COMPONENTE PRINCIPAL =====
 
-export const LoanStatistics: React.FC = () => {
+export const LoanStatistics: React.FC<LoanStatisticsProps> = ({ preSelectedLoanId, onLoanDetailsClosed }) => {
   const { stats, overdueStats, stockStats, loading, error, refetch } = useLoanStats();
 
   if (loading) {

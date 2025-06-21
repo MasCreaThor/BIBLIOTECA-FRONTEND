@@ -5,6 +5,7 @@
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { LoanService } from '@/services/loan.service';
+import { processLoansData } from '@/utils/loan.utils';
 import type {
   LoanWithDetails,
   CreateLoanRequest,
@@ -268,9 +269,18 @@ export const useLoans = (initialFilters: LoanSearchFilters = {}) => {
         loansCount: response.data?.length
       });
       
+      // ✅ NUEVO: Procesar los datos para validar fechas de vencimiento
+      const processedLoans = processLoansData(response.data || []);
+      console.log('✅ useLoans: Datos procesados con validación de fechas:', {
+        total: processedLoans.length,
+        overdue: processedLoans.filter(l => l.isOverdue).length,
+        dueToday: processedLoans.filter(l => l.isDueToday).length,
+        dueSoon: processedLoans.filter(l => l.isDueSoon).length
+      });
+      
       setState(prev => ({ 
         ...prev, 
-        loans: response.data || [], 
+        loans: processedLoans, 
         pagination: response.pagination || {
           page: 1,
           limit: 20,

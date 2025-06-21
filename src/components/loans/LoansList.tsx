@@ -64,9 +64,17 @@ interface LocalFiltersState {
   year: string;
 }
 
+interface LoansListProps {
+  preSelectedLoanId?: string;
+  onLoanDetailsClosed?: () => void;
+}
+
 // ===== COMPONENTE PRINCIPAL =====
 
-const LoansList: React.FC = () => {
+const LoansList: React.FC<LoansListProps> = ({ 
+  preSelectedLoanId,
+  onLoanDetailsClosed 
+}) => {
   // Estados
   const [selectedLoan, setSelectedLoan] = useState<LoanWithDetails | null>(null);
   const [localFilters, setLocalFilters] = useState<LocalFiltersState>({
@@ -110,6 +118,17 @@ const LoansList: React.FC = () => {
   const filterBg = useColorModeValue('gray.50', 'gray.700');
 
   // ===== EFECTOS =====
+
+  // ✅ NUEVO: Efecto para abrir automáticamente el modal de detalles cuando se recibe un loanId
+  useEffect(() => {
+    if (preSelectedLoanId && loans && loans.length > 0) {
+      const loan = loans.find(l => l._id === preSelectedLoanId);
+      if (loan) {
+        setSelectedLoan(loan);
+        openDetailsModal();
+      }
+    }
+  }, [preSelectedLoanId, loans, openDetailsModal]);
 
   // Aplicar filtros con debounce
   useEffect(() => {
@@ -178,6 +197,15 @@ const LoansList: React.FC = () => {
     setSelectedLoan(null);
     closeReturnModal();
     refetch(); // Actualizar la lista
+  };
+
+  // ✅ NUEVO: Handler para cerrar el modal de detalles y limpiar la URL
+  const handleDetailsModalClose = () => {
+    closeDetailsModal();
+    setSelectedLoan(null);
+    if (onLoanDetailsClosed) {
+      onLoanDetailsClosed();
+    }
   };
 
   // Calcular si hay filtros activos
@@ -517,7 +545,7 @@ const LoansList: React.FC = () => {
                   <Th px={4} py={6} fontSize="sm" fontWeight="bold" color="gray.700" textTransform="uppercase" letterSpacing="wide" w="120px" textAlign="center" verticalAlign="middle">
                     F. Vencimiento
                   </Th>
-                  <Th px={4} py={6} fontSize="sm" fontWeight="bold" color="gray.700" textTransform="uppercase" letterSpacing="wide" w="120px" textAlign="center" verticalAlign="middle">
+                  <Th px={4} py={6} fontSize="sm" fontWeight="bold" color="gray.700" textTransform="uppercase" letterSpacing="wide" w="130px" textAlign="center" verticalAlign="middle">
                     Estado
                   </Th>
                   <Th px={4} py={6} fontSize="sm" fontWeight="bold" color="gray.700" textTransform="uppercase" letterSpacing="wide" w="100px" textAlign="center" verticalAlign="middle">
@@ -655,7 +683,7 @@ const LoansList: React.FC = () => {
       <LoanDetailsModal
         loan={selectedLoan}
         isOpen={showDetailsModal}
-        onClose={closeDetailsModal}
+        onClose={handleDetailsModalClose}
         onReturnLoan={handleReturnLoan}
       />
     </VStack>

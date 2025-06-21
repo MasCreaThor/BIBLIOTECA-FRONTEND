@@ -18,7 +18,8 @@ import {
   TabPanel,
   useColorModeValue,
   useDisclosure,
-  Container
+  Container,
+  useToast
 } from '@chakra-ui/react';
 import { useSearchParams } from 'next/navigation';
 
@@ -28,7 +29,7 @@ import {
   FiPlus, 
   FiRefreshCw, 
   FiAlertTriangle, 
-  FiFileText 
+  FiFileText
 } from 'react-icons/fi';
 
 // Importar componentes hijos
@@ -44,7 +45,7 @@ interface TabInfo {
   id: string;
   label: string;
   icon: React.ElementType;
-  component: React.ComponentType;
+  component: React.ComponentType<any>;
 }
 
 // ===== COMPONENTE PRINCIPAL =====
@@ -53,9 +54,11 @@ const LoanManagement: React.FC = () => {
   const [activeTabIndex, setActiveTabIndex] = useState(0);
   const { isOpen, onOpen, onClose } = useDisclosure();
   const searchParams = useSearchParams();
+  const toast = useToast();
 
-  // ✅ NUEVO: Obtener resourceId desde URL parameters
+  // ✅ NUEVO: Obtener resourceId y loanId desde URL parameters
   const resourceId = searchParams.get('resourceId');
+  const loanId = searchParams.get('loanId');
 
   // ✅ NUEVO: Abrir modal automáticamente si hay resourceId
   useEffect(() => {
@@ -63,6 +66,13 @@ const LoanManagement: React.FC = () => {
       onOpen();
     }
   }, [resourceId, onOpen]);
+
+  // ✅ NUEVO: Cambiar a la pestaña de "Lista de Préstamos" si hay loanId
+  useEffect(() => {
+    if (loanId) {
+      setActiveTabIndex(0); // Cambiar a la primera pestaña (Lista de Préstamos)
+    }
+  }, [loanId]);
 
   // Valores de color mode
   const bgColor = useColorModeValue('white', 'gray.800');
@@ -127,6 +137,15 @@ const LoanManagement: React.FC = () => {
     }
   };
 
+  // ✅ NUEVO: Handler para limpiar loanId de la URL
+  const handleLoanDetailsClosed = () => {
+    if (loanId) {
+      const url = new URL(window.location.href);
+      url.searchParams.delete('loanId');
+      window.history.replaceState({}, '', url.toString());
+    }
+  };
+
   // ===== RENDER =====
 
   return (
@@ -139,7 +158,7 @@ const LoanManagement: React.FC = () => {
         borderColor={borderColor}
         position="sticky"
         top={0}
-        zIndex={10}
+        zIndex={1}
       >
         <Container maxW="7xl" px={{ base: 4, md: 6, lg: 8 }}>
           <Flex 
@@ -168,15 +187,17 @@ const LoanManagement: React.FC = () => {
               </Text>
             </HStack>
             
-            <Button
-              leftIcon={<FiPlus />}
-              colorScheme="blue"
-              onClick={onOpen}
-              size={{ base: 'sm', md: 'md' }}
-              w={{ base: 'full', md: 'auto' }}
-            >
-              Nuevo Préstamo
-            </Button>
+            <HStack spacing={3}>
+              <Button
+                leftIcon={<FiPlus />}
+                colorScheme="blue"
+                onClick={onOpen}
+                size={{ base: 'sm', md: 'md' }}
+                w={{ base: 'full', md: 'auto' }}
+              >
+                Nuevo Préstamo
+              </Button>
+            </HStack>
           </Flex>
         </Container>
       </Box>
@@ -243,7 +264,10 @@ const LoanManagement: React.FC = () => {
                   const Component = tab.component;
                   return (
                     <TabPanel key={tab.id} p={6}>
-                      <Component />
+                      <Component 
+                        preSelectedLoanId={loanId || undefined}
+                        onLoanDetailsClosed={handleLoanDetailsClosed}
+                      />
                     </TabPanel>
                   );
                 })}

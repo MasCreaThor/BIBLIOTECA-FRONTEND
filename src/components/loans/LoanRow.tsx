@@ -52,6 +52,7 @@ import { es } from 'date-fns/locale';
 import type { LoanWithDetails } from '@/types/loan.types';
 import { useReturn } from '@/hooks/useLoans';
 import { LoanService } from '@/services/loan.service';
+import { getLoanStatusInfo } from '@/utils/loan.utils';
 
 // ===== INTERFACES =====
 
@@ -99,53 +100,7 @@ const LoanRow: React.FC<LoanRowProps> = ({
   };
 
   const getStatusInfo = (loan: LoanWithDetails) => {
-    if (loan.status?.name === 'returned') {
-      return {
-        icon: FiCheckCircle,
-        label: 'Devuelto',
-        colorScheme: 'green',
-        variant: 'solid' as const
-      };
-    }
-    
-    if (loan.isOverdue) {
-      return {
-        icon: FiAlertTriangle,
-        label: `Vencido (${loan.daysOverdue} días)`,
-        colorScheme: 'red',
-        variant: 'solid' as const
-      };
-    }
-    
-    if (loan.status?.name === 'lost') {
-      return {
-        icon: FiXCircle,
-        label: 'Perdido',
-        colorScheme: 'gray',
-        variant: 'solid' as const
-      };
-    }
-
-    // Verificar si vence hoy
-    const today = new Date();
-    const dueDate = new Date(loan.dueDate);
-    const isDueToday = dueDate.toDateString() === today.toDateString();
-    
-    if (isDueToday) {
-      return {
-        icon: FiClock,
-        label: 'Vence hoy',
-        colorScheme: 'orange',
-        variant: 'solid' as const
-      };
-    }
-    
-    return {
-      icon: FiCheckCircle,
-      label: 'Activo',
-      colorScheme: 'green',
-      variant: 'outline' as const
-    };
+    return getLoanStatusInfo(loan);
   };
 
   const getPersonTypeBadge = (personType?: { name: string }) => {
@@ -308,20 +263,22 @@ const LoanRow: React.FC<LoanRowProps> = ({
         </Td>
 
         {/* Estado */}
-        <Td px={4} py={6} w="120px" textAlign="center" verticalAlign="middle">
+        <Td px={4} py={6} w="130px" textAlign="center" verticalAlign="middle">
           <Box minH="70px" display="flex" alignItems="center" justifyContent="center">
             <Badge
               colorScheme={statusInfo.colorScheme}
               variant={statusInfo.variant}
-              px={3}
-              py={2}
-              borderRadius="full"
+              px={2}
+              py={1}
+              borderRadius="md"
               fontSize="xs"
-              fontWeight="semibold"
+              fontWeight="medium"
+              maxW="110px"
+              textAlign="center"
             >
-              <HStack spacing={1}>
-                <StatusIcon size={12} />
-                <Text>{statusInfo.label}</Text>
+              <HStack spacing={1} justify="center">
+                <StatusIcon size={10} />
+                <Text fontSize="xs" noOfLines={1}>{statusInfo.label}</Text>
               </HStack>
             </Badge>
           </Box>

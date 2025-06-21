@@ -89,6 +89,8 @@ export interface LoanWithDetails extends Loan {
     lastName: string;
     username: string;
   };
+  isDueToday?: boolean;
+  isDueSoon?: boolean;
 }
 
 // ===== DTOs DE ENTRADA =====

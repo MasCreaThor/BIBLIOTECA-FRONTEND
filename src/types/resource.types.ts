@@ -76,9 +76,11 @@ export interface UpdateResourceRequest {
 }
 
 // ===== ENTIDADES AUXILIARES =====
+export type ResourceTypeName = 'book' | 'game' | 'map' | 'bible' | (string & {});
+
 export interface ResourceType {
   _id: string;
-  name: string;
+  name: ResourceTypeName;
   description: string;
   active: boolean;
   isSystem: boolean;

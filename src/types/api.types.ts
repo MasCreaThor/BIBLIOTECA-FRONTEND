@@ -92,9 +92,11 @@ export interface UpdatePersonRequest {
 }
 
 // ===== TIPOS PARA ENTIDADES AUXILIARES DE RECURSOS =====
+export type ResourceTypeName = 'book' | 'game' | 'map' | 'bible' | (string & {});
+
 export interface ResourceType {
   _id: string;
-  name: 'book' | 'game' | 'map' | 'bible';
+  name: ResourceTypeName;
   description: string;
   active: boolean;
   createdAt: Date;

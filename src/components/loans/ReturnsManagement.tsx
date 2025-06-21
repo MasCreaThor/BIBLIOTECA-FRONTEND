@@ -81,6 +81,11 @@ interface ReturnModalProps {
   onSuccess: () => void;
 }
 
+interface ReturnsManagementProps {
+  preSelectedLoanId?: string;
+  onLoanDetailsClosed?: () => void;
+}
+
 // ===== COMPONENTE DE MODAL DE DEVOLUCIÓN =====
 
 const ReturnModal: React.FC<ReturnModalProps> = ({ loan, isOpen, onClose, onSuccess }) => {
@@ -221,7 +226,7 @@ const ReturnModal: React.FC<ReturnModalProps> = ({ loan, isOpen, onClose, onSucc
 
 // ===== COMPONENTE PRINCIPAL =====
 
-export const ReturnsManagement: React.FC = () => {
+export const ReturnsManagement: React.FC<ReturnsManagementProps> = ({ preSelectedLoanId, onLoanDetailsClosed }) => {
   const toast = useToast();
   const { isOpen, onOpen, onClose } = useDisclosure();
   
@@ -255,6 +260,17 @@ export const ReturnsManagement: React.FC = () => {
   } = useDisclosure();
 
   // ===== EFECTOS =====
+
+  // ✅ NUEVO: Efecto para abrir automáticamente el modal de detalles cuando se recibe un loanId
+  useEffect(() => {
+    if (preSelectedLoanId && activeLoans && activeLoans.length > 0) {
+      const loan = activeLoans.find(l => l._id === preSelectedLoanId);
+      if (loan) {
+        setSelectedLoan(loan);
+        openDetailsModal();
+      }
+    }
+  }, [preSelectedLoanId, activeLoans, openDetailsModal]);
 
   useEffect(() => {
     const timeoutId = setTimeout(() => {
@@ -318,6 +334,15 @@ export const ReturnsManagement: React.FC = () => {
   const handleReturnSuccess = () => {
     setSelectedLoan(null);
     refetch();
+  };
+
+  // ✅ NUEVO: Handler para cerrar el modal de detalles y limpiar la URL
+  const handleDetailsModalClose = () => {
+    closeDetailsModal();
+    setSelectedLoan(null);
+    if (onLoanDetailsClosed) {
+      onLoanDetailsClosed();
+    }
   };
 
   // ===== CÁLCULOS =====
@@ -791,7 +816,7 @@ export const ReturnsManagement: React.FC = () => {
       <LoanDetailsModal
         loan={selectedLoan}
         isOpen={showDetailsModal}
-        onClose={closeDetailsModal}
+        onClose={handleDetailsModalClose}
         onReturnLoan={handleProcessReturn}
       />
     </VStack>

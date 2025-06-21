@@ -10,6 +10,7 @@ import {
 import { FiMenu } from 'react-icons/fi';
 import { Breadcrumbs } from './Breadcrumbs';
 import { UserProfile } from '@/components/auth/UserProfile';
+import { NotificationBell } from '@/components/ui/NotificationBell';
 
 interface DashboardHeaderProps {
   onMenuClick: () => void;
@@ -49,8 +50,11 @@ export function DashboardHeader({ onMenuClick }: DashboardHeaderProps) {
         <Breadcrumbs />
       </HStack>
 
-      {/* Perfil de usuario */}
-      <UserProfile />
+      {/* Notificaciones y Perfil */}
+      <HStack spacing={3}>
+        <NotificationBell />
+        <UserProfile />
+      </HStack>
     </Box>
   );
 }

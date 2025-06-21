@@ -411,6 +411,26 @@ export class LoanService {
     }
   }
 
+  /**
+   * ✅ NUEVO: Actualizar estados de préstamos vencidos manualmente
+   */
+  static async updateOverdueStatuses(): Promise<{ updatedCount: number }> {
+    try {
+      console.log('🔄 LoanService: Actualizando estados de préstamos vencidos');
+
+      const response = await axiosInstance.post<ApiResponse<{ updatedCount: number }>>(
+        '/overdue/update-statuses'
+      );
+      
+      const result = handleApiResponse(response.data);
+      console.log('✅ LoanService: Estados de préstamos vencidos actualizados:', result.updatedCount);
+      return result;
+    } catch (error: any) {
+      console.error('❌ LoanService: Error al actualizar estados de préstamos vencidos:', error);
+      throw error;
+    }
+  }
+
   // ===== ESTADÍSTICAS Y REPORTES =====
 
   /**
