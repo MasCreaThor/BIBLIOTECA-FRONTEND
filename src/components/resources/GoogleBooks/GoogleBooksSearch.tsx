@@ -393,7 +393,7 @@ export function GoogleBooksSearch({
                     isDisabled={isLoadingStates}
                     size="md"
                   >
-                    {resourceStates.map((state) => (
+                    {Array.isArray(resourceStates) && resourceStates.map((state) => (
                       <option key={state._id} value={state._id}>
                         {state.description}
                       </option>

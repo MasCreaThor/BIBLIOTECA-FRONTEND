@@ -687,7 +687,7 @@ export const ResourceForm: React.FC<ResourceFormProps> = ({
                     placeholder="Seleccionar estado"
                     disabled={isLoading}
                   >
-                    {resourceStates?.data.map((state) => (
+                    {Array.isArray(resourceStates?.data) && resourceStates.data.map((state) => (
                       <option key={state._id} value={state._id}>
                         {state.description}
                       </option>

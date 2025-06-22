@@ -224,7 +224,97 @@ export function useResourceStates(
 ) {
   return useQuery({
     queryKey: RESOURCE_STATE_QUERY_KEYS.resourceStatesList(filters),
-    queryFn: () => ResourceStateService.getResourceStates(filters),
+    queryFn: async () => {
+      try {
+        return await ResourceStateService.getResourceStates(filters);
+      } catch (error: any) {
+        console.error('Error al obtener estados de recursos:', error);
+        
+        // Si es un error de permisos (403) o no autorizado (401), retornar estructura vacía
+        if (error?.response?.status === 403 || error?.response?.status === 401) {
+          console.warn('Usuario sin permisos para acceder a estados de recursos, usando estructura vacía');
+          return {
+            data: [],
+            pagination: {
+              total: 0,
+              page: 1,
+              limit: 0,
+              totalPages: 1,
+              hasNextPage: false,
+              hasPrevPage: false,
+            }
+          };
+        }
+        
+        // Si es un error de red o servidor, retornar estados por defecto
+        if (error?.response?.status >= 500 || !error?.response) {
+          console.warn('Error de servidor o red, usando estados por defecto');
+          const defaultStates: ResourceState[] = [
+            {
+              _id: 'default-good',
+              name: 'good',
+              description: 'Buen Estado',
+              color: '#28a745',
+              active: true,
+              createdAt: new Date(),
+              updatedAt: new Date(),
+            },
+            {
+              _id: 'default-deteriorated',
+              name: 'deteriorated',
+              description: 'Deteriorado',
+              color: '#ffc107',
+              active: true,
+              createdAt: new Date(),
+              updatedAt: new Date(),
+            },
+            {
+              _id: 'default-damaged',
+              name: 'damaged',
+              description: 'Dañado',
+              color: '#fd7e14',
+              active: true,
+              createdAt: new Date(),
+              updatedAt: new Date(),
+            },
+            {
+              _id: 'default-lost',
+              name: 'lost',
+              description: 'Perdido',
+              color: '#dc3545',
+              active: true,
+              createdAt: new Date(),
+              updatedAt: new Date(),
+            },
+          ];
+          
+          return {
+            data: defaultStates,
+            pagination: {
+              total: defaultStates.length,
+              page: 1,
+              limit: defaultStates.length,
+              totalPages: 1,
+              hasNextPage: false,
+              hasPrevPage: false,
+            }
+          };
+        }
+        
+        // Para otros errores, retornar estructura vacía
+        return {
+          data: [],
+          pagination: {
+            total: 0,
+            page: 1,
+            limit: 0,
+            totalPages: 1,
+            hasNextPage: false,
+            hasPrevPage: false,
+          }
+        };
+      }
+    },
     staleTime: 30 * 60 * 1000, // 30 minutos - datos muy estables
     gcTime: 60 * 60 * 1000,    // 1 hora
     retry: 2,
@@ -382,8 +472,64 @@ export function useActiveResourceStates() {
   return useQuery({
     queryKey: RESOURCE_STATE_QUERY_KEYS.resourceStatesList({ active: true }),
     queryFn: async () => {
-      const response = await ResourceStateService.getResourceStates({ active: true });
-      return response.data; // Retornar solo el array de datos
+      try {
+        const response = await ResourceStateService.getResourceStates({ active: true });
+        return response.data; // Retornar solo el array de datos
+      } catch (error: any) {
+        console.error('Error al obtener estados activos de recursos:', error);
+        
+        // Si es un error de permisos (403) o no autorizado (401), retornar array vacío
+        if (error?.response?.status === 403 || error?.response?.status === 401) {
+          console.warn('Usuario sin permisos para acceder a estados de recursos, usando array vacío');
+          return [];
+        }
+        
+        // Si es un error de red o servidor, retornar estados por defecto
+        if (error?.response?.status >= 500 || !error?.response) {
+          console.warn('Error de servidor o red, usando estados por defecto');
+          return [
+            {
+              _id: 'default-good',
+              name: 'good',
+              description: 'Buen Estado',
+              color: '#28a745',
+              active: true,
+              createdAt: new Date(),
+              updatedAt: new Date(),
+            },
+            {
+              _id: 'default-deteriorated',
+              name: 'deteriorated',
+              description: 'Deteriorado',
+              color: '#ffc107',
+              active: true,
+              createdAt: new Date(),
+              updatedAt: new Date(),
+            },
+            {
+              _id: 'default-damaged',
+              name: 'damaged',
+              description: 'Dañado',
+              color: '#fd7e14',
+              active: true,
+              createdAt: new Date(),
+              updatedAt: new Date(),
+            },
+            {
+              _id: 'default-lost',
+              name: 'lost',
+              description: 'Perdido',
+              color: '#dc3545',
+              active: true,
+              createdAt: new Date(),
+              updatedAt: new Date(),
+            },
+          ];
+        }
+        
+        // Para otros errores, retornar array vacío
+        return [];
+      }
     },
     staleTime: 30 * 60 * 1000, // 30 minutos - datos muy estables
     gcTime: 60 * 60 * 1000,    // 1 hora
