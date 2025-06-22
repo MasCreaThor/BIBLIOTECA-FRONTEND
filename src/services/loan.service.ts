@@ -554,9 +554,9 @@ export class LoanService {
     return {
       maxLoansPerPerson: 5,
       maxLoanDays: 15,
-      maxQuantityStudent: 3,
-      maxQuantityTeacher: 10,
-      maxQuantityAbsolute: 50
+      maxQuantityStudent: 1, // Estudiantes: máximo 1 unidad
+      maxQuantityTeacher: 1000, // Docentes: pueden prestar hasta 1000 unidades
+      maxQuantityAbsolute: 1000 // Límite absoluto del sistema
     };
   }
 

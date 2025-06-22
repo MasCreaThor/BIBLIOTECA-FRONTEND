@@ -82,7 +82,7 @@ const createLoanSchema = z.object({
   resourceId: z.string().min(1, 'Debe seleccionar un recurso'),
   quantity: z.number()
     .min(1, 'La cantidad debe ser mayor a 0')
-    .max(50, 'Cantidad máxima: 50'),
+    .max(1000, 'Cantidad máxima: 1000'),
   observations: z.string()
     .max(500, 'Las observaciones no deben exceder 500 caracteres')
     .optional()
@@ -489,10 +489,9 @@ export const CreateLoanModal: React.FC<CreateLoanModalProps> = ({
       }
       
       // Ajustar cantidad máxima según disponibilidad
-      const maxQuantity = Math.min(
-        availability.availableQuantity,
-        selectedPerson?.personType?.name === 'student' ? 1 : 50
-      );
+      const maxQuantity = selectedPerson?.personType?.name === 'student' 
+        ? Math.min(availability.availableQuantity, 1)  // Estudiantes: máximo 1 unidad
+        : availability.availableQuantity;              // Docentes: toda la cantidad disponible
       
       if (watchedValues.quantity > maxQuantity) {
         setValue('quantity', maxQuantity);
@@ -607,8 +606,9 @@ export const CreateLoanModal: React.FC<CreateLoanModalProps> = ({
   }, [selectedPerson, selectedResource]);
 
   const canSubmit = useMemo(() => {
-    // Validaciones básicas del formulario
-    const basicValid = formIsValid && !creating && !validating;
+    // Validaciones básicas del formulario (sin depender de observaciones)
+    const hasRequiredFields = !!watchedValues.personId && !!watchedValues.resourceId && !!watchedValues.quantity;
+    const basicValid = hasRequiredFields && !creating && !validating;
     
     // Validar que se haya seleccionado una persona
     const personSelected = !!selectedPerson && !!watchedValues.personId;
@@ -632,8 +632,18 @@ export const CreateLoanModal: React.FC<CreateLoanModalProps> = ({
     // Validar cantidad
     const quantityValid = watchedValues.quantity > 0 && watchedValues.quantity <= maxQuantityForPerson;
     
-    return basicValid && personSelected && resourceSelected && resourceCanBeLoaned && quantityValid;
-  }, [formIsValid, creating, validating, selectedPerson, selectedResource, watchedValues, maxQuantityForPerson]);
+    // Validar que no haya errores de validación del backend
+    const noValidationErrors = validationState.errors.length === 0;
+    
+    // El botón se habilita si:
+    // 1. Tiene todos los campos requeridos
+    // 2. No está creando ni validando
+    // 3. Ha seleccionado persona y recurso
+    // 4. El recurso se puede prestar
+    // 5. La cantidad es válida
+    // 6. No hay errores de validación del backend
+    return basicValid && personSelected && resourceSelected && resourceCanBeLoaned && quantityValid && noValidationErrors;
+  }, [watchedValues, creating, validating, selectedPerson, selectedResource, maxQuantityForPerson, validationState.errors.length]);
 
   // ===== RENDER =====
 

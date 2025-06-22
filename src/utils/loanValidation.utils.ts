@@ -60,7 +60,7 @@ export const LOAN_LIMITS = {
   },
   TEACHER: {
     MAX_CONCURRENT_LOANS: 10,
-    MAX_QUANTITY_PER_RESOURCE: 5,
+    MAX_QUANTITY_PER_RESOURCE: Infinity, // Los docentes pueden prestar toda la cantidad disponible
     LOAN_DURATION_DAYS: 30,
   },
   DEFAULT: {
@@ -147,12 +147,24 @@ export function validateRequestedQuantity(
   const limits = personType === 'teacher' ? LOAN_LIMITS.TEACHER : LOAN_LIMITS.STUDENT;
   const maxPerResource = limits.MAX_QUANTITY_PER_RESOURCE;
 
-  if (requestedQuantity > maxPerResource) {
-    return {
-      isValid: false,
-      maxAllowed: maxPerResource,
-      reason: `Los ${personType === 'teacher' ? 'profesores' : 'estudiantes'} pueden prestar máximo ${maxPerResource} unidad(es) de este recurso`,
-    };
+  // Para docentes, el límite es la cantidad disponible del recurso
+  if (personType === 'teacher') {
+    if (requestedQuantity > availability.availableQuantity) {
+      return {
+        isValid: false,
+        maxAllowed: availability.availableQuantity,
+        reason: `Solo hay ${availability.availableQuantity} unidad(es) disponible(s)`,
+      };
+    }
+  } else {
+    // Para estudiantes, mantener el límite de 1 unidad
+    if (requestedQuantity > maxPerResource) {
+      return {
+        isValid: false,
+        maxAllowed: maxPerResource,
+        reason: `Los estudiantes pueden prestar máximo ${maxPerResource} unidad(es) de este recurso`,
+      };
+    }
   }
 
   // Verificar disponibilidad de stock
@@ -164,8 +176,8 @@ export function validateRequestedQuantity(
     };
   }
 
-  // Verificar límites generales
-  if (requestedQuantity > RESOURCE_LIMITS.MAX_QUANTITY_PER_LOAN) {
+  // Verificar límites generales (solo para estudiantes)
+  if (personType === 'student' && requestedQuantity > RESOURCE_LIMITS.MAX_QUANTITY_PER_LOAN) {
     return {
       isValid: false,
       maxAllowed: RESOURCE_LIMITS.MAX_QUANTITY_PER_LOAN,
@@ -175,7 +187,9 @@ export function validateRequestedQuantity(
 
   return {
     isValid: true,
-    maxAllowed: Math.min(availability.availableQuantity, maxPerResource),
+    maxAllowed: personType === 'teacher' 
+      ? availability.availableQuantity 
+      : Math.min(availability.availableQuantity, maxPerResource),
   };
 }
 
@@ -360,10 +374,15 @@ export function getLoanDurationForPersonType(personType: 'student' | 'teacher'):
 /**
  * Obtiene la cantidad máxima por recurso para un tipo de persona
  */
-export function getMaxQuantityPerResourceForPersonType(personType: 'student' | 'teacher'): number {
-  return personType === 'teacher' 
-    ? LOAN_LIMITS.TEACHER.MAX_QUANTITY_PER_RESOURCE 
-    : LOAN_LIMITS.STUDENT.MAX_QUANTITY_PER_RESOURCE;
+export function getMaxQuantityPerResourceForPersonType(
+  personType: 'student' | 'teacher', 
+  availableQuantity?: number
+): number {
+  if (personType === 'teacher') {
+    // Los docentes pueden prestar toda la cantidad disponible
+    return availableQuantity || Infinity;
+  }
+  return LOAN_LIMITS.STUDENT.MAX_QUANTITY_PER_RESOURCE;
 }
 
 /**
