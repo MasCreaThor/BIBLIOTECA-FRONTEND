@@ -70,7 +70,6 @@ export function SystemConfigEditor() {
     sidebarIcon: 'FiBook',
     sidebarIconUrl: '',
     sidebarIconImage: '',
-    description: '',
   });
   const [useCustomIcon, setUseCustomIcon] = useState(false);
   const [iconType, setIconType] = useState<'system' | 'url' | 'upload'>('system');
@@ -90,7 +89,6 @@ export function SystemConfigEditor() {
         sidebarIcon: config.sidebarIcon || 'FiBook',
         sidebarIconUrl: config.sidebarIconUrl || '',
         sidebarIconImage: config.sidebarIconImage || '',
-        description: config.description || '',
       });
       
       if (config.sidebarIconImage) {
@@ -270,7 +268,6 @@ export function SystemConfigEditor() {
         sidebarIcon: iconType === 'system' ? formData.sidebarIcon : 'FiImage',
         sidebarIconUrl: iconType === 'url' ? formData.sidebarIconUrl : '',
         sidebarIconImage: iconType === 'upload' ? formData.sidebarIconImage : '',
-        description: formData.description,
       };
 
       await systemConfigService.updateConfig(configData);
@@ -515,19 +512,6 @@ export function SystemConfigEditor() {
                 </VStack>
               </HStack>
             </Box>
-
-            {/* Descripción */}
-            <FormControl>
-              <FormLabel>Descripción</FormLabel>
-              <Input
-                value={formData.description}
-                onChange={(e) => handleInputChange('description', e.target.value)}
-                placeholder="Descripción opcional de la configuración"
-              />
-              <FormHelperText>
-                Descripción opcional para identificar esta configuración.
-              </FormHelperText>
-            </FormControl>
           </VStack>
         </CardBody>
       </Card>
