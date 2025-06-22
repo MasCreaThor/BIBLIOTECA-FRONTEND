@@ -120,6 +120,10 @@ export {
 } from './useAuth';
 
 export {
+  useChangePasswordModal,
+} from './useChangePasswordModal';
+
+export {
   useResources,
   useResource,
   useCreateResource,

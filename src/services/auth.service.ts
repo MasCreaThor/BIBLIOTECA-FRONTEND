@@ -7,6 +7,7 @@ const AUTH_ENDPOINTS = {
   LOGOUT: '/auth/logout',
   ME: '/auth/me',
   CHANGE_PASSWORD: '/auth/change-password',
+  UPDATE_PROFILE: '/auth/profile',
   VALIDATE: '/auth/validate',
   REFRESH: '/auth/refresh',
 } as const;
@@ -80,6 +81,26 @@ export class AuthService {
     if (!response.data.success) {
       throw new Error(response.data.message || 'Error al cambiar contraseña');
     }
+  }
+
+  /**
+   * Actualizar perfil del usuario
+   */
+  static async updateProfile(profileData: {
+    firstName?: string;
+    lastName?: string;
+    email?: string;
+  }): Promise<User> {
+    const response = await axiosInstance.put<ApiResponse<User>>(
+      AUTH_ENDPOINTS.UPDATE_PROFILE,
+      profileData
+    );
+    
+    if (response.data.success && response.data.data) {
+      return response.data.data;
+    }
+    
+    throw new Error(response.data.message || 'Error al actualizar perfil');
   }
 
   /**
