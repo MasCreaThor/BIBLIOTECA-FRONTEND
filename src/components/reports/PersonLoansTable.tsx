@@ -17,7 +17,7 @@ export function PersonLoansTable({ data, loading, onDataUpdate }: PersonLoansTab
   const [selectedLoan, setSelectedLoan] = useState<{
     personId: string;
     personName: string;
-    loan: PersonLoanSummary['loans'][0];
+    loans: PersonLoanSummary['loans'];
   } | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [updating, setUpdating] = useState(false);
@@ -263,7 +263,7 @@ export function PersonLoansTable({ data, loading, onDataUpdate }: PersonLoansTab
                           setSelectedLoan({
                             personId: personData.person._id,
                             personName: personData.person.name,
-                            loan: personData.loans[0], // Mostrar el primer préstamo como ejemplo
+                            loans: personData.loans,
                           });
                           setIsModalOpen(true);
                         }}
@@ -289,7 +289,7 @@ export function PersonLoansTable({ data, loading, onDataUpdate }: PersonLoansTab
             setIsModalOpen(false);
             setSelectedLoan(null);
           }}
-          loan={selectedLoan.loan}
+          loans={selectedLoan.loans}
           personName={selectedLoan.personName}
           onUpdate={handleUpdateStatus}
           updating={updating}
