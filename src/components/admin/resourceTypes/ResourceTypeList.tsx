@@ -497,8 +497,7 @@ export function ResourceTypeList({
               ⚠️ Configuración del Sistema
             </Text>
             <Text fontSize="xs" color="gray.600">
-              Los tipos de recursos son configuraciones fundamentales del sistema. Los cambios afectan a todo el inventario.
-              Solo los administradores pueden modificar estos elementos.
+              Los tipos de recursos son configuraciones fundamentales del sistema.
             </Text>
           </Box>
         </Alert>

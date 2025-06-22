@@ -155,16 +155,6 @@ export const NotificationBell: React.FC = () => {
               )}
             </HStack>
           )}
-          
-          {/* ✅ DEBUG: Información de depuración */}
-          <Box mt={2} p={2} bg="gray.50" borderRadius="md" fontSize="xs">
-            <Text color="gray.600">
-              Debug: Total={stats.total}, Vencidos={stats.overdue}, Por vencer={stats.expiring}
-            </Text>
-            <Text color="gray.500">
-              Loading: {notificationsLoading ? 'Sí' : 'No'}
-            </Text>
-          </Box>
         </PopoverHeader>
         
         <PopoverBody p={0} maxH="400px" overflowY="auto">

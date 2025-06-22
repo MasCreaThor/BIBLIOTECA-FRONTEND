@@ -173,9 +173,6 @@ export function AdminNavigation({
             />
           ))}
         </SimpleGrid>
-        <Text fontSize="xs" color="gray.500" mt={2}>
-          * Los elementos marcados como "Sistema" requieren permisos especiales
-        </Text>
       </Box>
 
       {/* Información de ayuda */}
@@ -191,9 +188,7 @@ export function AdminNavigation({
                 <Text fontSize="xs" color="blue.700" lineHeight="tall">
                   • Configuración del Sistema: Personaliza la apariencia del menú lateral<br />
                   • Categorías y Ubicaciones: Gestionables por bibliotecarios<br />
-                  • Tipos de Recursos: Solo administradores pueden modificar<br />
                   • Estados de Recursos: Se inicializan automáticamente al arrancar el sistema<br />
-                  • Los cambios afectan todo el sistema, úsalos con cuidado
                 </Text>
               </VStack>
             </HStack>
