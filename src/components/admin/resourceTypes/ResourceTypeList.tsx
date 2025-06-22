@@ -14,11 +14,6 @@ import {
   CardBody,
   Text,
   Badge,
-  Menu,
-  MenuButton,
-  MenuList,
-  MenuItem,
-  MenuDivider,
   IconButton,
   Skeleton,
   SkeletonText,
@@ -34,7 +29,6 @@ import {
 import { useState } from 'react';
 import {
   FiSearch,
-  FiMoreVertical,
   FiEdit,
   FiTrash2,
   FiPlus,
@@ -184,56 +178,41 @@ function ResourceTypeCard({
 
             {/* Acciones */}
             {showActions && (
-              <HStack justify="flex-end" pt={2}>
-                <Menu>
-                  <MenuButton
-                    as={IconButton}
-                    aria-label="Acciones"
-                    icon={<FiMoreVertical />}
-                    variant="ghost"
+              <HStack justify="flex-end" pt={2} spacing={1}>
+                <Tooltip label="Editar tipo de recurso">
+                  <IconButton
+                    aria-label="Editar"
+                    icon={<FiEdit />}
                     size="sm"
+                    variant="ghost"
+                    colorScheme="blue"
+                    onClick={() => handleActionClick('edit')}
+                    isDisabled={isSystemType}
                   />
-                  <MenuList>
-                    <MenuItem
-                      icon={<FiEdit />}
-                      onClick={() => handleActionClick('edit')}
-                      isDisabled={isSystemType}
-                    >
-                      Editar
-                      {isSystemType && (
-                        <Text as="span" fontSize="xs" color="gray.500" ml={2}>
-                          (No editable)
-                        </Text>
-                      )}
-                    </MenuItem>
+                </Tooltip>
 
-                    <MenuDivider />
+                <Tooltip label={resourceType.active ? 'Desactivar' : 'Activar'}>
+                  <IconButton
+                    aria-label={resourceType.active ? 'Desactivar' : 'Activar'}
+                    icon={resourceType.active ? <FiToggleLeft /> : <FiToggleRight />}
+                    size="sm"
+                    variant="ghost"
+                    colorScheme={resourceType.active ? "orange" : "green"}
+                    onClick={() => handleActionClick('toggle')}
+                  />
+                </Tooltip>
 
-                    <MenuItem
-                      icon={resourceType.active ? <FiToggleLeft /> : <FiToggleRight />}
-                      onClick={() => handleActionClick('toggle')}
-                      color={resourceType.active ? "orange.600" : "green.600"}
-                    >
-                      {resourceType.active ? 'Desactivar' : 'Activar'}
-                    </MenuItem>
-
-                    <MenuDivider />
-                    
-                    <MenuItem
-                      icon={<FiTrash2 />}
-                      onClick={() => handleActionClick('delete')}
-                      color="red.600"
-                      isDisabled={isSystemType}
-                    >
-                      Eliminar
-                      {isSystemType && (
-                        <Text as="span" fontSize="xs" color="gray.500" ml={2}>
-                          (No eliminable)
-                        </Text>
-                      )}
-                    </MenuItem>
-                  </MenuList>
-                </Menu>
+                <Tooltip label="Eliminar tipo de recurso">
+                  <IconButton
+                    aria-label="Eliminar"
+                    icon={<FiTrash2 />}
+                    size="sm"
+                    variant="ghost"
+                    colorScheme="red"
+                    onClick={() => handleActionClick('delete')}
+                    isDisabled={isSystemType}
+                  />
+                </Tooltip>
               </HStack>
             )}
           </VStack>

@@ -14,11 +14,6 @@ import {
   CardBody,
   Text,
   Badge,
-  Menu,
-  MenuButton,
-  MenuList,
-  MenuItem,
-  MenuDivider,
   IconButton,
   Skeleton,
   SkeletonText,
@@ -29,10 +24,9 @@ import {
   FormControl,
   FormLabel,
 } from '@chakra-ui/react';
-import { useState, useEffect, useCallback, useRef, memo } from 'react';
+import { useState, useEffect, useCallback, memo } from 'react';
 import {
   FiSearch,
-  FiMoreVertical,
   FiEdit,
   FiTrash2,
   FiPlus,
@@ -109,6 +103,8 @@ const CategoryCard = memo(function CategoryCard({
         opacity={category.active ? 1 : 0.6}
         border={category.active ? '1px solid' : '2px dashed'}
         borderColor={category.active ? 'gray.200' : 'gray.300'}
+        position="relative"
+        zIndex={1}
       >
         <CardBody p={4}>
           <VStack spacing={3} align="stretch" h="full">
@@ -161,34 +157,27 @@ const CategoryCard = memo(function CategoryCard({
 
             {/* Acciones */}
             {showActions && (
-              <HStack justify="flex-end" pt={2}>
-                <Menu>
-                  <MenuButton
-                    as={IconButton}
-                    aria-label="Acciones"
-                    icon={<FiMoreVertical />}
-                    variant="ghost"
-                    size="sm"
-                  />
-                  <MenuList>
-                    <MenuItem
-                      icon={<FiEdit />}
-                      onClick={() => handleActionClick('edit')}
-                    >
-                      Editar
-                    </MenuItem>
-
-                    <MenuDivider />
-                    
-                    <MenuItem
-                      icon={<FiTrash2 />}
-                      onClick={() => handleActionClick('delete')}
-                      color="red.600"
-                    >
-                      Eliminar
-                    </MenuItem>
-                  </MenuList>
-                </Menu>
+              <HStack justify="flex-end" pt={2} spacing={2}>
+                <IconButton
+                  aria-label="Editar categoría"
+                  icon={<FiEdit />}
+                  size="sm"
+                  variant="ghost"
+                  colorScheme="blue"
+                  onClick={() => handleActionClick('edit')}
+                  _hover={{ bg: 'blue.50' }}
+                  _active={{ bg: 'blue.100' }}
+                />
+                <IconButton
+                  aria-label="Eliminar categoría"
+                  icon={<FiTrash2 />}
+                  size="sm"
+                  variant="ghost"
+                  colorScheme="red"
+                  onClick={() => handleActionClick('delete')}
+                  _hover={{ bg: 'red.50' }}
+                  _active={{ bg: 'red.100' }}
+                />
               </HStack>
             )}
           </VStack>
@@ -422,7 +411,7 @@ export function CategoryList({
   }
 
   return (
-    <VStack spacing={4} align="stretch">
+    <VStack spacing={4} align="stretch" position="relative">
       {/* Filtros y acciones */}
       <SearchFilters
         searchInput={searchInput}
@@ -435,17 +424,19 @@ export function CategoryList({
       />
 
       {/* Lista de categorías */}
-      <SimpleGrid columns={{ base: 1, md: 2, lg: 3, xl: 4 }} spacing={4}>
-        {categories.map((category: Category) => (
-          <CategoryCard
-            key={category._id}
-            category={category}
-            onEdit={handleCategoryEdit}
-            onDelete={handleDeleteCategory}
-            showActions={showActions}
-          />
-        ))}
-      </SimpleGrid>
+      <Box position="relative" overflow="visible">
+        <SimpleGrid columns={{ base: 1, md: 2, lg: 3, xl: 4 }} spacing={4}>
+          {categories.map((category: Category) => (
+            <CategoryCard
+              key={category._id}
+              category={category}
+              onEdit={handleCategoryEdit}
+              onDelete={handleDeleteCategory}
+              showActions={showActions}
+            />
+          ))}
+        </SimpleGrid>
+      </Box>
 
       {/* Información de paginación */}
       {pagination && (
