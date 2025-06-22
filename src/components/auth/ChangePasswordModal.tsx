@@ -192,12 +192,16 @@ export function ChangePasswordModal({ isOpen, onClose }: ChangePasswordModalProp
                 </Button>
                 <Button
                   type="submit"
-                  colorScheme="secondary"
+                  colorScheme="blue"
                   isLoading={isChangingPassword}
                   loadingText="Cambiando..."
                   flex={1}
                   size="lg"
                   borderRadius="lg"
+                  bgGradient="linear(to-r, blue.500, indigo.500)"
+                  _hover={{
+                    bgGradient: 'linear(to-r, blue.600, indigo.600)',
+                  }}
                 >
                   Cambiar Contraseña
                 </Button>

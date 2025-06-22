@@ -68,7 +68,7 @@ import {
               </Button>
               
               <Text fontSize="sm" color="gray.500" textAlign="center">
-                Ingresa con tus credenciales de bibliotecario
+                Ingresa con tus credenciales
               </Text>
             </VStack>
   
@@ -79,12 +79,6 @@ import {
               bg={useColorModeValue('gray.50', 'gray.700')}
               borderRadius="lg"
             >
-              <Text fontSize="sm" color="gray.600" textAlign="center">
-                ¿Primera vez usando el sistema?{' '}
-                <Text as="span" color="blue.600" fontWeight="medium">
-                  Contacta al administrador
-                </Text>
-              </Text>
             </Box>
           </VStack>
         </Box>
