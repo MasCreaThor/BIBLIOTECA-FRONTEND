@@ -218,6 +218,7 @@ export function useCategories(
     staleTime: 10 * 60 * 1000, // 10 minutos - categorías cambian poco frecuentemente
     gcTime: 30 * 60 * 1000,    // 30 minutos
     retry: 2,
+    refetchOnWindowFocus: false,
     ...options,
   });
 }

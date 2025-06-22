@@ -29,7 +29,7 @@ import {
   FormControl,
   FormLabel,
 } from '@chakra-ui/react';
-import { useState } from 'react';
+import { useState, useEffect, useCallback, useRef, memo } from 'react';
 import {
   FiSearch,
   FiMoreVertical,
@@ -46,6 +46,23 @@ import { DateUtils } from '@/utils';
 import type { Category, CategoryFilters } from '@/services/category.service';
 import type { PaginatedResponse } from '@/types/api.types';
 
+// ✅ HOOK PERSONALIZADO PARA DEBOUNCE
+function useDebounce<T>(value: T, delay: number): T {
+  const [debouncedValue, setDebouncedValue] = useState<T>(value);
+
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedValue(value);
+    }, delay);
+
+    return () => {
+      clearTimeout(handler);
+    };
+  }, [value, delay]);
+
+  return debouncedValue;
+}
+
 interface CategoryListProps {
   onCategorySelect?: (category: Category) => void;
   onCategoryEdit?: (category: Category) => void;
@@ -53,7 +70,8 @@ interface CategoryListProps {
   showActions?: boolean;
 }
 
-function CategoryCard({
+// ✅ COMPONENTE MEMOIZADO PARA EVITAR RE-RENDERIZADOS
+const CategoryCard = memo(function CategoryCard({
   category,
   onEdit,
   onDelete,
@@ -66,7 +84,7 @@ function CategoryCard({
 }) {
   const { isOpen: isDeleteOpen, onOpen: onDeleteOpen, onClose: onDeleteClose } = useDisclosure();
 
-  const handleActionClick = (action: 'edit' | 'delete') => {
+  const handleActionClick = useCallback((action: 'edit' | 'delete') => {
     switch (action) {
       case 'edit':
         onEdit?.(category);
@@ -75,12 +93,12 @@ function CategoryCard({
         onDeleteOpen();
         break;
     }
-  };
+  }, [category, onEdit, onDeleteOpen]);
 
-  const handleConfirmDelete = () => {
+  const handleConfirmDelete = useCallback(() => {
     onDelete?.(category);
     onDeleteClose();
-  };
+  }, [category, onDelete, onDeleteClose]);
 
   return (
     <>
@@ -187,9 +205,10 @@ function CategoryCard({
       />
     </>
   );
-}
+});
 
-function LoadingGrid({ count = 12 }: { count?: number }) {
+// ✅ COMPONENTE MEMOIZADO PARA EL GRID DE CARGA
+const LoadingGrid = memo(function LoadingGrid({ count = 12 }: { count?: number }) {
   return (
     <SimpleGrid columns={{ base: 1, md: 2, lg: 3, xl: 4 }} spacing={4}>
       {Array.from({ length: count }).map((_, i) => (
@@ -208,7 +227,74 @@ function LoadingGrid({ count = 12 }: { count?: number }) {
       ))}
     </SimpleGrid>
   );
-}
+});
+
+// ✅ COMPONENTE MEMOIZADO PARA LOS FILTROS
+const SearchFilters = memo(function SearchFilters({
+  searchInput,
+  onSearchChange,
+  activeFilter,
+  onActiveFilterChange,
+  onRefresh,
+  isRefetching,
+  onCreate,
+}: {
+  searchInput: string;
+  onSearchChange: (value: string) => void;
+  activeFilter: boolean | undefined;
+  onActiveFilterChange: (checked: boolean) => void;
+  onRefresh: () => void;
+  isRefetching: boolean;
+  onCreate?: () => void;
+}) {
+  return (
+    <HStack spacing={4}>
+      <InputGroup maxW="300px">
+        <InputLeftElement pointerEvents="none">
+          <FiSearch color="gray.300" />
+        </InputLeftElement>
+        <Input
+          placeholder="Buscar categorías..."
+          value={searchInput}
+          onChange={(e) => onSearchChange(e.target.value)}
+          autoComplete="off"
+          spellCheck="false"
+          autoCorrect="off"
+        />
+      </InputGroup>
+
+      <FormControl display="flex" alignItems="center" w="auto">
+        <FormLabel htmlFor="active-filter" mb="0" fontSize="sm">
+          Solo activas
+        </FormLabel>
+        <Switch
+          id="active-filter"
+          isChecked={activeFilter === true}
+          onChange={(e) => onActiveFilterChange(e.target.checked)}
+        />
+      </FormControl>
+
+      <HStack spacing={2} ml="auto">
+        <IconButton
+          aria-label="Refrescar"
+          icon={<FiRefreshCw />}
+          onClick={onRefresh}
+          isLoading={isRefetching}
+          variant="ghost"
+        />
+        {onCreate && (
+          <Button
+            leftIcon={<FiPlus />}
+            colorScheme="blue"
+            onClick={onCreate}
+          >
+            Nueva Categoría
+          </Button>
+        )}
+      </HStack>
+    </HStack>
+  );
+});
 
 export function CategoryList({
   onCategorySelect,
@@ -216,6 +302,12 @@ export function CategoryList({
   onCreate,
   showActions = true,
 }: CategoryListProps) {
+  // ✅ ESTADO SEPARADO PARA EL INPUT DE BÚSQUEDA
+  const [searchInput, setSearchInput] = useState('');
+  
+  // ✅ DEBOUNCE DEL VALOR DE BÚSQUEDA (500ms)
+  const debouncedSearch = useDebounce(searchInput, 500);
+
   const [filters, setFilters] = useState<CategoryFilters>({
     search: '',
     active: undefined,
@@ -224,6 +316,11 @@ export function CategoryList({
     sortBy: 'name',
     sortOrder: 'asc',
   });
+
+  // ✅ ACTUALIZAR FILTROS CUANDO CAMBIE EL DEBOUNCE
+  useEffect(() => {
+    setFilters(prev => ({ ...prev, search: debouncedSearch, page: 1 }));
+  }, [debouncedSearch]);
 
   // Queries y mutations
   const {
@@ -237,37 +334,37 @@ export function CategoryList({
 
   const deleteMutation = useDeleteCategory();
 
-  // Handlers
-  const handleSearchChange = (value: string) => {
-    setFilters(prev => ({ ...prev, search: value, page: 1 }));
-  };
+  // ✅ HANDLERS MEMOIZADOS
+  const handleSearchInputChange = useCallback((value: string) => {
+    setSearchInput(value);
+  }, []);
 
-  const handleActiveFilterChange = (checked: boolean) => {
+  const handleActiveFilterChange = useCallback((checked: boolean) => {
     setFilters(prev => ({ 
       ...prev, 
       active: checked ? true : undefined,
       page: 1 
     }));
-  };
+  }, []);
 
-  const handleRefresh = () => {
+  const handleRefresh = useCallback(() => {
     refetch();
-  };
+  }, [refetch]);
 
-  const handleCategoryEdit = (category: Category) => {
+  const handleCategoryEdit = useCallback((category: Category) => {
     if (onCategoryEdit) {
       onCategoryEdit(category);
     }
-  };
+  }, [onCategoryEdit]);
 
-  const handleDeleteCategory = async (category: Category) => {
+  const handleDeleteCategory = useCallback(async (category: Category) => {
     try {
       await deleteMutation.mutateAsync(category._id);
       refetch();
     } catch (error) {
       // Error manejado por el hook
     }
-  };
+  }, [deleteMutation, refetch]);
 
   // Renderizado condicional
   if (isLoading) {
@@ -327,48 +424,15 @@ export function CategoryList({
   return (
     <VStack spacing={4} align="stretch">
       {/* Filtros y acciones */}
-      <HStack spacing={4}>
-        <InputGroup maxW="300px">
-          <InputLeftElement pointerEvents="none">
-            <FiSearch color="gray.300" />
-          </InputLeftElement>
-          <Input
-            placeholder="Buscar categorías..."
-            value={filters.search}
-            onChange={(e) => handleSearchChange(e.target.value)}
-          />
-        </InputGroup>
-
-        <FormControl display="flex" alignItems="center" w="auto">
-          <FormLabel htmlFor="active-filter" mb="0" fontSize="sm">
-            Solo activas
-          </FormLabel>
-          <Switch
-            id="active-filter"
-            isChecked={filters.active === true}
-            onChange={(e) => handleActiveFilterChange(e.target.checked)}
-          />
-        </FormControl>
-
-        <HStack spacing={2} ml="auto">
-          <IconButton
-            aria-label="Refrescar"
-            icon={<FiRefreshCw />}
-            onClick={handleRefresh}
-            isLoading={isRefetching}
-            variant="ghost"
-          />
-          {onCreate && (
-            <Button
-              leftIcon={<FiPlus />}
-              colorScheme="blue"
-              onClick={onCreate}
-            >
-              Nueva Categoría
-            </Button>
-          )}
-        </HStack>
-      </HStack>
+      <SearchFilters
+        searchInput={searchInput}
+        onSearchChange={handleSearchInputChange}
+        activeFilter={filters.active}
+        onActiveFilterChange={handleActiveFilterChange}
+        onRefresh={handleRefresh}
+        isRefetching={isRefetching}
+        onCreate={onCreate}
+      />
 
       {/* Lista de categorías */}
       <SimpleGrid columns={{ base: 1, md: 2, lg: 3, xl: 4 }} spacing={4}>
