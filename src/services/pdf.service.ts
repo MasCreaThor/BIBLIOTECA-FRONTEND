@@ -253,8 +253,8 @@ export class PDFService {
     
     // Buscar préstamos activos
     const activeLoans = person.loans.filter(loan => 
-      loan.status?.toLowerCase().includes('activo') || 
-      (!loan.returnDate && !loan.status?.toLowerCase().includes('devuelto'))
+      this.translateLoanStatus(loan.status) === 'Activo' || 
+      (!loan.returnDate && this.translateLoanStatus(loan.status) !== 'Devuelto')
     );
     
     if (activeLoans.length === 0) {
@@ -274,7 +274,7 @@ export class PDFService {
     
     // Buscar préstamos vencidos
     const overdueLoans = person.loans.filter(loan => 
-      loan.status?.toLowerCase().includes('vencido') || 
+      this.translateLoanStatus(loan.status) === 'Vencido' || 
       (new Date(loan.dueDate) < new Date() && !loan.returnDate)
     );
     
@@ -293,10 +293,9 @@ export class PDFService {
       return 'Sin libros perdidos';
     }
     
-    // Buscar libros perdidos - el estado en el sistema es 'lost' (inglés)
+    // Buscar libros perdidos usando la función de traducción
     const lostLoans = person.loans.filter(loan => 
-      loan.status?.toLowerCase() === 'lost' ||
-      loan.status?.toLowerCase().includes('perdido')
+      this.translateLoanStatus(loan.status) === 'Perdido'
     );
     
     if (lostLoans.length === 0) {
@@ -340,7 +339,7 @@ export class PDFService {
           loan.resource?.title || 'Sin título',
           this.formatDate(loan.loanDate),
           this.formatDate(loan.dueDate),
-          loan.status || 'Sin estado'
+          this.translateLoanStatus(loan.status)
         ]);
 
         (doc as any).autoTable({
@@ -439,5 +438,36 @@ export class PDFService {
     });
     
     return labels.join(', ');
+  }
+
+  // ✅ NUEVO: Función para traducir estados de préstamos
+  private static translateLoanStatus(status: string): string {
+    if (!status) return 'Sin estado';
+    
+    const statusLower = status.toLowerCase();
+    
+    switch (statusLower) {
+      case 'active':
+      case 'activo':
+        return 'Activo';
+      case 'overdue':
+      case 'vencido':
+        return 'Vencido';
+      case 'returned':
+      case 'devuelto':
+        return 'Devuelto';
+      case 'lost':
+      case 'perdido':
+        return 'Perdido';
+      case 'pending':
+      case 'pendiente':
+        return 'Pendiente';
+      case 'cancelled':
+      case 'cancelado':
+        return 'Cancelado';
+      default:
+        // Si no coincide con ningún estado conocido, devolver el original
+        return status;
+    }
   }
 } 
