@@ -28,8 +28,20 @@ export function PDFPreviewModal({
 
   if (!isOpen) return null;
 
-  const filterType = PDFService.getFilterTypeLabel(selectedStatuses);
-  const title = `Reporte de ${filterType} - Año ${year}`;
+  // Determinar el tipo de filtro y título para el reporte
+  let filterType: string;
+  let title: string;
+  
+  if (selectedStatuses.length === 0) {
+    // Reporte general
+    filterType = 'Todos los préstamos';
+    title = `Reporte General de Préstamos - Año ${year}`;
+  } else {
+    // Filtro específico
+    filterType = PDFService.getFilterTypeLabel(selectedStatuses);
+    title = `Reporte de ${filterType} - Año ${year}`;
+  }
+  
   const totalPeople = data.length;
   const totalLoans = data.reduce((sum, person) => sum + person.summary.totalLoans, 0);
 
@@ -132,21 +144,51 @@ export function PDFPreviewModal({
                     <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
                       Tipo
                     </th>
-                    <th className="px-6 py-4 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                      Total
-                    </th>
-                    <th className="px-6 py-4 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                      Activos
-                    </th>
-                    <th className="px-6 py-4 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                      Vencidos
-                    </th>
-                    <th className="px-6 py-4 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                      Devueltos
-                    </th>
-                    <th className="px-6 py-4 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                      Perdidos
-                    </th>
+                    {selectedStatuses.length === 0 ? (
+                      // Reporte general: mostrar todas las columnas
+                      <>
+                        <th className="px-6 py-4 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                          Total
+                        </th>
+                        <th className="px-6 py-4 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                          Activos
+                        </th>
+                        <th className="px-6 py-4 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                          Vencidos
+                        </th>
+                        <th className="px-6 py-4 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                          Devueltos
+                        </th>
+                        <th className="px-6 py-4 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                          Perdidos
+                        </th>
+                      </>
+                    ) : (
+                      // Filtros específicos: mostrar solo columnas relevantes
+                      <>
+                        <th className="px-6 py-4 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                          Estado
+                        </th>
+                        {selectedStatuses[0] === LoanStatusFilter.ACTIVE && (
+                          <th className="px-6 py-4 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                            Activos
+                          </th>
+                        )}
+                        {selectedStatuses[0] === LoanStatusFilter.OVERDUE && (
+                          <th className="px-6 py-4 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                            Vencidos
+                          </th>
+                        )}
+                        {selectedStatuses[0] === LoanStatusFilter.LOST && (
+                          <th className="px-6 py-4 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                            Perdidos
+                          </th>
+                        )}
+                        <th className="px-6 py-4 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                          Recurso
+                        </th>
+                      </>
+                    )}
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
@@ -161,29 +203,72 @@ export function PDFPreviewModal({
                       <td className="px-6 py-4 text-sm text-gray-600">
                         {getPersonTypeLabel(person.person.personType)}
                       </td>
-                      <td className="px-6 py-4 text-sm text-center">
-                        <span className="font-semibold text-gray-900 text-lg">{person.summary.totalLoans}</span>
-                      </td>
-                      <td className="px-6 py-4 text-sm text-center">
-                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                          {person.summary.activeLoans}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 text-sm text-center">
-                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
-                          {person.summary.overdueLoans}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 text-sm text-center">
-                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                          {person.summary.returnedLoans}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 text-sm text-center">
-                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
-                          {person.summary.lostLoans}
-                        </span>
-                      </td>
+                      {selectedStatuses.length === 0 ? (
+                        // Reporte general: mostrar todas las columnas
+                        <>
+                          <td className="px-6 py-4 text-sm text-center">
+                            <span className="font-semibold text-gray-900 text-lg">{person.summary.totalLoans}</span>
+                          </td>
+                          <td className="px-6 py-4 text-sm text-center">
+                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                              {person.summary.activeLoans}
+                            </span>
+                          </td>
+                          <td className="px-6 py-4 text-sm text-center">
+                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                              {person.summary.overdueLoans}
+                            </span>
+                          </td>
+                          <td className="px-6 py-4 text-sm text-center">
+                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                              {person.summary.returnedLoans}
+                            </span>
+                          </td>
+                          <td className="px-6 py-4 text-sm text-center">
+                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                              {person.summary.lostLoans}
+                            </span>
+                          </td>
+                        </>
+                      ) : (
+                        // Filtros específicos: mostrar solo columnas relevantes
+                        <>
+                          <td className="px-6 py-4 text-sm text-center">
+                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                              person.personStatus === 'up_to_date' 
+                                ? 'bg-green-100 text-green-800' 
+                                : 'bg-red-100 text-red-800'
+                            }`}>
+                              {person.personStatus === 'up_to_date' ? 'Al día' : 'No está al día'}
+                            </span>
+                          </td>
+                          {selectedStatuses[0] === LoanStatusFilter.ACTIVE && (
+                            <td className="px-6 py-4 text-sm text-center">
+                              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                {person.summary.activeLoans}
+                              </span>
+                            </td>
+                          )}
+                          {selectedStatuses[0] === LoanStatusFilter.OVERDUE && (
+                            <td className="px-6 py-4 text-sm text-center">
+                              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                                {person.summary.overdueLoans}
+                              </span>
+                            </td>
+                          )}
+                          {selectedStatuses[0] === LoanStatusFilter.LOST && (
+                            <td className="px-6 py-4 text-sm text-center">
+                              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                                {person.summary.lostLoans}
+                              </span>
+                            </td>
+                          )}
+                          <td className="px-6 py-4 text-sm text-gray-600">
+                            {/* Aquí se mostraría el recurso específico según el filtro */}
+                            <span className="text-xs text-gray-500">Ver en PDF</span>
+                          </td>
+                        </>
+                      )}
                     </tr>
                   ))}
                 </tbody>
@@ -212,14 +297,25 @@ export function PDFPreviewModal({
                 <span className="text-yellow-600 mt-0.5">•</span>
                 <span>Tabla resumen con estadísticas por persona</span>
               </li>
-              <li className="flex items-start gap-2">
-                <span className="text-yellow-600 mt-0.5">•</span>
-                <span>Detalle completo de préstamos por persona</span>
-              </li>
-              <li className="flex items-start gap-2">
-                <span className="text-yellow-600 mt-0.5">•</span>
-                <span>Información de recursos (título, fechas de préstamo y vencimiento, estado)</span>
-              </li>
+              {selectedStatuses.length === 0 ? (
+                // Reporte general: incluir detalles
+                <>
+                  <li className="flex items-start gap-2">
+                    <span className="text-yellow-600 mt-0.5">•</span>
+                    <span>Detalle completo de préstamos por persona</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="text-yellow-600 mt-0.5">•</span>
+                    <span>Información de recursos (título, fechas de préstamo y vencimiento, estado)</span>
+                  </li>
+                </>
+              ) : (
+                // Filtros específicos: no incluir detalles
+                <li className="flex items-start gap-2">
+                  <span className="text-yellow-600 mt-0.5">•</span>
+                  <span>Información específica del filtro seleccionado</span>
+                </li>
+              )}
               <li className="flex items-start gap-2">
                 <span className="text-yellow-600 mt-0.5">•</span>
                 <span>Pie de página con numeración</span>

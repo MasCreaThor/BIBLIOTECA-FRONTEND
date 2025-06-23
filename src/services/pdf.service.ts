@@ -81,48 +81,231 @@ export class PDFService {
     }
   }
 
-  private static generatePersonTable(doc: jsPDF, data: PersonLoanSummary[]): void {
-    const tableData = data.map(person => [
-      person.person?.name || 'Sin nombre',
-      person.person?.documentNumber || 'Sin documento',
-      getPersonTypeLabel(person.person?.personType) || 'Sin tipo',
-      person.personStatus === 'up_to_date' ? 'Al día' : 'No está al día',
-      person.summary?.totalLoans || 0,
-      person.summary?.activeLoans || 0,
-      person.summary?.overdueLoans || 0,
-      person.summary?.returnedLoans || 0,
-      person.summary?.lostLoans || 0
-    ]);
+  private static generatePersonTable(doc: jsPDF, data: PersonLoanSummary[], filterType: string): void {
+    // Determinar qué columnas mostrar según el filtro
+    const isActiveFilter = filterType.toLowerCase().includes('activos');
+    const isOverdueFilter = filterType.toLowerCase().includes('vencidos');
+    const isLostFilter = filterType.toLowerCase().includes('perdidos');
+    const isGeneralReport = !isActiveFilter && !isOverdueFilter && !isLostFilter;
+    
+    if (isActiveFilter) {
+      // Para préstamos activos: mostrar solo información relevante
+      const tableData = data.map(person => [
+        person.person?.name || 'Sin nombre',
+        person.person?.documentNumber || 'Sin documento',
+        getPersonTypeLabel(person.person?.personType) || 'Sin tipo',
+        person.personStatus === 'up_to_date' ? 'Al día' : 'No está al día',
+        person.summary?.activeLoans || 0,
+        this.getActiveResourceName(person) || 'Sin recurso'
+      ]);
 
-    (doc as any).autoTable({
-      startY: 115,
-      head: [[
-        'Persona',
-        'Documento',
-        'Tipo',
-        'Estado',
-        'Total',
-        'Activos',
-        'Vencidos',
-        'Devueltos',
-        'Perdidos'
-      ]],
-      body: tableData,
-      theme: 'grid',
-      headStyles: {
-        fillColor: [59, 130, 246],
-        textColor: 255,
-        fontSize: 10,
-        fontStyle: 'bold'
-      },
-      bodyStyles: {
-        fontSize: 9
-      },
-      alternateRowStyles: {
-        fillColor: [249, 250, 251]
-      },
-      margin: { top: 20, right: 20, bottom: 20, left: 20 }
-    });
+      (doc as any).autoTable({
+        startY: 115,
+        head: [[
+          'Persona',
+          'Documento',
+          'Tipo',
+          'Estado',
+          'Activos',
+          'Recurso'
+        ]],
+        body: tableData,
+        theme: 'grid',
+        headStyles: {
+          fillColor: [59, 130, 246],
+          textColor: 255,
+          fontSize: 10,
+          fontStyle: 'bold'
+        },
+        bodyStyles: {
+          fontSize: 9
+        },
+        alternateRowStyles: {
+          fillColor: [249, 250, 251]
+        },
+        margin: { top: 20, right: 20, bottom: 20, left: 20 }
+      });
+    } else if (isOverdueFilter) {
+      // Para préstamos vencidos: mostrar solo información relevante
+      const tableData = data.map(person => [
+        person.person?.name || 'Sin nombre',
+        person.person?.documentNumber || 'Sin documento',
+        getPersonTypeLabel(person.person?.personType) || 'Sin tipo',
+        person.personStatus === 'up_to_date' ? 'Al día' : 'No está al día',
+        person.summary?.overdueLoans || 0,
+        this.getOverdueResourceName(person) || 'Sin recurso'
+      ]);
+
+      (doc as any).autoTable({
+        startY: 115,
+        head: [[
+          'Persona',
+          'Documento',
+          'Tipo',
+          'Estado',
+          'Vencidos',
+          'Recurso'
+        ]],
+        body: tableData,
+        theme: 'grid',
+        headStyles: {
+          fillColor: [239, 68, 68], // Red color para vencidos
+          textColor: 255,
+          fontSize: 10,
+          fontStyle: 'bold'
+        },
+        bodyStyles: {
+          fontSize: 9
+        },
+        alternateRowStyles: {
+          fillColor: [249, 250, 251]
+        },
+        margin: { top: 20, right: 20, bottom: 20, left: 20 }
+      });
+    } else if (isLostFilter) {
+      // Para libros perdidos: mostrar solo información relevante
+      const tableData = data.map(person => [
+        person.person?.name || 'Sin nombre',
+        person.person?.documentNumber || 'Sin documento',
+        getPersonTypeLabel(person.person?.personType) || 'Sin tipo',
+        person.personStatus === 'up_to_date' ? 'Al día' : 'No está al día',
+        person.summary?.lostLoans || 0,
+        this.getLostResourceName(person) || 'Sin recurso'
+      ]);
+
+      (doc as any).autoTable({
+        startY: 115,
+        head: [[
+          'Persona',
+          'Documento',
+          'Tipo',
+          'Estado',
+          'Perdidos',
+          'Recurso'
+        ]],
+        body: tableData,
+        theme: 'grid',
+        headStyles: {
+          fillColor: [107, 114, 128], // Gray color para perdidos
+          textColor: 255,
+          fontSize: 10,
+          fontStyle: 'bold'
+        },
+        bodyStyles: {
+          fontSize: 9
+        },
+        alternateRowStyles: {
+          fillColor: [249, 250, 251]
+        },
+        margin: { top: 20, right: 20, bottom: 20, left: 20 }
+      });
+    } else if (isGeneralReport) {
+      // Para reporte general: mostrar todas las columnas
+      const tableData = data.map(person => [
+        person.person?.name || 'Sin nombre',
+        person.person?.documentNumber || 'Sin documento',
+        getPersonTypeLabel(person.person?.personType) || 'Sin tipo',
+        person.personStatus === 'up_to_date' ? 'Al día' : 'No está al día',
+        person.summary?.totalLoans || 0,
+        person.summary?.activeLoans || 0,
+        person.summary?.overdueLoans || 0,
+        person.summary?.returnedLoans || 0,
+        person.summary?.lostLoans || 0
+      ]);
+
+      (doc as any).autoTable({
+        startY: 115,
+        head: [[
+          'Persona',
+          'Documento',
+          'Tipo',
+          'Estado',
+          'Total',
+          'Activos',
+          'Vencidos',
+          'Devueltos',
+          'Perdidos'
+        ]],
+        body: tableData,
+        theme: 'grid',
+        headStyles: {
+          fillColor: [59, 130, 246], // Blue color para reporte general
+          textColor: 255,
+          fontSize: 10,
+          fontStyle: 'bold'
+        },
+        bodyStyles: {
+          fontSize: 9
+        },
+        alternateRowStyles: {
+          fillColor: [249, 250, 251]
+        },
+        margin: { top: 20, right: 20, bottom: 20, left: 20 }
+      });
+    }
+  }
+
+  // ✅ NUEVO: Función para obtener el nombre del recurso activo
+  private static getActiveResourceName(person: PersonLoanSummary): string {
+    if (!person.loans || person.loans.length === 0) {
+      return 'Sin préstamos activos';
+    }
+    
+    // Buscar préstamos activos
+    const activeLoans = person.loans.filter(loan => 
+      loan.status?.toLowerCase().includes('activo') || 
+      (!loan.returnDate && !loan.status?.toLowerCase().includes('devuelto'))
+    );
+    
+    if (activeLoans.length === 0) {
+      return 'Sin préstamos activos';
+    }
+    
+    // Si hay múltiples préstamos activos, mostrar el primero
+    const firstActiveLoan = activeLoans[0];
+    return firstActiveLoan.resource?.title || 'Sin título';
+  }
+
+  // ✅ NUEVO: Función para obtener el nombre del recurso vencido
+  private static getOverdueResourceName(person: PersonLoanSummary): string {
+    if (!person.loans || person.loans.length === 0) {
+      return 'Sin préstamos vencidos';
+    }
+    
+    // Buscar préstamos vencidos
+    const overdueLoans = person.loans.filter(loan => 
+      loan.status?.toLowerCase().includes('vencido') || 
+      (new Date(loan.dueDate) < new Date() && !loan.returnDate)
+    );
+    
+    if (overdueLoans.length === 0) {
+      return 'Sin préstamos vencidos';
+    }
+    
+    // Si hay múltiples préstamos vencidos, mostrar el primero
+    const firstOverdueLoan = overdueLoans[0];
+    return firstOverdueLoan.resource?.title || 'Sin título';
+  }
+
+  // ✅ NUEVO: Función para obtener el nombre del recurso perdido
+  private static getLostResourceName(person: PersonLoanSummary): string {
+    if (!person.loans || person.loans.length === 0) {
+      return 'Sin libros perdidos';
+    }
+    
+    // Buscar libros perdidos - el estado en el sistema es 'lost' (inglés)
+    const lostLoans = person.loans.filter(loan => 
+      loan.status?.toLowerCase() === 'lost' ||
+      loan.status?.toLowerCase().includes('perdido')
+    );
+    
+    if (lostLoans.length === 0) {
+      return 'Sin libros perdidos';
+    }
+    
+    // Si hay múltiples libros perdidos, mostrar el primero
+    const firstLostLoan = lostLoans[0];
+    return firstLostLoan.resource?.title || 'Sin título';
   }
 
   private static generateLoansDetails(doc: jsPDF, data: PersonLoanSummary[]): void {
@@ -213,10 +396,21 @@ export class PDFService {
       // Crear el documento PDF
       const doc = new jsPDF('p', 'mm', 'a4');
       
+      // Determinar si es filtro de préstamos activos, vencidos o perdidos
+      const isActiveFilter = options.filterType.toLowerCase().includes('activos');
+      const isOverdueFilter = options.filterType.toLowerCase().includes('vencidos');
+      const isLostFilter = options.filterType.toLowerCase().includes('perdidos');
+      const isGeneralReport = !isActiveFilter && !isOverdueFilter && !isLostFilter;
+      
       // Generar contenido del PDF
       this.generateHeader(doc, options);
-      this.generatePersonTable(doc, options.data);
-      this.generateLoansDetails(doc, options.data);
+      this.generatePersonTable(doc, options.data, options.filterType);
+      
+      // Solo mostrar detalles si es reporte general (sin filtros específicos)
+      if (isGeneralReport) {
+        this.generateLoansDetails(doc, options.data);
+      }
+      
       this.generateFooter(doc);
       
       // Generar nombre del archivo

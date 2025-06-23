@@ -22,9 +22,13 @@ export function PrintReportButton({
   const [isGenerating, setIsGenerating] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
 
-  // Solo mostrar el botón para los filtros específicos
-  const shouldShowButton = selectedStatuses.length === 1 && 
-    [LoanStatusFilter.ACTIVE, LoanStatusFilter.OVERDUE, LoanStatusFilter.LOST].includes(selectedStatuses[0]);
+  // Mostrar el botón para filtros específicos O para reporte general (sin filtros)
+  const shouldShowButton = 
+    // Filtros específicos (solo uno seleccionado)
+    (selectedStatuses.length === 1 && 
+     [LoanStatusFilter.ACTIVE, LoanStatusFilter.OVERDUE, LoanStatusFilter.LOST].includes(selectedStatuses[0])) ||
+    // Reporte general (sin filtros específicos)
+    (selectedStatuses.length === 0 && data.length > 0);
 
   const handleGenerateReport = async () => {
     if (data.length === 0) {
@@ -35,8 +39,19 @@ export function PrintReportButton({
     setIsGenerating(true);
     
     try {
-      const filterType = PDFService.getFilterTypeLabel(selectedStatuses);
-      const title = `Reporte de ${filterType} - Año ${year}`;
+      // Determinar el tipo de filtro para el reporte
+      let filterType: string;
+      let title: string;
+      
+      if (selectedStatuses.length === 0) {
+        // Reporte general
+        filterType = 'Todos los préstamos';
+        title = `Reporte General de Préstamos - Año ${year}`;
+      } else {
+        // Filtro específico
+        filterType = PDFService.getFilterTypeLabel(selectedStatuses);
+        title = `Reporte de ${filterType} - Año ${year}`;
+      }
       
       // Obtener información del usuario actual (opcional)
       const generatedBy = 'Bibliotecaria'; // Puedes obtener esto del contexto de autenticación
@@ -66,6 +81,11 @@ export function PrintReportButton({
   }
 
   const getButtonText = () => {
+    // Si no hay filtros seleccionados, es reporte general
+    if (selectedStatuses.length === 0) {
+      return 'Reporte General de Préstamos';
+    }
+    
     const status = selectedStatuses[0];
     switch (status) {
       case LoanStatusFilter.ACTIVE:
