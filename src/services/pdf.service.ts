@@ -3,6 +3,8 @@ import 'jspdf-autotable';
 import { PersonLoanSummary, LoanStatusFilter } from '@/types/reports.types';
 import { getPersonTypeLabel } from '@/utils/personType.utils';
 import { systemConfigService, SystemConfig } from '@/services/system-config.service';
+import { AuthService } from '@/services/auth.service';
+import { User } from '@/types/api.types';
 
 export interface PDFReportOptions {
   title: string;
@@ -10,9 +12,53 @@ export interface PDFReportOptions {
   data: PersonLoanSummary[];
   generatedBy?: string;
   systemConfig?: SystemConfig;
+  currentUser?: User;
 }
 
 export class PDFService {
+  // ✅ NUEVO: Función para obtener el usuario actual
+  private static async getCurrentUser(): Promise<User | null> {
+    try {
+      if (!AuthService.isAuthenticated()) {
+        console.log('⚠️ Usuario no autenticado');
+        return null;
+      }
+      
+      const user = await AuthService.getCurrentUser();
+      console.log('✅ Usuario actual obtenido:', {
+        firstName: user.firstName,
+        lastName: user.lastName,
+        email: user.email
+      });
+      return user;
+    } catch (error) {
+      console.error('❌ Error obteniendo usuario actual:', error);
+      return null;
+    }
+  }
+
+  // ✅ NUEVO: Función para obtener el nombre completo del usuario
+  private static getUserDisplayName(user: User | null): string {
+    if (!user) {
+      return 'Sistema';
+    }
+    
+    const firstName = user.firstName || '';
+    const lastName = user.lastName || '';
+    
+    if (firstName && lastName) {
+      return `${firstName} ${lastName}`;
+    } else if (firstName) {
+      return firstName;
+    } else if (lastName) {
+      return lastName;
+    } else {
+      // Fallback al email si no hay nombre
+      const emailName = user.email?.split('@')[0] || '';
+      return emailName.charAt(0).toUpperCase() + emailName.slice(1);
+    }
+  }
+
   // ✅ NUEVO: Función para obtener la configuración del sistema
   private static async getSystemConfig(): Promise<SystemConfig | null> {
     try {
@@ -348,13 +394,16 @@ export class PDFService {
     doc.setFontSize(18);
     doc.setTextColor(17, 24, 39);
     doc.text(options.title, 20, currentY);
-    currentY += 10;
+    currentY += 8; // ✅ REDUCIDO: Menos espacio después del título
 
-    // Información adicional
-    doc.setFontSize(10);
+    // Información adicional (más compacta)
+    doc.setFontSize(9); // ✅ REDUCIDO: Fuente más pequeña
     doc.setTextColor(107, 114, 128);
     
-    const generatedBy = options.generatedBy || 'Sistema';
+    // Obtener nombre del usuario
+    const user = options.currentUser || await this.getCurrentUser();
+    const generatedBy = this.getUserDisplayName(user);
+    
     const currentDate = new Date().toLocaleDateString('es-ES', {
       year: 'numeric',
       month: 'long',
@@ -363,20 +412,18 @@ export class PDFService {
       minute: '2-digit'
     });
     
-    doc.text(`Generado por: ${generatedBy}`, 20, currentY);
-    currentY += 5;
-    doc.text(`Fecha: ${currentDate}`, 20, currentY);
-    currentY += 5;
+    // Información en una sola línea para ahorrar espacio
+    doc.text(`Generado por: ${generatedBy} | Fecha: ${currentDate}`, 20, currentY);
+    currentY += 4; // ✅ REDUCIDO: Menos espacio
     
     // Información del sistema (si está disponible)
     if (options.systemConfig) {
-      doc.text(`Sistema: ${options.systemConfig.sidebarTitle}`, 20, currentY);
-      currentY += 5;
-      doc.text(`Versión: ${options.systemConfig.version}`, 20, currentY);
+      doc.text(`Sistema: ${options.systemConfig.sidebarTitle} | Versión: ${options.systemConfig.version}`, 20, currentY);
+      currentY += 4; // ✅ REDUCIDO: Menos espacio
     }
     
-    // Línea separadora
-    currentY += 10;
+    // Línea separadora más cerca
+    currentY += 5; // ✅ REDUCIDO: Menos espacio antes de la línea
     doc.setDrawColor(229, 231, 235);
     doc.setLineWidth(0.5);
     doc.line(20, currentY, 190, currentY);
@@ -388,6 +435,9 @@ export class PDFService {
     const isOverdueFilter = filterType.toLowerCase().includes('vencidos');
     const isLostFilter = filterType.toLowerCase().includes('perdidos');
     const isGeneralReport = !isActiveFilter && !isOverdueFilter && !isLostFilter;
+    
+    // ✅ AJUSTADO: Posición inicial más cercana al encabezado
+    const startY = (doc as any).lastAutoTable?.finalY + 10 || 85; // Reducido de 115 a 85
     
     if (isActiveFilter) {
       // Para préstamos activos: mostrar solo información relevante
@@ -401,7 +451,7 @@ export class PDFService {
       ]);
 
       (doc as any).autoTable({
-        startY: 115,
+        startY: startY,
         head: [[
           'Persona',
           'Documento',
@@ -424,7 +474,7 @@ export class PDFService {
         alternateRowStyles: {
           fillColor: [249, 250, 251]
         },
-        margin: { top: 20, right: 20, bottom: 20, left: 20 }
+        margin: { top: 10, right: 20, bottom: 20, left: 20 } // ✅ REDUCIDO: top de 20 a 10
       });
     } else if (isOverdueFilter) {
       // Para préstamos vencidos: mostrar solo información relevante
@@ -438,7 +488,7 @@ export class PDFService {
       ]);
 
       (doc as any).autoTable({
-        startY: 115,
+        startY: startY,
         head: [[
           'Persona',
           'Documento',
@@ -461,7 +511,7 @@ export class PDFService {
         alternateRowStyles: {
           fillColor: [249, 250, 251]
         },
-        margin: { top: 20, right: 20, bottom: 20, left: 20 }
+        margin: { top: 10, right: 20, bottom: 20, left: 20 } // ✅ REDUCIDO: top de 20 a 10
       });
     } else if (isLostFilter) {
       // Para libros perdidos: mostrar solo información relevante
@@ -475,7 +525,7 @@ export class PDFService {
       ]);
 
       (doc as any).autoTable({
-        startY: 115,
+        startY: startY,
         head: [[
           'Persona',
           'Documento',
@@ -498,7 +548,7 @@ export class PDFService {
         alternateRowStyles: {
           fillColor: [249, 250, 251]
         },
-        margin: { top: 20, right: 20, bottom: 20, left: 20 }
+        margin: { top: 10, right: 20, bottom: 20, left: 20 } // ✅ REDUCIDO: top de 20 a 10
       });
     } else if (isGeneralReport) {
       // Para reporte general: mostrar todas las columnas
@@ -515,7 +565,7 @@ export class PDFService {
       ]);
 
       (doc as any).autoTable({
-        startY: 115,
+        startY: startY,
         head: [[
           'Persona',
           'Documento',
@@ -541,7 +591,7 @@ export class PDFService {
         alternateRowStyles: {
           fillColor: [249, 250, 251]
         },
-        margin: { top: 20, right: 20, bottom: 20, left: 20 }
+        margin: { top: 10, right: 20, bottom: 20, left: 20 } // ✅ REDUCIDO: top de 20 a 10
       });
     }
   }
@@ -718,6 +768,24 @@ export class PDFService {
         console.log('✅ Usando configuración del sistema proporcionada');
       }
       
+      // Obtener usuario actual si no se proporciona
+      let currentUser = options.currentUser;
+      if (!currentUser) {
+        console.log('👤 Obteniendo usuario actual...');
+        currentUser = await this.getCurrentUser() || undefined;
+        
+        if (currentUser) {
+          console.log('✅ Usuario actual obtenido:', {
+            name: this.getUserDisplayName(currentUser),
+            email: currentUser.email
+          });
+        } else {
+          console.log('⚠️ No se pudo obtener el usuario actual');
+        }
+      } else {
+        console.log('✅ Usando usuario proporcionado');
+      }
+      
       // Determinar si es filtro de préstamos activos, vencidos o perdidos
       const isActiveFilter = options.filterType.toLowerCase().includes('activos');
       const isOverdueFilter = options.filterType.toLowerCase().includes('vencidos');
@@ -733,7 +801,7 @@ export class PDFService {
       });
       
       // Generar contenido del PDF
-      await this.generateHeader(doc, { ...options, systemConfig });
+      await this.generateHeader(doc, { ...options, systemConfig, currentUser });
       this.generatePersonTable(doc, options.data, options.filterType);
       
       // Solo mostrar detalles si es reporte general (sin filtros específicos)

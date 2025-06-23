@@ -6,6 +6,7 @@ import { PersonLoanSummary, LoanStatusFilter } from '@/types/reports.types';
 import { PDFService } from '@/services/pdf.service';
 import { reportsService } from '@/services/reports.service';
 import { getPersonTypeLabel } from '@/utils/personType.utils';
+import { useAuth } from '@/hooks/useAuth';
 
 interface PDFPreviewModalProps {
   isOpen: boolean;
@@ -25,6 +26,7 @@ export function PDFPreviewModal({
   search
 }: PDFPreviewModalProps) {
   const [isGenerating, setIsGenerating] = useState(false);
+  const { user } = useAuth();
 
   if (!isOpen) return null;
 
@@ -49,13 +51,14 @@ export function PDFPreviewModal({
     setIsGenerating(true);
     
     try {
-      const generatedBy = 'Bibliotecaria';
+      const generatedBy = user ? `${user.firstName} ${user.lastName}` : 'Sistema';
       
       await PDFService.generateReport({
         title,
         filterType,
         data,
-        generatedBy
+        generatedBy,
+        currentUser: user || undefined
       });
       
       setTimeout(() => {

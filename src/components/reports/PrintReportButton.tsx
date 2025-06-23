@@ -6,6 +6,7 @@ import { PersonLoanSummary, LoanStatusFilter } from '@/types/reports.types';
 import { PDFService } from '@/services/pdf.service';
 import { PDFPreviewModal } from './PDFPreviewModal';
 import { systemConfigService } from '@/services/system-config.service';
+import { useAuth } from '@/hooks/useAuth';
 
 interface PrintReportButtonProps {
   data: PersonLoanSummary[];
@@ -22,6 +23,7 @@ export function PrintReportButton({
 }: PrintReportButtonProps) {
   const [isGenerating, setIsGenerating] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
+  const { user } = useAuth();
 
   // Mostrar el botón para filtros específicos O para reporte general (sin filtros)
   const shouldShowButton = 
@@ -65,14 +67,15 @@ export function PrintReportButton({
         title = `Reporte de ${filterType} - Año ${year}`;
       }
       
-      // Obtener información del usuario actual (opcional)
-      const generatedBy = 'Bibliotecaria'; // Puedes obtener esto del contexto de autenticación
+      // Obtener información del usuario actual
+      const generatedBy = user ? `${user.firstName} ${user.lastName}` : 'Sistema';
       
       await PDFService.generateReport({
         title,
         filterType,
         data,
-        generatedBy
+        generatedBy,
+        currentUser: user || undefined
       });
       
       // Mostrar mensaje de éxito
