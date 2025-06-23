@@ -51,7 +51,7 @@ export function PDFPreviewModal({
     try {
       const generatedBy = 'Bibliotecaria';
       
-      PDFService.generateReport({
+      await PDFService.generateReport({
         title,
         filterType,
         data,

@@ -2,15 +2,279 @@ import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 import { PersonLoanSummary, LoanStatusFilter } from '@/types/reports.types';
 import { getPersonTypeLabel } from '@/utils/personType.utils';
+import { systemConfigService, SystemConfig } from '@/services/system-config.service';
 
 export interface PDFReportOptions {
   title: string;
   filterType: string;
   data: PersonLoanSummary[];
   generatedBy?: string;
+  systemConfig?: SystemConfig;
 }
 
 export class PDFService {
+  // ✅ NUEVO: Función para obtener la configuración del sistema
+  private static async getSystemConfig(): Promise<SystemConfig | null> {
+    try {
+      const config = await systemConfigService.getActiveConfig();
+      return config;
+    } catch (error) {
+      console.error('Error obteniendo configuración del sistema:', error);
+      return null;
+    }
+  }
+
+  // ✅ NUEVO: Función para probar la accesibilidad de una URL
+  private static async testUrlAccessibility(url: string): Promise<boolean> {
+    try {
+      console.log('🔍 Probando accesibilidad de URL:', url);
+      
+      const response = await fetch(url, {
+        method: 'HEAD',
+        mode: 'cors',
+        cache: 'no-cache'
+      });
+      
+      const isAccessible = response.ok;
+      console.log('📊 Resultado de prueba de accesibilidad:', {
+        status: response.status,
+        statusText: response.statusText,
+        contentType: response.headers.get('content-type'),
+        isAccessible
+      });
+      
+      return isAccessible;
+    } catch (error) {
+      console.error('❌ Error probando accesibilidad de URL:', error);
+      return false;
+    }
+  }
+
+  // ✅ NUEVO: Función para convertir URL externa a base64
+  private static async convertUrlToBase64(url: string): Promise<string | null> {
+    try {
+      console.log('🔄 Convirtiendo URL a base64:', url);
+      
+      // Crear un canvas para procesar la imagen
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      
+      if (!ctx) {
+        console.error('❌ No se pudo obtener contexto del canvas');
+        return null;
+      }
+      
+      // Crear una nueva imagen
+      const img = new Image();
+      
+      // Configurar CORS para la imagen
+      img.crossOrigin = 'anonymous';
+      
+      return new Promise((resolve, reject) => {
+        // Timeout para evitar que se quede colgado
+        const timeout = setTimeout(() => {
+          console.error('❌ Timeout cargando imagen desde URL');
+          reject(new Error('Timeout cargando imagen'));
+        }, 10000); // 10 segundos de timeout
+        
+        img.onload = () => {
+          try {
+            clearTimeout(timeout);
+            console.log('✅ Imagen cargada exitosamente, dimensiones:', img.width, 'x', img.height);
+            
+            // Configurar el tamaño del canvas
+            canvas.width = img.width;
+            canvas.height = img.height;
+            
+            // Dibujar la imagen en el canvas
+            ctx.drawImage(img, 0, 0);
+            
+            // Convertir a base64
+            const base64 = canvas.toDataURL('image/png');
+            console.log('✅ URL convertida exitosamente a base64, longitud:', base64.length);
+            resolve(base64);
+          } catch (error) {
+            clearTimeout(timeout);
+            console.error('❌ Error procesando imagen:', error);
+            reject(error);
+          }
+        };
+        
+        img.onerror = (error) => {
+          clearTimeout(timeout);
+          console.error('❌ Error cargando imagen desde URL:', error);
+          console.error('📊 Detalles del error de carga:', {
+            url: url,
+            error: error instanceof Error ? error.message : 'Error desconocido'
+          });
+          
+          // Intentar con fetch como alternativa
+          console.log('🔄 Intentando con fetch como alternativa...');
+          this.convertUrlToBase64WithFetch(url)
+            .then(resolve)
+            .catch((fetchError) => {
+              console.error('❌ Error también con fetch:', fetchError);
+              reject(error);
+            });
+        };
+        
+        // Cargar la imagen
+        console.log('📥 Iniciando carga de imagen...');
+        img.src = url;
+      });
+    } catch (error) {
+      console.error('❌ Error en convertUrlToBase64:', error);
+      return null;
+    }
+  }
+
+  // ✅ NUEVO: Función alternativa usando fetch para URLs que no permiten CORS
+  private static async convertUrlToBase64WithFetch(url: string): Promise<string | null> {
+    try {
+      console.log('🔄 Intentando conversión con fetch:', url);
+      
+      const response = await fetch(url, {
+        method: 'GET',
+        mode: 'cors',
+        cache: 'no-cache'
+      });
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      const blob = await response.blob();
+      console.log('✅ Blob obtenido, tipo:', blob.type, 'tamaño:', blob.size);
+      
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => {
+          const base64 = reader.result as string;
+          console.log('✅ Conversión con fetch exitosa, longitud:', base64.length);
+          resolve(base64);
+        };
+        reader.onerror = () => {
+          console.error('❌ Error leyendo blob');
+          reject(new Error('Error leyendo blob'));
+        };
+        reader.readAsDataURL(blob);
+      });
+    } catch (error) {
+      console.error('❌ Error en convertUrlToBase64WithFetch:', error);
+      return null;
+    }
+  }
+
+  // ✅ NUEVO: Función para obtener el logo a mostrar
+  private static async getLogoToDisplay(config: SystemConfig | null): Promise<{ url: string; format: string } | null> {
+    if (!config) {
+      console.log('🔍 No hay configuración del sistema disponible');
+      return null;
+    }
+    
+    console.log('🔍 Analizando configuración del logo:', {
+      hasImage: !!config.sidebarIconImage,
+      hasUrl: !!config.sidebarIconUrl,
+      icon: config.sidebarIcon
+    });
+    
+    // Prioridad: imagen subida > URL > icono del sistema
+    if (config.sidebarIconImage && config.sidebarIconImage.trim()) {
+      console.log('🖼️ Usando imagen subida (base64)');
+      // Detectar formato de la imagen
+      const format = this.detectImageFormat(config.sidebarIconImage);
+      return { url: config.sidebarIconImage, format };
+    }
+    
+    if (config.sidebarIconUrl && config.sidebarIconUrl.trim()) {
+      console.log('🔗 Usando URL de imagen:', config.sidebarIconUrl);
+      
+      try {
+        // Probar accesibilidad de la URL primero
+        const isAccessible = await this.testUrlAccessibility(config.sidebarIconUrl);
+        
+        if (!isAccessible) {
+          console.log('❌ URL no es accesible, saltando conversión');
+          return null;
+        }
+        
+        // Convertir URL externa a base64
+        const base64Image = await this.convertUrlToBase64(config.sidebarIconUrl);
+        
+        if (base64Image) {
+          console.log('✅ URL convertida exitosamente a base64');
+          const format = this.detectImageFormat(base64Image);
+          return { url: base64Image, format };
+        } else {
+          console.log('❌ No se pudo convertir la URL a base64');
+          return null;
+        }
+      } catch (error) {
+        console.error('❌ Error convirtiendo URL a base64:', error);
+        return null;
+      }
+    }
+    
+    console.log('❌ No hay imagen configurada, usando solo texto');
+    return null;
+  }
+
+  // ✅ NUEVO: Función para detectar formato de imagen desde base64
+  private static detectImageFormat(base64String: string): string {
+    try {
+      // Extraer el tipo MIME del data URL
+      const match = base64String.match(/^data:([^;]+);base64,/);
+      if (match) {
+        const mimeType = match[1];
+        console.log('📋 MIME type detectado:', mimeType);
+        
+        // Mapear MIME types a formatos de jsPDF
+        switch (mimeType) {
+          case 'image/jpeg':
+          case 'image/jpg':
+            return 'JPEG';
+          case 'image/png':
+            return 'PNG';
+          case 'image/webp':
+            return 'WEBP';
+          default:
+            console.log('⚠️ Formato no soportado, intentando PNG:', mimeType);
+            return 'PNG';
+        }
+      }
+    } catch (error) {
+      console.error('❌ Error detectando formato:', error);
+    }
+    
+    console.log('⚠️ No se pudo detectar formato, usando PNG por defecto');
+    return 'PNG';
+  }
+
+  // ✅ NUEVO: Función para detectar formato de imagen desde URL
+  private static detectImageFormatFromUrl(url: string): string {
+    try {
+      const extension = url.split('.').pop()?.toLowerCase();
+      console.log('📋 Extensión detectada:', extension);
+      
+      switch (extension) {
+        case 'jpg':
+        case 'jpeg':
+          return 'JPEG';
+        case 'png':
+          return 'PNG';
+        case 'webp':
+          return 'WEBP';
+        default:
+          console.log('⚠️ Extensión no reconocida, usando PNG por defecto:', extension);
+          return 'PNG';
+      }
+    } catch (error) {
+      console.error('❌ Error detectando formato desde URL:', error);
+    }
+    
+    return 'PNG';
+  }
+
   private static formatDate(date: Date | string): string {
     try {
       const d = new Date(date);
@@ -37,48 +301,85 @@ export class PDFService {
     return '#6B7280';
   }
 
-  private static generateHeader(doc: jsPDF, options: PDFReportOptions): void {
-    try {
-      // Logo o título del sistema
-      doc.setFontSize(20);
-      doc.setTextColor(59, 130, 246); // Blue-600
-      doc.text('Sistema de Gestión de Biblioteca', 20, 30);
+  private static async generateHeader(doc: jsPDF, options: PDFReportOptions): Promise<void> {
+    const logoInfo = await this.getLogoToDisplay(options.systemConfig || null);
+    
+    // Posición inicial
+    let currentY = 20;
+    
+    // Logo en la parte superior izquierda (si existe)
+    if (logoInfo) {
+      console.log('🎨 Intentando agregar logo al PDF:', {
+        format: logoInfo.format,
+        urlLength: logoInfo.url.length,
+        urlPreview: logoInfo.url.substring(0, 50) + '...'
+      });
       
-      // Línea separadora
-      doc.setDrawColor(59, 130, 246);
-      doc.setLineWidth(0.5);
-      doc.line(20, 35, 190, 35);
-      
-      // Título del reporte
-      doc.setFontSize(16);
-      doc.setTextColor(17, 24, 39); // Gray-900
-      doc.text(options.title, 20, 45);
-      
-      // Información del filtro
-      doc.setFontSize(12);
-      doc.setTextColor(107, 114, 128); // Gray-500
-      doc.text(`Filtro aplicado: ${options.filterType}`, 20, 55);
-      
-      // Fecha de generación
-      const now = new Date();
-      doc.text(`Generado el: ${this.formatDate(now)}`, 20, 65);
-      
-      if (options.generatedBy) {
-        doc.text(`Generado por: ${options.generatedBy}`, 20, 75);
+      try {
+        // Intentar agregar la imagen del logo
+        doc.addImage(logoInfo.url, logoInfo.format, 20, currentY, 15, 15);
+        console.log('✅ Logo agregado exitosamente al PDF');
+        currentY += 20; // Espacio después del logo
+      } catch (error) {
+        console.error('❌ Error agregando logo al PDF:', error);
+        console.error('📊 Detalles del error:', {
+          message: error instanceof Error ? error.message : 'Error desconocido',
+          format: logoInfo.format,
+          urlType: logoInfo.url.startsWith('data:') ? 'base64' : 'url'
+        });
+        
+        // Intentar con formato alternativo si falla
+        try {
+          console.log('🔄 Intentando con formato PNG como fallback...');
+          doc.addImage(logoInfo.url, 'PNG', 20, currentY, 15, 15);
+          console.log('✅ Logo agregado con formato PNG fallback');
+          currentY += 20;
+        } catch (fallbackError) {
+          console.error('❌ Error también con formato PNG:', fallbackError);
+          // Si falla, continuar sin logo
+          currentY = 20;
+        }
       }
-      
-      // Estadísticas generales
-      const totalPeople = options.data.length;
-      const totalLoans = options.data.reduce((sum, person) => sum + (person.summary?.totalLoans || 0), 0);
-      
-      doc.setFontSize(10);
-      doc.setTextColor(55, 65, 81); // Gray-700
-      doc.text(`Total de personas: ${totalPeople}`, 20, 90);
-      doc.text(`Total de préstamos: ${totalLoans}`, 20, 100);
-    } catch (error) {
-      console.error('Error generando encabezado:', error);
-      throw new Error('Error al generar el encabezado del PDF');
+    } else {
+      console.log('ℹ️ No hay logo configurado, continuando sin logo');
     }
+    
+    // Título del reporte
+    doc.setFontSize(18);
+    doc.setTextColor(17, 24, 39);
+    doc.text(options.title, 20, currentY);
+    currentY += 10;
+
+    // Información adicional
+    doc.setFontSize(10);
+    doc.setTextColor(107, 114, 128);
+    
+    const generatedBy = options.generatedBy || 'Sistema';
+    const currentDate = new Date().toLocaleDateString('es-ES', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+    
+    doc.text(`Generado por: ${generatedBy}`, 20, currentY);
+    currentY += 5;
+    doc.text(`Fecha: ${currentDate}`, 20, currentY);
+    currentY += 5;
+    
+    // Información del sistema (si está disponible)
+    if (options.systemConfig) {
+      doc.text(`Sistema: ${options.systemConfig.sidebarTitle}`, 20, currentY);
+      currentY += 5;
+      doc.text(`Versión: ${options.systemConfig.version}`, 20, currentY);
+    }
+    
+    // Línea separadora
+    currentY += 10;
+    doc.setDrawColor(229, 231, 235);
+    doc.setLineWidth(0.5);
+    doc.line(20, currentY, 190, currentY);
   }
 
   private static generatePersonTable(doc: jsPDF, data: PersonLoanSummary[], filterType: string): void {
@@ -390,10 +691,32 @@ export class PDFService {
     }
   }
 
-  static generateReport(options: PDFReportOptions): void {
+  static async generateReport(options: PDFReportOptions): Promise<void> {
     try {
+      console.log('🚀 Iniciando generación de PDF...');
+      
       // Crear el documento PDF
       const doc = new jsPDF('p', 'mm', 'a4');
+      
+      // Obtener configuración del sistema si no se proporciona
+      let systemConfig = options.systemConfig;
+      if (!systemConfig) {
+        console.log('🔍 Obteniendo configuración del sistema...');
+        systemConfig = await this.getSystemConfig() || undefined;
+        
+        if (systemConfig) {
+          console.log('✅ Configuración del sistema obtenida:', {
+            title: systemConfig.sidebarTitle,
+            hasImage: !!systemConfig.sidebarIconImage,
+            hasUrl: !!systemConfig.sidebarIconUrl,
+            icon: systemConfig.sidebarIcon
+          });
+        } else {
+          console.log('⚠️ No se pudo obtener la configuración del sistema');
+        }
+      } else {
+        console.log('✅ Usando configuración del sistema proporcionada');
+      }
       
       // Determinar si es filtro de préstamos activos, vencidos o perdidos
       const isActiveFilter = options.filterType.toLowerCase().includes('activos');
@@ -401,12 +724,21 @@ export class PDFService {
       const isLostFilter = options.filterType.toLowerCase().includes('perdidos');
       const isGeneralReport = !isActiveFilter && !isOverdueFilter && !isLostFilter;
       
+      console.log('📊 Tipo de reporte:', {
+        filterType: options.filterType,
+        isActiveFilter,
+        isOverdueFilter,
+        isLostFilter,
+        isGeneralReport
+      });
+      
       // Generar contenido del PDF
-      this.generateHeader(doc, options);
+      await this.generateHeader(doc, { ...options, systemConfig });
       this.generatePersonTable(doc, options.data, options.filterType);
       
       // Solo mostrar detalles si es reporte general (sin filtros específicos)
       if (isGeneralReport) {
+        console.log('📋 Generando detalles de préstamos por persona...');
         this.generateLoansDetails(doc, options.data);
       }
       
@@ -416,10 +748,14 @@ export class PDFService {
       const timestamp = new Date().toISOString().slice(0, 10);
       const fileName = `reporte_${options.filterType.toLowerCase().replace(/\s+/g, '_')}_${timestamp}.pdf`;
       
+      console.log('💾 Guardando PDF como:', fileName);
+      
       // Descargar el PDF
       doc.save(fileName);
+      
+      console.log('✅ PDF generado exitosamente');
     } catch (error) {
-      console.error('Error en generateReport:', error);
+      console.error('❌ Error en generateReport:', error);
       throw new Error(`Error al generar el PDF: ${error instanceof Error ? error.message : 'Error desconocido'}`);
     }
   }
@@ -468,6 +804,96 @@ export class PDFService {
       default:
         // Si no coincide con ningún estado conocido, devolver el original
         return status;
+    }
+  }
+
+  // ✅ NUEVO: Función de prueba para verificar la configuración del sistema
+  static async testSystemConfig(): Promise<void> {
+    try {
+      console.log('🧪 Iniciando prueba de configuración del sistema...');
+      
+      const config = await this.getSystemConfig();
+      
+      if (!config) {
+        console.log('❌ No se pudo obtener la configuración del sistema');
+        return;
+      }
+      
+      console.log('✅ Configuración obtenida:', {
+        id: config.id,
+        title: config.sidebarTitle,
+        subtitle: config.sidebarSubtitle,
+        icon: config.sidebarIcon,
+        hasImage: !!config.sidebarIconImage,
+        hasUrl: !!config.sidebarIconUrl,
+        version: config.version
+      });
+      
+      const logoInfo = await this.getLogoToDisplay(config);
+      
+      if (logoInfo) {
+        console.log('✅ Logo detectado:', {
+          format: logoInfo.format,
+          urlLength: logoInfo.url.length,
+          urlPreview: logoInfo.url.substring(0, 100) + '...',
+          isBase64: logoInfo.url.startsWith('data:'),
+          isUrl: logoInfo.url.startsWith('http')
+        });
+      } else {
+        console.log('❌ No se detectó ningún logo configurado');
+      }
+      
+    } catch (error) {
+      console.error('❌ Error en prueba de configuración:', error);
+    }
+  }
+
+  // ✅ NUEVO: Función de prueba específica para URLs
+  static async testUrlConversion(url: string): Promise<void> {
+    try {
+      console.log('🧪 Iniciando prueba de conversión de URL:', url);
+      
+      // Paso 1: Probar accesibilidad
+      const isAccessible = await this.testUrlAccessibility(url);
+      console.log('📊 Accesibilidad:', isAccessible);
+      
+      if (!isAccessible) {
+        console.log('❌ URL no es accesible, no se puede convertir');
+        return;
+      }
+      
+      // Paso 2: Intentar conversión con canvas
+      console.log('🔄 Intentando conversión con canvas...');
+      const base64Canvas = await this.convertUrlToBase64(url);
+      
+      if (base64Canvas) {
+        console.log('✅ Conversión con canvas exitosa');
+        console.log('📊 Resultado canvas:', {
+          length: base64Canvas.length,
+          preview: base64Canvas.substring(0, 100) + '...',
+          format: this.detectImageFormat(base64Canvas)
+        });
+      } else {
+        console.log('❌ Conversión con canvas falló');
+      }
+      
+      // Paso 3: Intentar conversión con fetch
+      console.log('🔄 Intentando conversión con fetch...');
+      const base64Fetch = await this.convertUrlToBase64WithFetch(url);
+      
+      if (base64Fetch) {
+        console.log('✅ Conversión con fetch exitosa');
+        console.log('📊 Resultado fetch:', {
+          length: base64Fetch.length,
+          preview: base64Fetch.substring(0, 100) + '...',
+          format: this.detectImageFormat(base64Fetch)
+        });
+      } else {
+        console.log('❌ Conversión con fetch falló');
+      }
+      
+    } catch (error) {
+      console.error('❌ Error en prueba de conversión de URL:', error);
     }
   }
 } 

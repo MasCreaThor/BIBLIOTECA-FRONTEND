@@ -5,6 +5,7 @@ import { FiPrinter, FiDownload, FiFileText, FiEye } from 'react-icons/fi';
 import { PersonLoanSummary, LoanStatusFilter } from '@/types/reports.types';
 import { PDFService } from '@/services/pdf.service';
 import { PDFPreviewModal } from './PDFPreviewModal';
+import { systemConfigService } from '@/services/system-config.service';
 
 interface PrintReportButtonProps {
   data: PersonLoanSummary[];
@@ -39,6 +40,17 @@ export function PrintReportButton({
     setIsGenerating(true);
     
     try {
+      // Ejecutar prueba de configuración del sistema
+      console.log('🔍 Verificando configuración del sistema...');
+      await PDFService.testSystemConfig();
+      
+      // Si hay una URL configurada, probar la conversión específicamente
+      const config = await systemConfigService.getActiveConfig();
+      if (config?.sidebarIconUrl) {
+        console.log('🔗 Probando conversión de URL específica...');
+        await PDFService.testUrlConversion(config.sidebarIconUrl);
+      }
+      
       // Determinar el tipo de filtro para el reporte
       let filterType: string;
       let title: string;
@@ -56,7 +68,7 @@ export function PrintReportButton({
       // Obtener información del usuario actual (opcional)
       const generatedBy = 'Bibliotecaria'; // Puedes obtener esto del contexto de autenticación
       
-      PDFService.generateReport({
+      await PDFService.generateReport({
         title,
         filterType,
         data,
