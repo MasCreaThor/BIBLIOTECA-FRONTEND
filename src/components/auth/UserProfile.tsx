@@ -180,10 +180,6 @@ export function UserProfile({ size = 'md', showText = true }: UserProfileProps) 
           >
             Mi Perfil
           </MenuItem>
-          
-          <MenuItem icon={<FiSettings />} fontSize="sm">
-            Configuración
-          </MenuItem>
 
           <MenuDivider />
 
