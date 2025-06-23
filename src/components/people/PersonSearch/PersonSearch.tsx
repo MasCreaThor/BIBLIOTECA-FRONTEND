@@ -21,11 +21,12 @@ import {
   Button,
   Tooltip,
 } from '@chakra-ui/react';
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { FiSearch, FiAlertCircle, FiRefreshCw } from 'react-icons/fi';
 import { Person, SearchFilters } from '@/types/api.types';
 import { PersonService } from '@/services/person.service';
 import { useDebounce } from '@/hooks/useDebounce';
+import { getPersonTypeLabel } from '@/utils/personType.utils';
 
 interface PersonSearchProps {
   onPersonSelected: (person: Person | null) => void;
@@ -49,6 +50,7 @@ export function PersonSearch({
   const [selectedIndex, setSelectedIndex] = useState(-1);
   const [error, setError] = useState<string | null>(null);
   const [hasSearched, setHasSearched] = useState(false);
+  const [isMouseInList, setIsMouseInList] = useState(false);
 
   const debouncedSearchTerm = useDebounce(searchTerm, 300);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -410,7 +412,7 @@ export function PersonSearch({
                       {person.personType && (
                         <>
                           <Text color="gray.400">•</Text>
-                          <Text>{person.personType.name}</Text>
+                          <Text>{getPersonTypeLabel(person.personType.name)}</Text>
                         </>
                       )}
                     </HStack>

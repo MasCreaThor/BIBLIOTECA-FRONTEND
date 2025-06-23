@@ -6,6 +6,7 @@ import { PersonLoanSummary, LoanStatusFilter } from '@/types/reports.types';
 import { reportsService } from '@/services/reports.service';
 import { UpdateLoanStatusModal } from './UpdateLoanStatusModal';
 import { formatDate } from '@/utils/date.utils';
+import { getPersonTypeLabel } from '@/utils/personType.utils';
 
 interface PersonLoansTableProps {
   data: PersonLoanSummary[];
@@ -196,7 +197,7 @@ export function PersonLoansTable({ data, loading, onDataUpdate }: PersonLoansTab
                         {personData.person.documentNumber}
                       </div>
                       <div className="text-xs text-gray-400">
-                        {personData.person.personType}
+                        {getPersonTypeLabel(personData.person.personType)}
                       </div>
                     </div>
                   </td>

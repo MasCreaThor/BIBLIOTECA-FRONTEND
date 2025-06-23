@@ -3,7 +3,7 @@
 // MODAL DE DETALLES COMPLETOS DE PRÉSTAMO - COMPLETO Y FUNCIONAL
 // ================================================================
 
-import React from 'react';
+import React, { useState } from 'react';
 import {
   Modal,
   ModalOverlay,
@@ -27,7 +27,10 @@ import {
   AlertDescription,
   Icon,
   Flex,
-  Spacer
+  Spacer,
+  useToast,
+  Tooltip,
+  IconButton
 } from '@chakra-ui/react';
 
 import { 
@@ -51,6 +54,7 @@ import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 
 import type { LoanWithDetails } from '@/types/loan.types';
+import { getPersonTypeLabel } from '@/utils/personType.utils';
 
 // ===== INTERFACES =====
 
@@ -149,11 +153,6 @@ const LoanDetailsModal: React.FC<LoanDetailsModalProps> = ({
     };
   };
 
-  const getPersonTypeLabel = (personType?: { name: string }) => {
-    if (!personType) return 'No especificado';
-    return personType.name === 'student' ? 'Estudiante' : 'Profesor';
-  };
-
   const getResourceTypeLabel = (resourceType?: { name: string }) => {
     if (!resourceType) return 'No especificado';
     return resourceType.name;
@@ -184,7 +183,7 @@ const LoanDetailsModal: React.FC<LoanDetailsModalProps> = ({
       id: loan._id,
       persona: loan.person?.fullName,
       documento: loan.person?.documentNumber,
-      tipoPersona: getPersonTypeLabel(loan.person?.personType),
+      tipoPersona: getPersonTypeLabel(loan.person?.personType?.name),
       recurso: loan.resource?.title,
       autor: loan.resource?.author,
       categoria: loan.resource?.category || 'No especificado',
@@ -305,7 +304,7 @@ const LoanDetailsModal: React.FC<LoanDetailsModalProps> = ({
                     py={1}
                     borderRadius="md"
                   >
-                    {getPersonTypeLabel(loan.person?.personType)}
+                    {getPersonTypeLabel(loan.person?.personType?.name)}
                   </Badge>
                 </VStack>
                 

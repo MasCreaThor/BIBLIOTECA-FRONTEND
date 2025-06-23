@@ -1,6 +1,7 @@
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 import { PersonLoanSummary, LoanStatusFilter } from '@/types/reports.types';
+import { getPersonTypeLabel } from '@/utils/personType.utils';
 
 export interface PDFReportOptions {
   title: string;
@@ -84,7 +85,7 @@ export class PDFService {
     const tableData = data.map(person => [
       person.person?.name || 'Sin nombre',
       person.person?.documentNumber || 'Sin documento',
-      person.person?.personType || 'Sin tipo',
+      getPersonTypeLabel(person.person?.personType) || 'Sin tipo',
       person.personStatus === 'up_to_date' ? 'Al día' : 'No está al día',
       person.summary?.totalLoans || 0,
       person.summary?.activeLoans || 0,
@@ -147,7 +148,7 @@ export class PDFService {
       
       doc.setFontSize(10);
       doc.setTextColor(107, 114, 128);
-      doc.text(`Documento: ${person.person?.documentNumber || 'Sin documento'} | Tipo: ${person.person?.personType || 'Sin tipo'}`, 25, currentY);
+      doc.text(`Documento: ${person.person?.documentNumber || 'Sin documento'} | Tipo: ${getPersonTypeLabel(person.person?.personType) || 'Sin tipo'}`, 25, currentY);
       currentY += 8;
 
       // Tabla de préstamos de la persona

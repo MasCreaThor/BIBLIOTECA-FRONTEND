@@ -4,6 +4,8 @@ import { useState } from 'react';
 import { FiX, FiEye, FiDownload } from 'react-icons/fi';
 import { PersonLoanSummary, LoanStatusFilter } from '@/types/reports.types';
 import { PDFService } from '@/services/pdf.service';
+import { reportsService } from '@/services/reports.service';
+import { getPersonTypeLabel } from '@/utils/personType.utils';
 
 interface PDFPreviewModalProps {
   isOpen: boolean;
@@ -157,7 +159,7 @@ export function PDFPreviewModal({
                         {person.person.documentNumber}
                       </td>
                       <td className="px-6 py-4 text-sm text-gray-600">
-                        {person.person.personType}
+                        {getPersonTypeLabel(person.person.personType)}
                       </td>
                       <td className="px-6 py-4 text-sm text-center">
                         <span className="font-semibold text-gray-900 text-lg">{person.summary.totalLoans}</span>

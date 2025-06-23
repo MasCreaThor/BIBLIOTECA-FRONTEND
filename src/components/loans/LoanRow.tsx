@@ -53,6 +53,7 @@ import type { LoanWithDetails } from '@/types/loan.types';
 import { useReturn } from '@/hooks/useLoans';
 import { LoanService } from '@/services/loan.service';
 import { getLoanStatusInfo } from '@/utils/loan.utils';
+import { getPersonTypeLabel } from '@/utils/personType.utils';
 
 // ===== INTERFACES =====
 
@@ -112,7 +113,7 @@ const LoanRow: React.FC<LoanRowProps> = ({
         colorScheme={personType.name === 'student' ? 'blue' : 'purple'}
         variant="subtle"
       >
-        {personType.name === 'student' ? 'Estudiante' : 'Profesor'}
+        {getPersonTypeLabel(personType.name)}
       </Badge>
     );
   };

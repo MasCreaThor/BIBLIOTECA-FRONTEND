@@ -39,7 +39,21 @@ import {
   useToast,
   useDisclosure,
   useColorModeValue,
-  Flex
+  Flex,
+  IconButton,
+  Tooltip,
+  Divider,
+  Card,
+  CardBody,
+  CardHeader,
+  Heading,
+  Icon,
+  AlertDialog,
+  AlertDialogBody,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogContent,
+  AlertDialogOverlay
 } from '@chakra-ui/react';
 
 import {
@@ -53,7 +67,9 @@ import {
   FiBook,
   FiCalendar,
   FiClock,
-  FiAlertTriangle
+  FiAlertTriangle,
+  FiSearch,
+  FiUsers
 } from 'react-icons/fi';
 
 import { format } from 'date-fns';
@@ -64,6 +80,7 @@ import { useLoans, useReturn } from '@/hooks/useLoans';
 import { LoanService } from '@/services/loan.service';
 import type { LoanWithDetails, ReturnLoanRequest, LoanSearchFilters } from '@/types/loan.types';
 import LoanDetailsModal from './LoanDetailsModal';
+import { getPersonTypeLabel } from '@/utils/personType.utils';
 
 // ===== INTERFACES =====
 
@@ -696,7 +713,7 @@ export const ReturnsManagement: React.FC<ReturnsManagementProps> = ({ preSelecte
                                 colorScheme={getPersonTypeBadgeColor(loan.person.personType.name)}
                                 variant="subtle"
                               >
-                                {loan.person.personType.name === 'student' ? 'Estudiante' : 'Profesor'}
+                                {getPersonTypeLabel(loan.person.personType.name)}
                               </Badge>
                             )}
                             {loan.person?.grade && (

@@ -28,7 +28,8 @@ import {
   AlertIcon,
   Divider,
   useToast,
-  useColorModeValue
+  useColorModeValue,
+  Icon
 } from '@chakra-ui/react';
 
 // FIX: Usar react-icons/fi en lugar de lucide-react
@@ -55,6 +56,7 @@ import { es } from 'date-fns/locale';
 // Importar tipos y hooks
 import type { LoanWithDetails, ReturnLoanRequest } from '@/types/loan.types';
 import { useReturn } from '@/hooks/useLoans';
+import { getPersonTypeLabel } from '@/utils/personType.utils';
 
 // ===== ESQUEMA DE VALIDACIÓN =====
 
@@ -290,7 +292,7 @@ const ReturnModal: React.FC<ReturnModalProps> = ({
                           <Badge
                             colorScheme={loan.person.personType.name === 'student' ? 'blue' : 'purple'}
                           >
-                            {loan.person.personType.name === 'student' ? 'Estudiante' : 'Profesor'}
+                            {getPersonTypeLabel(loan.person.personType.name)}
                           </Badge>
                         )}
                         {loan.person?.documentNumber && (
