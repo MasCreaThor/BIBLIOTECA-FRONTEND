@@ -61,6 +61,7 @@ import { es } from 'date-fns/locale';
 
 // Importar hooks y tipos
 import { useLoans, useReturn } from '@/hooks/useLoans';
+import { LoanService } from '@/services/loan.service';
 import type { LoanWithDetails, ReturnLoanRequest, LoanSearchFilters } from '@/types/loan.types';
 import LoanDetailsModal from './LoanDetailsModal';
 
@@ -84,6 +85,13 @@ interface ReturnModalProps {
 interface ReturnsManagementProps {
   preSelectedLoanId?: string;
   onLoanDetailsClosed?: () => void;
+}
+
+interface LoanSummaryStats {
+  totalActive: number;
+  totalOverdue: number;
+  totalDueSoon: number;
+  totalReturnsToday: number;
 }
 
 // ===== COMPONENTE DE MODAL DE DEVOLUCIÓN =====
@@ -240,6 +248,15 @@ export const ReturnsManagement: React.FC<ReturnsManagementProps> = ({ preSelecte
   });
   
   const [selectedLoan, setSelectedLoan] = useState<LoanWithDetails | null>(null);
+  
+  // ✅ NUEVO: Estado para estadísticas del resumen
+  const [summaryStats, setSummaryStats] = useState<LoanSummaryStats>({
+    totalActive: 0,
+    totalOverdue: 0,
+    totalDueSoon: 0,
+    totalReturnsToday: 0
+  });
+  const [summaryLoading, setSummaryLoading] = useState(false);
 
   // Hooks
   const {
@@ -259,7 +276,39 @@ export const ReturnsManagement: React.FC<ReturnsManagementProps> = ({ preSelecte
     onClose: closeDetailsModal 
   } = useDisclosure();
 
+  // ✅ NUEVO: Función para obtener estadísticas del resumen
+  const fetchSummaryStats = async () => {
+    setSummaryLoading(true);
+    try {
+      const stats = await LoanService.getLoanSummary();
+      setSummaryStats(stats);
+    } catch (error: any) {
+      console.error('Error al obtener estadísticas del resumen:', error);
+      toast({
+        title: 'Error',
+        description: 'No se pudieron cargar las estadísticas del resumen',
+        status: 'error',
+        duration: 3000,
+        isClosable: true
+      });
+    } finally {
+      setSummaryLoading(false);
+    }
+  };
+
   // ===== EFECTOS =====
+
+  // ✅ NUEVO: Efecto para cargar estadísticas del resumen al montar el componente
+  useEffect(() => {
+    fetchSummaryStats();
+  }, []);
+
+  // ✅ NUEVO: Efecto para recargar estadísticas cuando se procesa una devolución
+  useEffect(() => {
+    if (!loading && activeLoans.length > 0) {
+      fetchSummaryStats();
+    }
+  }, [activeLoans.length, loading]);
 
   // ✅ NUEVO: Efecto para abrir automáticamente el modal de detalles cuando se recibe un loanId
   useEffect(() => {
@@ -334,6 +383,8 @@ export const ReturnsManagement: React.FC<ReturnsManagementProps> = ({ preSelecte
   const handleReturnSuccess = () => {
     setSelectedLoan(null);
     refetch();
+    // ✅ NUEVO: Recargar estadísticas del resumen
+    fetchSummaryStats();
   };
 
   // ✅ NUEVO: Handler para cerrar el modal de detalles y limpiar la URL
@@ -346,23 +397,6 @@ export const ReturnsManagement: React.FC<ReturnsManagementProps> = ({ preSelecte
   };
 
   // ===== CÁLCULOS =====
-
-  const summaryStats = {
-    totalActive: activeLoans.length,
-    overdueCount: activeLoans.filter((loan: LoanWithDetails) => loan.isOverdue).length,
-    dueToday: activeLoans.filter((loan: LoanWithDetails) => {
-      const today = new Date();
-      const dueDate = new Date(loan.dueDate);
-      return dueDate.toDateString() === today.toDateString();
-    }).length,
-    dueSoon: activeLoans.filter((loan: LoanWithDetails) => {
-      const today = new Date();
-      const dueDate = new Date(loan.dueDate);
-      const diffTime = dueDate.getTime() - today.getTime();
-      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-      return diffDays > 0 && diffDays <= 3;
-    }).length
-  };
 
   // ===== RENDER =====
 
@@ -400,7 +434,9 @@ export const ReturnsManagement: React.FC<ReturnsManagementProps> = ({ preSelecte
           borderColor={useColorModeValue('gray.200', 'gray.600')}
         >
           <StatLabel fontSize="sm" color="gray.600" fontWeight="medium">Préstamos Activos</StatLabel>
-          <StatNumber color="blue.500" fontSize="2xl" fontWeight="bold">{summaryStats.totalActive}</StatNumber>
+          <StatNumber color="blue.500" fontSize="2xl" fontWeight="bold">
+            {summaryLoading ? <Spinner size="sm" /> : summaryStats.totalActive}
+          </StatNumber>
         </Stat>
         
         <Stat 
@@ -412,7 +448,9 @@ export const ReturnsManagement: React.FC<ReturnsManagementProps> = ({ preSelecte
           borderColor={useColorModeValue('gray.200', 'gray.600')}
         >
           <StatLabel fontSize="sm" color="gray.600" fontWeight="medium">Vencidos</StatLabel>
-          <StatNumber color="red.500" fontSize="2xl" fontWeight="bold">{summaryStats.overdueCount}</StatNumber>
+          <StatNumber color="red.500" fontSize="2xl" fontWeight="bold">
+            {summaryLoading ? <Spinner size="sm" /> : summaryStats.totalOverdue}
+          </StatNumber>
         </Stat>
         
         <Stat 
@@ -424,7 +462,9 @@ export const ReturnsManagement: React.FC<ReturnsManagementProps> = ({ preSelecte
           borderColor={useColorModeValue('gray.200', 'gray.600')}
         >
           <StatLabel fontSize="sm" color="gray.600" fontWeight="medium">Vencen Hoy</StatLabel>
-          <StatNumber color="orange.500" fontSize="2xl" fontWeight="bold">{summaryStats.dueToday}</StatNumber>
+          <StatNumber color="orange.500" fontSize="2xl" fontWeight="bold">
+            {summaryLoading ? <Spinner size="sm" /> : summaryStats.totalReturnsToday}
+          </StatNumber>
         </Stat>
         
         <Stat 
@@ -436,7 +476,9 @@ export const ReturnsManagement: React.FC<ReturnsManagementProps> = ({ preSelecte
           borderColor={useColorModeValue('gray.200', 'gray.600')}
         >
           <StatLabel fontSize="sm" color="gray.600" fontWeight="medium">Vencen Pronto</StatLabel>
-          <StatNumber color="yellow.500" fontSize="2xl" fontWeight="bold">{summaryStats.dueSoon}</StatNumber>
+          <StatNumber color="yellow.500" fontSize="2xl" fontWeight="bold">
+            {summaryLoading ? <Spinner size="sm" /> : summaryStats.totalDueSoon}
+          </StatNumber>
         </Stat>
       </SimpleGrid>
 

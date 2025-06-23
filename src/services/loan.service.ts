@@ -490,7 +490,7 @@ export class LoanService {
         totalOverdue: number;
         totalDueSoon: number;
         totalReturnsToday: number;
-      }>>(LOAN_ENDPOINTS.LOAN_SUMMARY);
+      }>>('/loans/returns-dashboard-stats');
       
       const result = handleApiResponse(response.data);
       console.log('✅ LoanService: Resumen obtenido');
