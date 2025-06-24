@@ -48,7 +48,8 @@ export default function InventoryPage() {
   const updateMutation = useUpdateResource();
 
   // Datos para estadísticas rápidas
-  const { data: resourceTypes } = useResourceTypes();
+  const { data: resourceTypesResponse } = useResourceTypes();
+  const resourceTypes = resourceTypesResponse?.data || [];
 
   // Determinar si mostrar vista compacta en móvil
   const isMobile = useBreakpointValue({ base: true, md: false });
@@ -84,6 +85,11 @@ export default function InventoryPage() {
     onEditOpen();
   };
 
+  // ✅ NUEVO: Handler para navegar a la página de detalles del recurso
+  const handleResourceSelect = (resource: Resource) => {
+    router.push(`/inventory/${resource._id}`);
+  };
+
   const isMutating = createMutation.isPending || updateMutation.isPending;
 
   return (
@@ -112,7 +118,7 @@ export default function InventoryPage() {
               </HStack>
 
               {/* Estadísticas rápidas */}
-              {resourceTypes && resourceTypes.length > 0 && (
+              {resourceTypes.length > 0 && (
                 <HStack spacing={3} pt={2} wrap="wrap">
                   <Text fontSize="sm" color="gray.600">Tipos disponibles:</Text>
                   {resourceTypes.map((type) => (
@@ -165,19 +171,6 @@ export default function InventoryPage() {
                 <Text fontSize="sm">Inventario</Text>
               </HStack>
             </Tab>
-            <Tab>
-              <HStack spacing={2}>
-                <Icon as={FiPlus} boxSize={4} />
-                <Text fontSize="sm">Acciones Rápidas</Text>
-              </HStack>
-            </Tab>
-            {/* Futuras funcionalidades */}
-            <Tab isDisabled>
-              <HStack spacing={2}>
-                <Icon as={FiSettings} boxSize={4} />
-                <Text fontSize="sm">Configuración</Text>
-              </HStack>
-            </Tab>
           </TabList>
 
           <TabPanels>
@@ -185,6 +178,7 @@ export default function InventoryPage() {
             <TabPanel px={0}>
               <ResourceList
                 onResourceEdit={handleResourceEdit}
+                onResourceSelect={handleResourceSelect}
                 onCreate={() => router.push('/inventory/new')}
                 showActions={true}
               />
@@ -195,16 +189,6 @@ export default function InventoryPage() {
               <InventoryNavigation 
                 showSecondaryActions={true}
               />
-            </TabPanel>
-
-            {/* Tab 3: Configuración (futuro) */}
-            <TabPanel px={0}>
-              <VStack spacing={4} py={8} textAlign="center">
-                <Icon as={FiSettings} boxSize={12} color="gray.400" />
-                <Text color="gray.600">
-                  Las opciones de configuración estarán disponibles próximamente
-                </Text>
-              </VStack>
             </TabPanel>
           </TabPanels>
         </Tabs>
@@ -264,7 +248,7 @@ export default function InventoryPage() {
           <ModalBody pb={6}>
             {editingResource && (
               <ResourceForm
-                resource={editingResource}
+                resource={editingResource as unknown as import('@/types/api.types').Resource}
                 onSubmit={handleUpdateResource}
                 onCancel={onEditClose}
                 isLoading={updateMutation.isPending}

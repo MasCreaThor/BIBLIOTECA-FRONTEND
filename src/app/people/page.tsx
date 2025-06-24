@@ -143,7 +143,10 @@ export default function PeoplePage() {
     try {
       await updateMutation.mutateAsync({
         id: editingPerson._id,
-        data,
+        data: {
+          ...data,
+          personTypeId: editingPerson.personTypeId,
+        },
       });
       setEditingPerson(null);
       onEditClose();

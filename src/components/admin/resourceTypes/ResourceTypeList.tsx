@@ -14,11 +14,6 @@ import {
   CardBody,
   Text,
   Badge,
-  Menu,
-  MenuButton,
-  MenuList,
-  MenuItem,
-  MenuDivider,
   IconButton,
   Skeleton,
   SkeletonText,
@@ -28,11 +23,12 @@ import {
   Switch,
   FormControl,
   FormLabel,
+  Tooltip,
+  Icon,
 } from '@chakra-ui/react';
 import { useState } from 'react';
 import {
   FiSearch,
-  FiMoreVertical,
   FiEdit,
   FiTrash2,
   FiPlus,
@@ -40,6 +36,8 @@ import {
   FiBook,
   FiToggleLeft,
   FiToggleRight,
+  FiShield,
+  FiSettings,
 } from 'react-icons/fi';
 import { 
   useResourceTypes, 
@@ -59,12 +57,12 @@ interface ResourceTypeListProps {
   showActions?: boolean;
 }
 
-const RESOURCE_TYPE_CONFIGS = {
+const SYSTEM_RESOURCE_TYPE_CONFIGS = {
   book: { icon: '📚', label: 'Libro', color: 'blue' },
   game: { icon: '🎲', label: 'Juego', color: 'green' },
   map: { icon: '🗺️', label: 'Mapa', color: 'orange' },
   bible: { icon: '📖', label: 'Biblia', color: 'purple' },
-};
+} as const;
 
 function ResourceTypeCard({
   resourceType,
@@ -100,9 +98,12 @@ function ResourceTypeCard({
     onDeleteClose();
   };
 
-  const config = RESOURCE_TYPE_CONFIGS[resourceType.name as keyof typeof RESOURCE_TYPE_CONFIGS] || {
+  const isSystemType = resourceType.isSystem;
+  const systemConfig = SYSTEM_RESOURCE_TYPE_CONFIGS[resourceType.name as keyof typeof SYSTEM_RESOURCE_TYPE_CONFIGS];
+  
+  const config = systemConfig || {
     icon: '📄',
-    label: resourceType.name,
+    label: resourceType.name.charAt(0).toUpperCase() + resourceType.name.slice(1),
     color: 'gray'
   };
 
@@ -122,18 +123,39 @@ function ResourceTypeCard({
             <HStack justify="space-between" align="start">
               <HStack spacing={2}>
                 <Text fontSize="lg">{config.icon}</Text>
-                <Badge colorScheme={config.color} variant="solid" fontSize="xs">
-                  {config.label}
-                </Badge>
+                <VStack align="start" spacing={0}>
+                  <HStack spacing={1}>
+                    <Badge colorScheme={config.color} variant="solid" fontSize="xs">
+                      {config.label}
+                    </Badge>
+                    {isSystemType && (
+                      <Tooltip label="Tipo del sistema (predefinido)">
+                        <Badge colorScheme="blue" variant="subtle" fontSize="xs">
+                          <FiShield size={10} />
+                        </Badge>
+                      </Tooltip>
+                    )}
+                  </HStack>
+                  <Text fontSize="xs" color="gray.500" fontFamily="mono">
+                    {resourceType.name}
+                  </Text>
+                </VStack>
               </HStack>
               
-              <Badge
-                colorScheme={resourceType.active ? 'green' : 'gray'}
-                variant="subtle"
-                fontSize="xs"
-              >
-                {resourceType.active ? 'Activo' : 'Inactivo'}
-              </Badge>
+              <VStack align="end" spacing={1}>
+                <Badge
+                  colorScheme={resourceType.active ? 'green' : 'gray'}
+                  variant="subtle"
+                  fontSize="xs"
+                >
+                  {resourceType.active ? 'Activo' : 'Inactivo'}
+                </Badge>
+                {isSystemType && (
+                  <Tooltip label="Tipo del sistema">
+                    <Icon as={FiSettings} color="blue.500" boxSize={3} />
+                  </Tooltip>
+                )}
+              </VStack>
             </HStack>
 
             {/* Contenido */}
@@ -156,44 +178,41 @@ function ResourceTypeCard({
 
             {/* Acciones */}
             {showActions && (
-              <HStack justify="flex-end" pt={2}>
-                <Menu>
-                  <MenuButton
-                    as={IconButton}
-                    aria-label="Acciones"
-                    icon={<FiMoreVertical />}
-                    variant="ghost"
+              <HStack justify="flex-end" pt={2} spacing={1}>
+                <Tooltip label="Editar tipo de recurso">
+                  <IconButton
+                    aria-label="Editar"
+                    icon={<FiEdit />}
                     size="sm"
+                    variant="ghost"
+                    colorScheme="blue"
+                    onClick={() => handleActionClick('edit')}
+                    isDisabled={isSystemType}
                   />
-                  <MenuList>
-                    <MenuItem
-                      icon={<FiEdit />}
-                      onClick={() => handleActionClick('edit')}
-                    >
-                      Editar
-                    </MenuItem>
+                </Tooltip>
 
-                    <MenuDivider />
+                <Tooltip label={resourceType.active ? 'Desactivar' : 'Activar'}>
+                  <IconButton
+                    aria-label={resourceType.active ? 'Desactivar' : 'Activar'}
+                    icon={resourceType.active ? <FiToggleLeft /> : <FiToggleRight />}
+                    size="sm"
+                    variant="ghost"
+                    colorScheme={resourceType.active ? "orange" : "green"}
+                    onClick={() => handleActionClick('toggle')}
+                  />
+                </Tooltip>
 
-                    <MenuItem
-                      icon={resourceType.active ? <FiToggleLeft /> : <FiToggleRight />}
-                      onClick={() => handleActionClick('toggle')}
-                      color={resourceType.active ? "orange.600" : "green.600"}
-                    >
-                      {resourceType.active ? 'Desactivar' : 'Activar'}
-                    </MenuItem>
-
-                    <MenuDivider />
-                    
-                    <MenuItem
-                      icon={<FiTrash2 />}
-                      onClick={() => handleActionClick('delete')}
-                      color="red.600"
-                    >
-                      Eliminar
-                    </MenuItem>
-                  </MenuList>
-                </Menu>
+                <Tooltip label="Eliminar tipo de recurso">
+                  <IconButton
+                    aria-label="Eliminar"
+                    icon={<FiTrash2 />}
+                    size="sm"
+                    variant="ghost"
+                    colorScheme="red"
+                    onClick={() => handleActionClick('delete')}
+                    isDisabled={isSystemType}
+                  />
+                </Tooltip>
               </HStack>
             )}
           </VStack>
@@ -478,8 +497,7 @@ export function ResourceTypeList({
               ⚠️ Configuración del Sistema
             </Text>
             <Text fontSize="xs" color="gray.600">
-              Los tipos de recursos son configuraciones fundamentales del sistema. Los cambios afectan a todo el inventario.
-              Solo los administradores pueden modificar estos elementos.
+              Los tipos de recursos son configuraciones fundamentales del sistema.
             </Text>
           </Box>
         </Alert>

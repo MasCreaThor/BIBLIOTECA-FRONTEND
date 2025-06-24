@@ -23,18 +23,22 @@ import { useState, useEffect } from 'react';
 import { UseFormReturn } from 'react-hook-form';
 import { FiBook, FiSearch, FiCheck, FiX } from 'react-icons/fi';
 import { useResourceByISBN } from '@/hooks/useResources';
+import { useGoogleBooksSearch } from '@/hooks/useGoogleBooks';
 
 interface MetadataSectionProps {
   form: UseFormReturn<any>;
+  disabled?: boolean;
 }
 
-export function MetadataSection({ form }: MetadataSectionProps) {
-  const { register, watch, formState: { errors } } = form;
+export function MetadataSection({ form, disabled }: MetadataSectionProps) {
+  const { register, watch, setValue, formState: { errors } } = form;
   const [isbnToCheck, setIsbnToCheck] = useState('');
   const [showIsbnValidation, setShowIsbnValidation] = useState(false);
   
   const currentIsbn = watch('isbn');
   
+  const { data: googleBook, isLoading: isLoadingGoogleBook } = useGoogleBooksSearch(currentIsbn, 1, !!currentIsbn);
+
   // Query para verificar ISBN existente
   const {
     data: existingResource,
@@ -42,7 +46,9 @@ export function MetadataSection({ form }: MetadataSectionProps) {
     error: isbnError,
   } = useResourceByISBN(
     isbnToCheck,
-    showIsbnValidation && isbnToCheck.length >= 10
+    {
+      enabled: showIsbnValidation && isbnToCheck.length >= 10
+    }
   );
 
   // Validar formato de ISBN
@@ -105,7 +111,7 @@ export function MetadataSection({ form }: MetadataSectionProps) {
             maxLength={17} // Máximo con guiones
           />
           <InputRightElement>
-            {isCheckingIsbn ? (
+            {isLoadingGoogleBook ? (
               <FiSearch color="gray.400" />
             ) : hasExistingResource ? (
               <FiX color="red" />

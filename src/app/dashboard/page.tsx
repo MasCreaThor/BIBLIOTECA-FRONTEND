@@ -34,6 +34,10 @@ import {
   FiRefreshCw,
   FiWifi,
   FiWifiOff,
+  FiCheckCircle,
+  FiCalendar,
+  FiClock,
+  FiAlertOctagon,
 } from 'react-icons/fi';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { useAuth, useRole } from '@/hooks/useAuth';
@@ -44,14 +48,14 @@ import { SafeLink } from '@/components/ui/SafeLink';
 const quickActions = [
   {
     name: 'Nuevo Préstamo',
-    href: '/loans/new',
+    href: '/loans',
     icon: FiBookOpen,
     description: 'Registrar un nuevo préstamo',
     color: 'blue',
   },
   {
     name: 'Devolver Recurso',
-    href: '/loans/return',
+    href: '/loans',
     icon: FiArrowRight,
     description: 'Procesar una devolución',
     color: 'green',
@@ -375,32 +379,6 @@ export default function DashboardPage() {
         {/* Estadísticas de usuarios (solo admin) */}
         {isAdmin && adminData.users?.data && (
           <Box>
-            <Heading size="md" color="gray.800" mb={4}>
-              Gestión de Usuarios
-            </Heading>
-            <Grid templateColumns="repeat(auto-fit, minmax(200px, 1fr))" gap={4}>
-              <StatCard
-                label="Usuarios Activos"
-                value={adminData.users.data.active}
-                icon={FiUsers}
-                color="green"
-                href="/admin/users?status=active"
-              />
-              <StatCard
-                label="Administradores"
-                value={adminData.users.data.admins}
-                icon={FiUsers}
-                color="red"
-                href="/admin/users?role=admin"
-              />
-              <StatCard
-                label="Bibliotecarios"
-                value={adminData.users.data.librarians}
-                icon={FiUsers}
-                color="blue"
-                href="/admin/users?role=librarian"
-              />
-            </Grid>
           </Box>
         )}
 
@@ -416,59 +394,57 @@ export default function DashboardPage() {
           </Grid>
         </Box>
 
-        {/* Actividad reciente */}
-        <Box>
-          <Heading size="md" color="gray.800" mb={4}>
-            Actividad de Hoy
-          </Heading>
-          <Grid templateColumns="repeat(auto-fit, minmax(200px, 1fr))" gap={4}>
-            <StatCard
-              label="Préstamos del Día"
-              value={data.stats?.recentActivity?.loans || 0}
-              icon={FiBookOpen}
-              color="blue"
-              isLoading={isLoading}
-            />
-            <StatCard
-              label="Devoluciones del Día"
-              value={data.stats?.recentActivity?.returns || 0}
-              icon={FiArrowRight}
-              color="green"
-              isLoading={isLoading}
-            />
-            <StatCard
-              label="Recursos Agregados"
-              value={data.stats?.recentActivity?.newResources || 0}
-              icon={FiPlus}
-              color="purple"
-              isLoading={isLoading}
-            />
-            <StatCard
-              label="Personas Registradas"
-              value={data.stats?.recentActivity?.newPeople || 0}
-              icon={FiUsers}
-              color="orange"
-              isLoading={isLoading}
-            />
-          </Grid>
-        </Box>
-
-        {/* Acceso rápido para administradores */}
-        {isAdmin && (
+        {/* ✅ NUEVO: Alertas Importantes */}
+        {((data.stats?.overdueLoans ?? 0) > 0 || (data.stats?.loanQuality?.lostLoans ?? 0) > 0) && (
           <Box>
             <Heading size="md" color="gray.800" mb={4}>
-              Administración
+              Alertas Importantes
             </Heading>
-            <SafeLink href="/admin">
-              <Button
-                colorScheme="red"
-                variant="outline"
-                leftIcon={<Icon as={FiUsers} />}
-                size="lg"
-              >
-                Gestionar Usuarios del Sistema
-              </Button>
-            </SafeLink>
+            <Grid templateColumns="repeat(auto-fit, minmax(300px, 1fr))" gap={4}>
+              {(data.stats?.overdueLoans ?? 0) > 0 && (
+                <Alert status="warning" borderRadius="md">
+                  <AlertIcon />
+                  <Box>
+                    <AlertTitle>Préstamos Vencidos</AlertTitle>
+                    <AlertDescription fontSize="sm">
+                      Hay {(data.stats?.overdueLoans ?? 0)} préstamos vencidos que requieren seguimiento.
+                    </AlertDescription>
+                  </Box>
+                  <Button
+                    size="sm"
+                    colorScheme="orange"
+                    variant="outline"
+                    ml={4}
+                    as={SafeLink}
+                    href="/loans?status=overdue"
+                  >
+                    Ver Detalles
+                  </Button>
+                </Alert>
+              )}
+              
+              {(data.stats?.loanQuality?.lostLoans ?? 0) > 0 && (
+                <Alert status="error" borderRadius="md">
+                  <AlertIcon />
+                  <Box>
+                    <AlertTitle>Recursos Perdidos</AlertTitle>
+                    <AlertDescription fontSize="sm">
+                      {(data.stats?.loanQuality?.lostLoans ?? 0)} recursos han sido marcados como perdidos.
+                    </AlertDescription>
+                  </Box>
+                  <Button
+                    size="sm"
+                    colorScheme="red"
+                    variant="outline"
+                    ml={4}
+                    as={SafeLink}
+                    href="/loans?status=lost"
+                  >
+                    Ver Detalles
+                  </Button>
+                </Alert>
+              )}
+            </Grid>
           </Box>
         )}
       </VStack>

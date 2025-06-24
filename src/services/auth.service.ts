@@ -7,8 +7,11 @@ const AUTH_ENDPOINTS = {
   LOGOUT: '/auth/logout',
   ME: '/auth/me',
   CHANGE_PASSWORD: '/auth/change-password',
+  UPDATE_PROFILE: '/auth/profile',
   VALIDATE: '/auth/validate',
   REFRESH: '/auth/refresh',
+  FORGOT_PASSWORD: '/auth/forgot-password',
+  RESET_PASSWORD: '/auth/reset-password',
 } as const;
 
 export class AuthService {
@@ -80,6 +83,26 @@ export class AuthService {
     if (!response.data.success) {
       throw new Error(response.data.message || 'Error al cambiar contraseña');
     }
+  }
+
+  /**
+   * Actualizar perfil del usuario
+   */
+  static async updateProfile(profileData: {
+    firstName?: string;
+    lastName?: string;
+    email?: string;
+  }): Promise<User> {
+    const response = await axiosInstance.put<ApiResponse<User>>(
+      AUTH_ENDPOINTS.UPDATE_PROFILE,
+      profileData
+    );
+    
+    if (response.data.success && response.data.data) {
+      return response.data.data;
+    }
+    
+    throw new Error(response.data.message || 'Error al actualizar perfil');
   }
 
   /**
@@ -172,5 +195,40 @@ export class AuthService {
    */
   static isLibrarian(): boolean {
     return this.hasRole('librarian');
+  }
+
+  /**
+   * Solicitar recuperación de contraseña
+   */
+  static async forgotPassword(email: string): Promise<void> {
+    const response = await axiosInstance.post<ApiResponse<void>>(
+      AUTH_ENDPOINTS.FORGOT_PASSWORD,
+      { email }
+    );
+    
+    if (!response.data.success) {
+      throw new Error(response.data.message || 'Error al solicitar recuperación de contraseña');
+    }
+  }
+
+  /**
+   * Restablecer contraseña con token
+   */
+  static async resetPassword(token: string, newPassword: string): Promise<void> {
+    const response = await axiosInstance.post<ApiResponse<void>>(
+      AUTH_ENDPOINTS.RESET_PASSWORD,
+      { token, newPassword }
+    );
+    
+    if (!response.data.success) {
+      throw new Error(response.data.message || 'Error al restablecer contraseña');
+    }
+  }
+
+  /**
+   * Obtener token de acceso
+   */
+  static getAccessToken(): string | null {
+    return localStorage.getItem('access_token');
   }
 }

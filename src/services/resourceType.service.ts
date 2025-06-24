@@ -4,19 +4,21 @@ import type { ApiResponse, PaginatedResponse } from '@/types/api.types';
 
 export interface ResourceType {
   _id: string;
-  name: 'book' | 'game' | 'map' | 'bible';
+  name: string;
   description: string;
   active: boolean;
+  isSystem: boolean;
   createdAt: Date;
   updatedAt: Date;
 }
 
 export interface CreateResourceTypeRequest {
-  name: 'book' | 'game' | 'map' | 'bible';
+  name: string;
   description: string;
 }
 
 export interface UpdateResourceTypeRequest {
+  name?: string;
   description?: string;
   active?: boolean;
 }
@@ -24,6 +26,7 @@ export interface UpdateResourceTypeRequest {
 export interface ResourceTypeFilters {
   search?: string;
   active?: boolean;
+  isSystem?: boolean;
   page?: number;
   limit?: number;
   sortBy?: string;
@@ -46,6 +49,7 @@ export class ResourceTypeService {
     
     if (filters.search) params.append('search', filters.search);
     if (filters.active !== undefined) params.append('active', filters.active.toString());
+    if (filters.isSystem !== undefined) params.append('isSystem', filters.isSystem.toString());
     if (filters.page) params.append('page', filters.page.toString());
     if (filters.limit) params.append('limit', filters.limit.toString());
     if (filters.sortBy) params.append('sortBy', filters.sortBy);
@@ -159,6 +163,8 @@ export class ResourceTypeService {
     total: number;
     active: number;
     inactive: number;
+    systemTypes: number;
+    customTypes: number;
     resourceCount: Record<string, number>;
   }> {
     try {
@@ -174,6 +180,8 @@ export class ResourceTypeService {
         total: 0,
         active: 0,
         inactive: 0,
+        systemTypes: 0,
+        customTypes: 0,
         resourceCount: {},
       };
     } catch (error) {
@@ -181,6 +189,8 @@ export class ResourceTypeService {
         total: 0,
         active: 0,
         inactive: 0,
+        systemTypes: 0,
+        customTypes: 0,
         resourceCount: {},
       };
     }

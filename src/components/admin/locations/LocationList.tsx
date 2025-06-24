@@ -14,11 +14,6 @@ import {
   CardBody,
   Text,
   Badge,
-  Menu,
-  MenuButton,
-  MenuList,
-  MenuItem,
-  MenuDivider,
   IconButton,
   Skeleton,
   SkeletonText,
@@ -29,10 +24,9 @@ import {
   FormControl,
   FormLabel,
 } from '@chakra-ui/react';
-import { useState } from 'react';
+import { useState, useEffect, useCallback, memo } from 'react';
 import {
   FiSearch,
-  FiMoreVertical,
   FiEdit,
   FiTrash2,
   FiPlus,
@@ -44,6 +38,24 @@ import { DeleteConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { DateUtils } from '@/utils';
 import type { Location, LocationFilters } from '@/services/location.service';
+import { PaginatedResponse } from '@/types/api.types';
+
+// ✅ HOOK PERSONALIZADO PARA DEBOUNCE
+function useDebounce<T>(value: T, delay: number): T {
+  const [debouncedValue, setDebouncedValue] = useState<T>(value);
+
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedValue(value);
+    }, delay);
+
+    return () => {
+      clearTimeout(handler);
+    };
+  }, [value, delay]);
+
+  return debouncedValue;
+}
 
 interface LocationListProps {
   onLocationSelect?: (location: Location) => void;
@@ -52,7 +64,8 @@ interface LocationListProps {
   showActions?: boolean;
 }
 
-function LocationCard({
+// ✅ COMPONENTE MEMOIZADO PARA EVITAR RE-RENDERIZADOS
+const LocationCard = memo(function LocationCard({
   location,
   onEdit,
   onDelete,
@@ -65,7 +78,7 @@ function LocationCard({
 }) {
   const { isOpen: isDeleteOpen, onOpen: onDeleteOpen, onClose: onDeleteClose } = useDisclosure();
 
-  const handleActionClick = (action: 'edit' | 'delete') => {
+  const handleActionClick = useCallback((action: 'edit' | 'delete') => {
     switch (action) {
       case 'edit':
         onEdit?.(location);
@@ -74,12 +87,12 @@ function LocationCard({
         onDeleteOpen();
         break;
     }
-  };
+  }, [location, onEdit, onDeleteOpen]);
 
-  const handleConfirmDelete = () => {
+  const handleConfirmDelete = useCallback(() => {
     onDelete?.(location);
     onDeleteClose();
-  };
+  }, [location, onDelete, onDeleteClose]);
 
   return (
     <>
@@ -90,6 +103,8 @@ function LocationCard({
         opacity={location.active ? 1 : 0.7}
         border={location.active ? '1px solid' : '2px dashed'}
         borderColor={location.active ? 'gray.200' : 'gray.300'}
+        position="relative"
+        zIndex={1}
       >
         <CardBody p={4}>
           <VStack spacing={3} align="stretch" h="full">
@@ -143,34 +158,27 @@ function LocationCard({
 
             {/* Acciones */}
             {showActions && (
-              <HStack justify="flex-end" pt={2}>
-                <Menu>
-                  <MenuButton
-                    as={IconButton}
-                    aria-label="Acciones"
-                    icon={<FiMoreVertical />}
-                    variant="ghost"
-                    size="sm"
-                  />
-                  <MenuList>
-                    <MenuItem
-                      icon={<FiEdit />}
-                      onClick={() => handleActionClick('edit')}
-                    >
-                      Editar
-                    </MenuItem>
-
-                    <MenuDivider />
-                    
-                    <MenuItem
-                      icon={<FiTrash2 />}
-                      onClick={() => handleActionClick('delete')}
-                      color="red.600"
-                    >
-                      Eliminar
-                    </MenuItem>
-                  </MenuList>
-                </Menu>
+              <HStack justify="flex-end" pt={2} spacing={2}>
+                <IconButton
+                  aria-label="Editar ubicación"
+                  icon={<FiEdit />}
+                  size="sm"
+                  variant="ghost"
+                  colorScheme="blue"
+                  onClick={() => handleActionClick('edit')}
+                  _hover={{ bg: 'blue.50' }}
+                  _active={{ bg: 'blue.100' }}
+                />
+                <IconButton
+                  aria-label="Eliminar ubicación"
+                  icon={<FiTrash2 />}
+                  size="sm"
+                  variant="ghost"
+                  colorScheme="red"
+                  onClick={() => handleActionClick('delete')}
+                  _hover={{ bg: 'red.50' }}
+                  _active={{ bg: 'red.100' }}
+                />
               </HStack>
             )}
           </VStack>
@@ -187,9 +195,10 @@ function LocationCard({
       />
     </>
   );
-}
+});
 
-function LoadingGrid({ count = 12 }: { count?: number }) {
+// ✅ COMPONENTE MEMOIZADO PARA EL GRID DE CARGA
+const LoadingGrid = memo(function LoadingGrid({ count = 12 }: { count?: number }) {
   return (
     <SimpleGrid columns={{ base: 1, md: 2, lg: 3, xl: 4 }} spacing={4}>
       {Array.from({ length: count }).map((_, i) => (
@@ -211,7 +220,63 @@ function LoadingGrid({ count = 12 }: { count?: number }) {
       ))}
     </SimpleGrid>
   );
-}
+});
+
+// ✅ COMPONENTE MEMOIZADO PARA LOS FILTROS
+const SearchFilters = memo(function SearchFilters({
+  searchInput,
+  onSearchChange,
+  activeFilter,
+  onActiveFilterChange,
+  onRefresh,
+  isRefetching,
+}: {
+  searchInput: string;
+  onSearchChange: (value: string) => void;
+  activeFilter: boolean | undefined;
+  onActiveFilterChange: (checked: boolean) => void;
+  onRefresh: () => void;
+  isRefetching: boolean;
+}) {
+  return (
+    <HStack spacing={4}>
+      <InputGroup maxW="300px">
+        <InputLeftElement pointerEvents="none">
+          <FiSearch color="gray.300" />
+        </InputLeftElement>
+        <Input
+          placeholder="Buscar ubicaciones..."
+          value={searchInput}
+          onChange={(e) => onSearchChange(e.target.value)}
+          autoComplete="off"
+          spellCheck="false"
+          autoCorrect="off"
+        />
+      </InputGroup>
+
+      <FormControl display="flex" alignItems="center" w="auto">
+        <FormLabel htmlFor="active-filter" mb="0" fontSize="sm">
+          Solo activas
+        </FormLabel>
+        <Switch
+          id="active-filter"
+          isChecked={activeFilter === true}
+          onChange={(e) => onActiveFilterChange(e.target.checked)}
+        />
+      </FormControl>
+
+      <HStack spacing={2} ml="auto">
+        <IconButton
+          aria-label="Refrescar"
+          icon={<FiRefreshCw />}
+          onClick={onRefresh}
+          isLoading={isRefetching}
+          variant="ghost"
+        />
+      </HStack>
+    </HStack>
+  );
+});
 
 export function LocationList({
   onLocationSelect,
@@ -219,16 +284,27 @@ export function LocationList({
   onCreate,
   showActions = true,
 }: LocationListProps) {
+  // ✅ ESTADO SEPARADO PARA EL INPUT DE BÚSQUEDA
+  const [searchInput, setSearchInput] = useState('');
+  
+  // ✅ DEBOUNCE DEL VALOR DE BÚSQUEDA (500ms)
+  const debouncedSearch = useDebounce(searchInput, 500);
+
   const [filters, setFilters] = useState<LocationFilters>({
     search: '',
     active: undefined,
     page: 1,
-    limit: 50, // Aumentado para obtener más ubicaciones de una vez
+    limit: 20,
     sortBy: 'name',
     sortOrder: 'asc',
   });
 
-  // ✅ CORREGIDO: Usar locationsResponse en lugar de categoriesResponse
+  // ✅ ACTUALIZAR FILTROS CUANDO CAMBIE EL DEBOUNCE
+  useEffect(() => {
+    setFilters(prev => ({ ...prev, search: debouncedSearch, page: 1 }));
+  }, [debouncedSearch]);
+
+  // Queries y mutations
   const {
     data: locationsResponse,
     isLoading,
@@ -240,218 +316,130 @@ export function LocationList({
 
   const deleteMutation = useDeleteLocation();
 
-  // Handlers
-  const handleSearchChange = (value: string) => {
-    setFilters(prev => ({ ...prev, search: value, page: 1 }));
-  };
+  // ✅ HANDLERS MEMOIZADOS
+  const handleSearchInputChange = useCallback((value: string) => {
+    setSearchInput(value);
+  }, []);
 
-  const handleActiveFilterChange = (checked: boolean) => {
+  const handleActiveFilterChange = useCallback((checked: boolean) => {
     setFilters(prev => ({ 
       ...prev, 
       active: checked ? true : undefined,
       page: 1 
     }));
-  };
+  }, []);
 
-  const handleRefresh = () => {
+  const handleRefresh = useCallback(() => {
     refetch();
-  };
+  }, [refetch]);
 
-  const handleLocationEdit = (location: Location) => {
+  const handleLocationEdit = useCallback((location: Location) => {
     if (onLocationEdit) {
       onLocationEdit(location);
-    } else if (onLocationSelect) {
-      onLocationSelect(location);
     }
-  };
+  }, [onLocationEdit]);
 
-  const handleDeleteLocation = async (location: Location) => {
+  const handleDeleteLocation = useCallback(async (location: Location) => {
     try {
       await deleteMutation.mutateAsync(location._id);
+      refetch();
     } catch (error) {
       // Error manejado por el hook
     }
-  };
+  }, [deleteMutation, refetch]);
 
-  // ✅ CORREGIDO: Variables y lógica para locations en lugar de categories
+  // Renderizado condicional
+  if (isLoading) {
+    return <LoadingGrid />;
+  }
+
+  if (isError) {
+    return (
+      <Alert status="error">
+        <AlertIcon />
+        <VStack align="start" flex={1}>
+          <Text fontWeight="semibold">Error al cargar ubicaciones</Text>
+          <Text fontSize="sm">{error?.message}</Text>
+          <Button size="sm" onClick={handleRefresh}>
+            Reintentar
+          </Button>
+        </VStack>
+      </Alert>
+    );
+  }
+
+  // Manejo seguro de la respuesta
   let locations: Location[] = [];
   let totalCount = 0;
+  let pagination: { total: number; page: number; totalPages: number } | null = null;
 
   if (locationsResponse) {
-    // Verificar si la respuesta es un array directo o un objeto paginado
-    if (Array.isArray(locationsResponse)) {
-      // El backend retorna directamente un array
-      locations = locationsResponse as Location[];
+    if ('data' in locationsResponse && 'pagination' in locationsResponse) {
+      // Es una respuesta paginada
+      const response = locationsResponse as PaginatedResponse<Location>;
+      locations = response.data;
+      pagination = response.pagination;
+      totalCount = pagination?.total || 0;
+    } else if (Array.isArray(locationsResponse)) {
+      // Es un array directo
+      locations = locationsResponse;
       totalCount = locations.length;
-    } else if (locationsResponse.data && Array.isArray(locationsResponse.data)) {
-      // El backend retorna un objeto paginado
-      locations = locationsResponse.data;
-      totalCount = locationsResponse.pagination?.total || locationsResponse.data.length;
-    } else {
-      console.warn('Formato de respuesta inesperado para ubicaciones:', locationsResponse);
     }
   }
 
-  const isLoadingData = isLoading || isRefetching;
-  const isMutating = deleteMutation.isPending;
-
-  // Log para debugging (remover en producción)
-  if (process.env.NODE_ENV === 'development') {
-    console.log('LocationList - locationsResponse:', locationsResponse);
-    console.log('LocationList - locations:', locations);
-    console.log('LocationList - totalCount:', totalCount);
+  if (locations.length === 0) {
+    return (
+      <EmptyState
+        title="No se encontraron ubicaciones"
+        description={
+          filters.search || filters.active !== undefined
+            ? 'Intente ajustar los filtros de búsqueda'
+            : 'No hay ubicaciones registradas en el sistema'
+        }
+        icon={FiMapPin}
+        onAction={onCreate}
+        actionLabel="Crear Ubicación"
+      />
+    );
   }
 
   return (
-    <VStack spacing={6} align="stretch">
-      {/* Filtros */}
-      <VStack spacing={4} align="stretch">
-        <HStack spacing={4}>
-          {/* Búsqueda */}
-          <InputGroup flex={1}>
-            <InputLeftElement pointerEvents="none">
-              <FiSearch color="gray.400" />
-            </InputLeftElement>
-            <Input
-              placeholder="Buscar ubicaciones por nombre..."
-              value={filters.search}
-              onChange={(e) => handleSearchChange(e.target.value)}
-              bg="white"
+    <VStack spacing={4} align="stretch" position="relative">
+      {/* Filtros y acciones */}
+      <SearchFilters
+        searchInput={searchInput}
+        onSearchChange={handleSearchInputChange}
+        activeFilter={filters.active}
+        onActiveFilterChange={handleActiveFilterChange}
+        onRefresh={handleRefresh}
+        isRefetching={isRefetching}
+      />
+
+      {/* Lista de ubicaciones */}
+      <Box position="relative" overflow="visible">
+        <SimpleGrid columns={{ base: 1, md: 2, lg: 3, xl: 4 }} spacing={4}>
+          {locations.map((location: Location) => (
+            <LocationCard
+              key={location._id}
+              location={location}
+              onEdit={handleLocationEdit}
+              onDelete={handleDeleteLocation}
+              showActions={showActions}
             />
-          </InputGroup>
+          ))}
+        </SimpleGrid>
+      </Box>
 
-          {/* Controles */}
-          <HStack spacing={2}>
-            <Button
-              leftIcon={<FiRefreshCw />}
-              variant="outline"
-              onClick={handleRefresh}
-              isLoading={isLoadingData}
-              size="md"
-            >
-              Actualizar
-            </Button>
-
-            {onCreate && (
-              <Button
-                leftIcon={<FiPlus />}
-                colorScheme="green"
-                onClick={onCreate}
-                size="md"
-              >
-                Nueva Ubicación
-              </Button>
-            )}
-          </HStack>
-        </HStack>
-
-        {/* Filtro de estado y contador */}
-        <HStack spacing={4}>
-          <FormControl display="flex" alignItems="center" w="auto">
-            <FormLabel htmlFor="active-filter" mb={0} fontSize="sm">
-              Solo activas
-            </FormLabel>
-            <Switch
-              id="active-filter"
-              isChecked={filters.active === true}
-              onChange={(e) => handleActiveFilterChange(e.target.checked)}
-              colorScheme="green"
-            />
-          </FormControl>
-
+      {/* Información de paginación */}
+      {pagination && (
+        <HStack justify="center" p={4}>
           <Text fontSize="sm" color="gray.600">
-            {totalCount === 0
-              ? 'No se encontraron ubicaciones'
-              : `${totalCount} ubicación${totalCount !== 1 ? 'es' : ''} encontrada${totalCount !== 1 ? 's' : ''}`
+            Mostrando {locations.length} de {totalCount} ubicaciones
+            {pagination.totalPages > 1 && 
+              ` - Página ${pagination.page} de ${pagination.totalPages}`
             }
           </Text>
         </HStack>
-      </VStack>
-
-      {/* Estados de error */}
-      {isError && (
-        <Alert status="error" borderRadius="md">
-          <AlertIcon />
-          <Box>
-            <Text fontWeight="medium">Error al cargar ubicaciones</Text>
-            <Text fontSize="sm">
-              {error?.message || 'No se pudieron cargar las ubicaciones. Intenta refrescar la página.'}
-            </Text>
-          </Box>
-        </Alert>
-      )}
-
-      {/* Contenido principal */}
-      <Box position="relative">
-        {/* Overlay de loading para mutaciones */}
-        {isMutating && (
-          <Box
-            position="absolute"
-            top={0}
-            left={0}
-            right={0}
-            bottom={0}
-            bg="rgba(255, 255, 255, 0.8)"
-            zIndex={10}
-            display="flex"
-            alignItems="center"
-            justifyContent="center"
-            borderRadius="md"
-          >
-            <Text>Procesando...</Text>
-          </Box>
-        )}
-
-        {/* Lista de ubicaciones */}
-        {isLoadingData ? (
-          <LoadingGrid />
-        ) : locations.length === 0 ? (
-          <EmptyState
-            icon={FiMapPin}
-            title="No hay ubicaciones registradas"
-            description={
-              filters.search 
-                ? `No se encontraron ubicaciones que coincidan con "${filters.search}"`
-                : "Comienza creando ubicaciones para organizar físicamente tus recursos."
-            }
-            actionLabel={onCreate ? "Crear Primera Ubicación" : undefined}
-            onAction={onCreate}
-          />
-        ) : (
-          <SimpleGrid
-            columns={{ base: 1, md: 2, lg: 3, xl: 4 }}
-            spacing={4}
-            opacity={isMutating ? 0.6 : 1}
-            transition="opacity 0.2s"
-          >
-            {locations.map((location: Location) => (
-              <LocationCard
-                key={location._id}
-                location={location}
-                onEdit={handleLocationEdit}
-                onDelete={handleDeleteLocation}
-                showActions={showActions}
-              />
-            ))}
-          </SimpleGrid>
-        )}
-      </Box>
-
-      {/* Información de ayuda */}
-      {!isLoadingData && locations.length > 0 && (
-        <Alert status="info" borderRadius="md">
-          <AlertIcon />
-          <Box>
-            <Text fontSize="sm" fontWeight="medium">
-              Consejos para ubicaciones
-            </Text>
-            <Text fontSize="xs" color="gray.600">
-              • Usa nombres descriptivos como "Estante A - Nivel 2" o "Armario Principal"<br />
-              • Los códigos cortos facilitan la identificación rápida<br />
-              • Las ubicaciones inactivas no aparecen en los formularios de recursos
-            </Text>
-          </Box>
-        </Alert>
       )}
     </VStack>
   );

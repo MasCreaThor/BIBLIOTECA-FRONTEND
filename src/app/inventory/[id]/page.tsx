@@ -17,9 +17,6 @@ import {
   AlertIcon,
   Skeleton,
   SkeletonText,
-  Breadcrumb,
-  BreadcrumbItem,
-  BreadcrumbLink,
   useDisclosure,
   Modal,
   ModalOverlay,
@@ -42,7 +39,8 @@ import {
   FiCalendar,
   FiBook,
   FiImage,
-  FiExternalLink
+  FiExternalLink,
+  FiUserCheck
 } from 'react-icons/fi';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { ResourceForm } from '@/components/resources/ResourceForm/ResourceForm';
@@ -56,6 +54,7 @@ import {
 import { DateUtils } from '@/utils';
 import { ImageUtils } from '@/utils/imageUtils';
 import type { Resource, UpdateResourceRequest } from '@/types/resource.types';
+import type { Resource as ApiResource } from '@/types/api.types';
 
 const RESOURCE_TYPE_CONFIGS = {
   book: { icon: '📚', label: 'Libro', color: 'blue' },
@@ -110,6 +109,11 @@ export default function ResourceDetailPage() {
     } catch (error) {
       // Error manejado por el hook
     }
+  };
+
+  const handleCreateLoan = () => {
+    // Redirigir a la página de préstamos con el recurso pre-seleccionado
+    router.push(`/loans?resourceId=${resourceId}`);
   };
 
   const handleDeleteResource = async () => {
@@ -182,19 +186,47 @@ export default function ResourceDetailPage() {
     ? RESOURCE_TYPE_CONFIGS[resource.type.name as keyof typeof RESOURCE_TYPE_CONFIGS]
     : { icon: '📄', label: 'Recurso', color: 'gray' };
 
+  // ✅ MEJORADO: Validación más defensiva para evitar errores
+  const safeTypeConfig = typeConfig || { icon: '📄', label: 'Recurso', color: 'gray' };
+
   // Configuración del estado
   const stateConfig = resource.state
     ? RESOURCE_STATE_CONFIGS[resource.state.name as keyof typeof RESOURCE_STATE_CONFIGS]
     : { label: 'Estado desconocido', color: 'gray' };
+
+  // ✅ MEJORADO: Validación más defensiva para el estado
+  const safeStateConfig = stateConfig || { label: 'Estado desconocido', color: 'gray' };
 
   // Información de autores
   const authorsText = resource.authors && resource.authors.length > 0
     ? resource.authors.map(author => author.name).join(', ')
     : 'Sin autor especificado';
 
+  // ✅ DEBUG: Log para verificar datos del recurso
+  console.log('🔍 ResourceDetailPage - Datos del recurso:', {
+    id: resource._id,
+    title: resource.title,
+    authors: resource.authors,
+    authorIds: resource.authorIds,
+    hasAuthors: !!resource.authors,
+    authorsLength: resource.authors?.length || 0,
+    categoryId: resource.categoryId,
+    locationId: resource.locationId,
+    stateId: resource.stateId,
+    publisherId: resource.publisherId,
+    volumes: resource.volumes,
+    notes: resource.notes,
+    available: resource.available,
+    type: resource.type,
+    typeId: resource.typeId,
+    hasType: !!resource.type,
+    typeName: resource.type?.name,
+  });
+
   // ✅ NUEVO: Configuración de imagen
   const imageUrl = ImageUtils.getResourceImageUrl(resource);
-  const placeholderUrl = ImageUtils.getPlaceholderImageUrl(resource.type?.name || 'book');
+  const resourceTypeName = resource.type?.name as 'book' | 'game' | 'map' | 'bible' | undefined;
+  const placeholderUrl = ImageUtils.getPlaceholderImageUrl(resourceTypeName || 'book');
 
   const isMutating = updateMutation.isPending || 
                    updateAvailabilityMutation.isPending || 
@@ -203,34 +235,22 @@ export default function ResourceDetailPage() {
   return (
     <DashboardLayout>
       <VStack spacing={6} align="stretch">
-        {/* Navegación */}
-        <Box>
-          <Breadcrumb spacing={2} fontSize="sm" color="gray.600">
-            <BreadcrumbItem>
-              <BreadcrumbLink href="/inventory">Inventario</BreadcrumbLink>
-            </BreadcrumbItem>
-            <BreadcrumbItem isCurrentPage>
-              <Text>{resource.title}</Text>
-            </BreadcrumbItem>
-          </Breadcrumb>
-        </Box>
-
         {/* Header */}
         <Box>
           <HStack justify="space-between" align="start" mb={4}>
             <VStack align="start" spacing={3}>
               {/* Título y tipo */}
               <HStack spacing={3}>
-                <Box p={2} bg={`${typeConfig.color}.50`} borderRadius="lg">
-                  <Text fontSize="2xl">{typeConfig.icon}</Text>
+                <Box p={2} bg={`${safeTypeConfig.color}.50`} borderRadius="lg">
+                  <Text fontSize="2xl">{safeTypeConfig.icon}</Text>
                 </Box>
                 <VStack align="start" spacing={1}>
                   <Heading size="lg" color="gray.800" lineHeight="short">
                     {resource.title}
                   </Heading>
                   <HStack spacing={2}>
-                    <Badge colorScheme={typeConfig.color} variant="solid">
-                      {typeConfig.label}
+                    <Badge colorScheme={safeTypeConfig.color} variant="solid">
+                      {safeTypeConfig.label}
                     </Badge>
                     <Badge
                       colorScheme={resource.available ? 'green' : 'orange'}
@@ -238,8 +258,8 @@ export default function ResourceDetailPage() {
                     >
                       {resource.available ? 'Disponible' : 'Prestado'}
                     </Badge>
-                    <Badge colorScheme={stateConfig.color} variant="outline">
-                      {stateConfig.label}
+                    <Badge colorScheme={safeStateConfig.color} variant="outline">
+                      {safeStateConfig.label}
                     </Badge>
                   </HStack>
                 </VStack>
@@ -372,15 +392,15 @@ export default function ResourceDetailPage() {
               </Button>
               
               <Button
-                leftIcon={resource.available ? <FiToggleLeft /> : <FiToggleRight />}
-                colorScheme={resource.available ? 'orange' : 'green'}
+                leftIcon={resource.available ? <FiUserCheck /> : <FiToggleRight />}
+                colorScheme={resource.available ? 'green' : 'green'}
                 variant="outline"
-                onClick={handleToggleAvailability}
+                onClick={resource.available ? handleCreateLoan : handleToggleAvailability}
                 isLoading={updateAvailabilityMutation.isPending}
                 loadingText="Actualizando..."
                 isDisabled={isMutating}
               >
-                {resource.available ? 'Marcar como prestado' : 'Marcar como disponible'}
+                {resource.available ? 'Prestar Recurso' : 'Marcar como disponible'}
               </Button>
 
               <Button
@@ -497,7 +517,7 @@ export default function ResourceDetailPage() {
           <ModalCloseButton />
           <ModalBody pb={6}>
             <ResourceForm
-              resource={resource}
+              resource={resource as ApiResource}
               onSubmit={handleUpdateResource}
               onCancel={onEditClose}
               isLoading={updateMutation.isPending}

@@ -1,6 +1,6 @@
 // src/types/dashboard.types.ts
 import { UseQueryResult } from '@tanstack/react-query';
-import { DashboardStats, DetailedStats } from '@/services/dashboard.service';
+import { DetailedStats } from '@/services/dashboard.service';
 
 // Tipos para los hooks de dashboard
 export interface BaseDashboardData {
@@ -47,4 +47,23 @@ export interface QuickActionProps {
   icon: any;
   description: string;
   color: string;
+}
+
+export interface DashboardStats {
+  totalResources: number;
+  activeLoans: number;
+  overdueLoans: number;
+  totalPeople: number;
+  recentActivity: {
+    loans: number;
+    returns: number;
+    newResources: number;
+    newPeople: number;
+  };
+  loanQuality: {
+    onTimeReturnRate: number;
+    averageLoanDuration: number;
+    returnedThisMonth: number;
+    lostLoans: number;
+  };
 }

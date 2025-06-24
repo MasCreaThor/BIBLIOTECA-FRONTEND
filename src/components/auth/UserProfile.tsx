@@ -13,49 +13,18 @@ import {
   VStack,
   Badge,
   IconButton,
-  useDisclosure,
-  Modal,
-  ModalOverlay,
-  ModalContent,
-  ModalHeader,
-  ModalBody,
-  ModalCloseButton,
-  Button,
-  FormControl,
-  FormLabel,
-  Input,
-  useToast,
 } from '@chakra-ui/react';
-import { useState } from 'react';
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { z } from 'zod';
 import {
   FiUser,
   FiSettings,
   FiLogOut,
   FiChevronDown,
   FiShield,
-  FiKey,
 } from 'react-icons/fi';
 import { useAuth } from '@/hooks/useAuth';
 import { useConfirmDialog } from '@/components/ui/ConfirmDialog';
+import { SafeLink } from '@/components/ui/SafeLink';
 import { DateUtils } from '@/utils';
-
-// Schema para cambio de contraseña
-const changePasswordSchema = z.object({
-  currentPassword: z.string().min(1, 'La contraseña actual es requerida'),
-  newPassword: z
-    .string()
-    .min(8, 'La nueva contraseña debe tener al menos 8 caracteres')
-    .regex(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/, 'La contraseña debe contener al menos una mayúscula, una minúscula y un número'),
-  confirmPassword: z.string().min(1, 'Confirma la nueva contraseña'),
-}).refine((data) => data.newPassword === data.confirmPassword, {
-  message: 'Las contraseñas no coinciden',
-  path: ['confirmPassword'],
-});
-
-type ChangePasswordData = z.infer<typeof changePasswordSchema>;
 
 interface UserProfileProps {
   size?: 'sm' | 'md' | 'lg';
@@ -63,25 +32,13 @@ interface UserProfileProps {
 }
 
 export function UserProfile({ size = 'md', showText = true }: UserProfileProps) {
-  const { user, logout, changePassword } = useAuth();
-  const { isOpen: isPasswordModalOpen, onOpen: onPasswordModalOpen, onClose: onPasswordModalClose } = useDisclosure();
-  const [isChangingPassword, setIsChangingPassword] = useState(false);
-  const toast = useToast();
+  const { user, logout } = useAuth();
   
   const { confirm: confirmLogout, dialog: logoutDialog } = useConfirmDialog({
     title: 'Cerrar Sesión',
     message: '¿Estás seguro de que quieres cerrar sesión? Tendrás que iniciar sesión nuevamente.',
     confirmText: 'Cerrar Sesión',
     variant: 'info',
-  });
-
-  const {
-    register,
-    handleSubmit,
-    formState: { errors },
-    reset,
-  } = useForm<ChangePasswordData>({
-    resolver: zodResolver(changePasswordSchema),
   });
 
   // Configuración de tamaño
@@ -100,46 +57,43 @@ export function UserProfile({ size = 'md', showText = true }: UserProfileProps) 
     }
   };
 
-  const handleChangePassword = async (data: ChangePasswordData) => {
-    try {
-      setIsChangingPassword(true);
-      await changePassword({
-        currentPassword: data.currentPassword,
-        newPassword: data.newPassword,
-      });
-      
-      toast({
-        title: 'Contraseña actualizada',
-        description: 'Tu contraseña ha sido cambiada exitosamente',
-        status: 'success',
-        duration: 3000,
-      });
-      
-      reset();
-      onPasswordModalClose();
-    } catch (error: any) {
-      toast({
-        title: 'Error al cambiar contraseña',
-        description: error?.message || 'Ocurrió un error inesperado',
-        status: 'error',
-        duration: 5000,
-      });
-    } finally {
-      setIsChangingPassword(false);
-    }
-  };
-
   if (!user) {
     return null;
   }
 
-  // Obtener iniciales del email
-  const getInitials = (email: string) => {
-    const parts = email.split('@')[0].split('.');
+  // Obtener iniciales del nombre completo
+  const getInitials = () => {
+    if (user.firstName && user.lastName) {
+      return `${user.firstName[0]}${user.lastName[0]}`.toUpperCase();
+    }
+    // Si solo hay firstName
+    if (user.firstName) {
+      return user.firstName.substring(0, 2).toUpperCase();
+    }
+    // Si solo hay lastName
+    if (user.lastName) {
+      return user.lastName.substring(0, 2).toUpperCase();
+    }
+    // Fallback al email si no hay nombre
+    const emailName = user.email.split('@')[0];
+    const parts = emailName.split('.');
     if (parts.length >= 2) {
       return `${parts[0][0]}${parts[1][0]}`.toUpperCase();
     }
-    return email.substring(0, 2).toUpperCase();
+    return emailName.substring(0, 2).toUpperCase();
+  };
+
+  const getDisplayName = () => {
+    if (user.firstName && user.lastName) {
+      return `${user.firstName} ${user.lastName}`;
+    }
+    if (user.firstName) {
+      return user.firstName;
+    }
+    if (user.lastName) {
+      return user.lastName;
+    }
+    return user.email.split('@')[0];
   };
 
   const getRoleBadge = (role: string) => {
@@ -165,18 +119,15 @@ export function UserProfile({ size = 'md', showText = true }: UserProfileProps) 
           <HStack spacing={3}>
             <Avatar
               size={config.avatar}
-              name={user.email}
+              name={getDisplayName()}
               bg="blue.500"
               color="white"
-              src="" // Sin imagen, usar iniciales
-            >
-              {getInitials(user.email)}
-            </Avatar>
+            />
             
             {showText && (
               <VStack spacing={0} align="start" display={{ base: 'none', md: 'flex' }}>
                 <Text fontSize={config.text} fontWeight="medium" color="gray.700">
-                  {user.email.split('@')[0]}
+                  {getDisplayName()}
                 </Text>
                 <Badge size="sm" colorScheme={roleBadge.colorScheme}>
                   {roleBadge.label}
@@ -199,6 +150,9 @@ export function UserProfile({ size = 'md', showText = true }: UserProfileProps) 
           <Box px={4} py={3}>
             <VStack spacing={1} align="start">
               <Text fontWeight="medium" fontSize="sm">
+                {getDisplayName()}
+              </Text>
+              <Text fontSize="xs" color="gray.600">
                 {user.email}
               </Text>
               <HStack spacing={2}>
@@ -218,16 +172,13 @@ export function UserProfile({ size = 'md', showText = true }: UserProfileProps) 
           <MenuDivider />
 
           {/* Opciones del menú */}
-          <MenuItem icon={<FiUser />} fontSize="sm">
+          <MenuItem 
+            icon={<FiUser />} 
+            fontSize="sm"
+            as={SafeLink}
+            href="/profile"
+          >
             Mi Perfil
-          </MenuItem>
-          
-          <MenuItem icon={<FiKey />} fontSize="sm" onClick={onPasswordModalOpen}>
-            Cambiar Contraseña
-          </MenuItem>
-          
-          <MenuItem icon={<FiSettings />} fontSize="sm">
-            Configuración
           </MenuItem>
 
           <MenuDivider />
@@ -242,80 +193,6 @@ export function UserProfile({ size = 'md', showText = true }: UserProfileProps) 
           </MenuItem>
         </MenuList>
       </Menu>
-
-      {/* Modal para cambiar contraseña */}
-      <Modal isOpen={isPasswordModalOpen} onClose={onPasswordModalClose} size="md">
-        <ModalOverlay />
-        <ModalContent>
-          <ModalHeader>Cambiar Contraseña</ModalHeader>
-          <ModalCloseButton />
-          <ModalBody pb={6}>
-            <form onSubmit={handleSubmit(handleChangePassword)}>
-              <VStack spacing={4}>
-                <FormControl isInvalid={!!errors.currentPassword}>
-                  <FormLabel>Contraseña Actual</FormLabel>
-                  <Input
-                    {...register('currentPassword')}
-                    type="password"
-                    placeholder="Tu contraseña actual"
-                  />
-                  {errors.currentPassword && (
-                    <Text color="red.500" fontSize="sm">
-                      {errors.currentPassword.message}
-                    </Text>
-                  )}
-                </FormControl>
-
-                <FormControl isInvalid={!!errors.newPassword}>
-                  <FormLabel>Nueva Contraseña</FormLabel>
-                  <Input
-                    {...register('newPassword')}
-                    type="password"
-                    placeholder="Tu nueva contraseña"
-                  />
-                  {errors.newPassword && (
-                    <Text color="red.500" fontSize="sm">
-                      {errors.newPassword.message}
-                    </Text>
-                  )}
-                  <Text fontSize="xs" color="gray.600" mt={1}>
-                    Mínimo 8 caracteres, debe incluir mayúscula, minúscula y número
-                  </Text>
-                </FormControl>
-
-                <FormControl isInvalid={!!errors.confirmPassword}>
-                  <FormLabel>Confirmar Nueva Contraseña</FormLabel>
-                  <Input
-                    {...register('confirmPassword')}
-                    type="password"
-                    placeholder="Confirma tu nueva contraseña"
-                  />
-                  {errors.confirmPassword && (
-                    <Text color="red.500" fontSize="sm">
-                      {errors.confirmPassword.message}
-                    </Text>
-                  )}
-                </FormControl>
-
-                <HStack spacing={3} w="full" pt={2}>
-                  <Button variant="outline" onClick={onPasswordModalClose} flex={1}>
-                    Cancelar
-                  </Button>
-                  <Button
-                    type="submit"
-                    colorScheme="blue"
-                    isLoading={isChangingPassword}
-                    loadingText="Cambiando..."
-                    flex={1}
-                  >
-                    Cambiar Contraseña
-                  </Button>
-                </HStack>
-              </VStack>
-            </form>
-          </ModalBody>
-        </ModalContent>
-      </Modal>
 
       {/* Dialog de confirmación de logout */}
       {logoutDialog}

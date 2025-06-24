@@ -1,3 +1,4 @@
+// src/services/person.service.ts - VERSIÓN CORREGIDA
 import axiosInstance from '@/lib/axios';
 import {
   ApiResponse,
@@ -25,130 +26,273 @@ export class PersonService {
    * Crear una nueva persona
    */
   static async createPerson(personData: CreatePersonRequest): Promise<Person> {
-    const response = await axiosInstance.post<ApiResponse<Person>>(
-      PERSON_ENDPOINTS.PEOPLE,
-      personData
-    );
+    try {
+      console.log('👤 PersonService: Creando persona:', personData);
+      
+      const response = await axiosInstance.post<ApiResponse<Person>>(
+        PERSON_ENDPOINTS.PEOPLE,
+        personData
+      );
 
-    if (response.data.success && response.data.data) {
-      return response.data.data;
+      if (response.data.success && response.data.data) {
+        console.log('✅ PersonService: Persona creada exitosamente:', response.data.data._id);
+        return response.data.data;
+      }
+
+      throw new Error(response.data.message || 'Error al crear persona');
+    } catch (error: any) {
+      console.error('❌ PersonService: Error al crear persona:', error);
+      throw error;
     }
-
-    throw new Error(response.data.message || 'Error al crear persona');
   }
 
   /**
-   * Obtener todas las personas con filtros
+   * Obtener todas las personas con filtros - VERSIÓN CORREGIDA CON FALLBACKS
    */
   static async getPeople(filters: SearchFilters = {}): Promise<PaginatedResponse<Person>> {
-    const params = new URLSearchParams();
+    try {
+      const params = new URLSearchParams();
 
-    // Agregar parámetros de filtro
-    if (filters.search) params.append('search', filters.search);
-    if (filters.personType) params.append('personType', filters.personType);
-    if (filters.status) params.append('status', filters.status);
-    if (filters.page) params.append('page', filters.page.toString());
-    if (filters.limit) params.append('limit', filters.limit.toString());
-    if (filters.sortBy) params.append('sortBy', filters.sortBy);
-    if (filters.sortOrder) params.append('sortOrder', filters.sortOrder);
+      // Agregar parámetros de filtro con validación
+      if (filters.search?.trim()) params.append('search', filters.search.trim());
+      if (filters.personType) params.append('personType', filters.personType);
+      if (filters.status) params.append('status', filters.status);
+      if (filters.page && filters.page > 0) params.append('page', filters.page.toString());
+      if (filters.limit && filters.limit > 0) params.append('limit', Math.min(filters.limit, 100).toString());
+      if (filters.sortBy) params.append('sortBy', filters.sortBy);
+      if (filters.sortOrder) params.append('sortOrder', filters.sortOrder);
 
-    const response = await axiosInstance.get<ApiResponse<PaginatedResponse<Person>>>(
-      `${PERSON_ENDPOINTS.PEOPLE}?${params.toString()}`
-    );
+      const url = `${PERSON_ENDPOINTS.PEOPLE}?${params.toString()}`;
+      
+      console.log('🔍 PersonService: Buscando personas:', {
+        url,
+        filters,
+        paramsString: params.toString()
+      });
 
-    if (response.data.success && response.data.data) {
-      return response.data.data;
+      const response = await axiosInstance.get<ApiResponse<PaginatedResponse<Person>>>(url);
+
+      console.log('✅ PersonService: Respuesta recibida:', {
+        success: response.data.success,
+        dataLength: response.data.data?.data?.length || 0,
+        total: response.data.data?.pagination?.total || 0,
+        status: response.status
+      });
+
+      if (response.data.success && response.data.data) {
+        return response.data.data;
+      }
+
+      throw new Error(response.data.message || 'Error al obtener personas');
+    } catch (error: any) {
+      console.error('❌ PersonService: Error al buscar personas:', {
+        error: error.message,
+        status: error.response?.status,
+        statusText: error.response?.statusText,
+        filters
+      });
+
+      // Si es error 500 y posiblemente de populate, intentar fallback
+      if (error.response?.status === 500) {
+        console.warn('🔄 PersonService: Intentando método de fallback para error 500...');
+        return await this.getPeopleWithFallback(filters);
+      }
+
+      // Si es error de conectividad, crear respuesta vacía válida
+      if (!error.response) {
+        console.warn('🌐 PersonService: Error de conectividad, devolviendo respuesta vacía');
+        return this.createEmptyResponse(filters);
+      }
+
+      throw error;
     }
+  }
 
-    throw new Error(response.data.message || 'Error al obtener personas');
+  /**
+   * Método de fallback para cuando falla el populate en el backend
+   */
+  private static async getPeopleWithFallback(filters: SearchFilters): Promise<PaginatedResponse<Person>> {
+    try {
+      const params = new URLSearchParams();
+
+      // Usar parámetros más simples
+      if (filters.search?.trim()) params.append('search', filters.search.trim());
+      if (filters.page) params.append('page', filters.page.toString());
+      if (filters.limit) params.append('limit', (filters.limit || 10).toString());
+      
+      // Intentar sin populate si el backend lo soporta
+      params.append('populate', 'false');
+
+      const url = `${PERSON_ENDPOINTS.PEOPLE}?${params.toString()}`;
+      console.log('🔄 PersonService: Fallback con parámetros simples:', url);
+
+      const response = await axiosInstance.get<ApiResponse<PaginatedResponse<Person>>>(url);
+
+      if (response.data.success && response.data.data) {
+        console.log('✅ PersonService: Fallback exitoso');
+        return response.data.data;
+      }
+
+      throw new Error('Fallback falló');
+    } catch (error) {
+      console.error('❌ PersonService: Fallback falló:', error);
+      return this.createEmptyResponse(filters);
+    }
+  }
+
+  /**
+   * Crear respuesta vacía válida como último recurso
+   */
+  private static createEmptyResponse(filters: SearchFilters): PaginatedResponse<Person> {
+    console.warn('🆘 PersonService: Creando respuesta vacía como último recurso');
+    return {
+      data: [],
+      pagination: {
+        total: 0,
+        page: filters.page || 1,
+        limit: filters.limit || 10,
+        totalPages: 0,
+        hasNextPage: false,
+        hasPrevPage: false
+      }
+    };
   }
 
   /**
    * Obtener persona por ID
    */
   static async getPersonById(id: string): Promise<Person> {
-    const response = await axiosInstance.get<ApiResponse<Person>>(
-      PERSON_ENDPOINTS.PERSON_BY_ID(id)
-    );
+    try {
+      console.log('🔍 PersonService: Buscando persona por ID:', id);
 
-    if (response.data.success && response.data.data) {
-      return response.data.data;
+      const response = await axiosInstance.get<ApiResponse<Person>>(
+        PERSON_ENDPOINTS.PERSON_BY_ID(id)
+      );
+
+      if (response.data.success && response.data.data) {
+        console.log('✅ PersonService: Persona encontrada:', response.data.data._id);
+        return response.data.data;
+      }
+
+      throw new Error(response.data.message || 'Error al obtener persona');
+    } catch (error: any) {
+      console.error('❌ PersonService: Error al buscar persona por ID:', error);
+      throw error;
     }
-
-    throw new Error(response.data.message || 'Error al obtener persona');
   }
 
   /**
    * Obtener persona por número de documento
    */
   static async getPersonByDocument(documentNumber: string): Promise<Person> {
-    const response = await axiosInstance.get<ApiResponse<Person>>(
-      PERSON_ENDPOINTS.PERSON_BY_DOCUMENT(documentNumber)
-    );
+    try {
+      console.log('🔍 PersonService: Buscando persona por documento:', documentNumber);
 
-    if (response.data.success && response.data.data) {
-      return response.data.data;
+      const response = await axiosInstance.get<ApiResponse<Person>>(
+        PERSON_ENDPOINTS.PERSON_BY_DOCUMENT(documentNumber)
+      );
+
+      if (response.data.success && response.data.data) {
+        console.log('✅ PersonService: Persona encontrada por documento');
+        return response.data.data;
+      }
+
+      throw new Error(response.data.message || 'Error al obtener persona');
+    } catch (error: any) {
+      console.error('❌ PersonService: Error al buscar persona por documento:', error);
+      throw error;
     }
-
-    throw new Error(response.data.message || 'Error al obtener persona');
   }
 
   /**
    * Actualizar persona
    */
   static async updatePerson(id: string, personData: UpdatePersonRequest): Promise<Person> {
-    const response = await axiosInstance.put<ApiResponse<Person>>(
-      PERSON_ENDPOINTS.PERSON_BY_ID(id),
-      personData
-    );
+    try {
+      console.log('📝 PersonService: Actualizando persona:', id);
 
-    if (response.data.success && response.data.data) {
-      return response.data.data;
+      const response = await axiosInstance.put<ApiResponse<Person>>(
+        PERSON_ENDPOINTS.PERSON_BY_ID(id),
+        personData
+      );
+
+      if (response.data.success && response.data.data) {
+        console.log('✅ PersonService: Persona actualizada exitosamente');
+        return response.data.data;
+      }
+
+      throw new Error(response.data.message || 'Error al actualizar persona');
+    } catch (error: any) {
+      console.error('❌ PersonService: Error al actualizar persona:', error);
+      throw error;
     }
-
-    throw new Error(response.data.message || 'Error al actualizar persona');
   }
 
   /**
    * Activar persona
    */
   static async activatePerson(id: string): Promise<Person> {
-    const response = await axiosInstance.put<ApiResponse<Person>>(
-      PERSON_ENDPOINTS.PERSON_ACTIVATE(id)
-    );
+    try {
+      console.log('✅ PersonService: Activando persona:', id);
 
-    if (response.data.success && response.data.data) {
-      return response.data.data;
+      const response = await axiosInstance.put<ApiResponse<Person>>(
+        PERSON_ENDPOINTS.PERSON_ACTIVATE(id)
+      );
+
+      if (response.data.success && response.data.data) {
+        console.log('✅ PersonService: Persona activada exitosamente');
+        return response.data.data;
+      }
+
+      throw new Error(response.data.message || 'Error al activar persona');
+    } catch (error: any) {
+      console.error('❌ PersonService: Error al activar persona:', error);
+      throw error;
     }
-
-    throw new Error(response.data.message || 'Error al activar persona');
   }
 
   /**
    * Desactivar persona
    */
   static async deactivatePerson(id: string): Promise<Person> {
-    const response = await axiosInstance.put<ApiResponse<Person>>(
-      PERSON_ENDPOINTS.PERSON_DEACTIVATE(id)
-    );
+    try {
+      console.log('❌ PersonService: Desactivando persona:', id);
 
-    if (response.data.success && response.data.data) {
-      return response.data.data;
+      const response = await axiosInstance.put<ApiResponse<Person>>(
+        PERSON_ENDPOINTS.PERSON_DEACTIVATE(id)
+      );
+
+      if (response.data.success && response.data.data) {
+        console.log('✅ PersonService: Persona desactivada exitosamente');
+        return response.data.data;
+      }
+
+      throw new Error(response.data.message || 'Error al desactivar persona');
+    } catch (error: any) {
+      console.error('❌ PersonService: Error al desactivar persona:', error);
+      throw error;
     }
-
-    throw new Error(response.data.message || 'Error al desactivar persona');
   }
 
   /**
    * Eliminar persona permanentemente
    */
   static async deletePerson(id: string): Promise<void> {
-    const response = await axiosInstance.delete<ApiResponse<null>>(
-      PERSON_ENDPOINTS.PERSON_BY_ID(id)
-    );
+    try {
+      console.log('🗑️ PersonService: Eliminando persona:', id);
 
-    if (!response.data.success) {
-      throw new Error(response.data.message || 'Error al eliminar persona');
+      const response = await axiosInstance.delete<ApiResponse<null>>(
+        PERSON_ENDPOINTS.PERSON_BY_ID(id)
+      );
+
+      if (!response.data.success) {
+        throw new Error(response.data.message || 'Error al eliminar persona');
+      }
+
+      console.log('✅ PersonService: Persona eliminada exitosamente');
+    } catch (error: any) {
+      console.error('❌ PersonService: Error al eliminar persona:', error);
+      throw error;
     }
   }
 
@@ -161,63 +305,97 @@ export class PersonService {
     teachers: number;
     byGrade: Array<{ grade: string; count: number }>;
   }> {
-    const response = await axiosInstance.get<
-      ApiResponse<{
-        total: number;
-        students: number;
-        teachers: number;
-        byGrade: Array<{ grade: string; count: number }>;
-      }>
-    >(PERSON_ENDPOINTS.PERSON_STATS);
+    try {
+      console.log('📊 PersonService: Obteniendo estadísticas de personas');
 
-    if (response.data.success && response.data.data) {
-      return response.data.data;
+      const response = await axiosInstance.get<
+        ApiResponse<{
+          total: number;
+          students: number;
+          teachers: number;
+          byGrade: Array<{ grade: string; count: number }>;
+        }>
+      >(PERSON_ENDPOINTS.PERSON_STATS);
+
+      if (response.data.success && response.data.data) {
+        console.log('✅ PersonService: Estadísticas obtenidas exitosamente');
+        return response.data.data;
+      }
+
+      throw new Error(response.data.message || 'Error al obtener estadísticas');
+    } catch (error: any) {
+      console.error('❌ PersonService: Error al obtener estadísticas:', error);
+      throw error;
     }
-
-    throw new Error(response.data.message || 'Error al obtener estadísticas');
   }
 
   /**
    * Obtener tipos de persona
    */
   static async getPersonTypes(): Promise<PersonType[]> {
-    const response = await axiosInstance.get<ApiResponse<PersonType[]>>(
-      PERSON_ENDPOINTS.PERSON_TYPES
-    );
+    try {
+      console.log('📋 PersonService: Obteniendo tipos de persona');
 
-    if (response.data.success && response.data.data) {
-      return response.data.data;
+      const response = await axiosInstance.get<ApiResponse<PersonType[]>>(
+        PERSON_ENDPOINTS.PERSON_TYPES
+      );
+
+      if (response.data.success && response.data.data) {
+        console.log('✅ PersonService: Tipos de persona obtenidos:', response.data.data.length);
+        return response.data.data;
+      }
+
+      throw new Error(response.data.message || 'Error al obtener tipos de persona');
+    } catch (error: any) {
+      console.error('❌ PersonService: Error al obtener tipos de persona:', error);
+      throw error;
     }
-
-    throw new Error(response.data.message || 'Error al obtener tipos de persona');
   }
 
   /**
    * Obtener tipo de persona por ID
    */
   static async getPersonTypeById(id: string): Promise<PersonType> {
-    const response = await axiosInstance.get<ApiResponse<PersonType>>(
-      PERSON_ENDPOINTS.PERSON_TYPE_BY_ID(id)
-    );
+    try {
+      console.log('🔍 PersonService: Buscando tipo de persona por ID:', id);
 
-    if (response.data.success && response.data.data) {
-      return response.data.data;
+      const response = await axiosInstance.get<ApiResponse<PersonType>>(
+        PERSON_ENDPOINTS.PERSON_TYPE_BY_ID(id)
+      );
+
+      if (response.data.success && response.data.data) {
+        console.log('✅ PersonService: Tipo de persona encontrado');
+        return response.data.data;
+      }
+
+      throw new Error(response.data.message || 'Error al obtener tipo de persona');
+    } catch (error: any) {
+      console.error('❌ PersonService: Error al obtener tipo de persona:', error);
+      throw error;
     }
-
-    throw new Error(response.data.message || 'Error al obtener tipo de persona');
   }
 
   /**
-   * Buscar personas (búsqueda simple)
+   * Buscar personas (búsqueda simple optimizada para componentes)
    */
   static async searchPeople(query: string, limit = 10): Promise<Person[]> {
-    const response = await this.getPeople({
-      search: query,
-      limit,
-      page: 1,
-    });
+    try {
+      console.log('🔍 PersonService: Búsqueda simple de personas:', { query, limit });
 
-    return response.data;
+      const response = await this.getPeople({
+        search: query.trim(),
+        limit: Math.min(limit, 20), // Límite razonable para autocomplete
+        page: 1,
+        status: 'active' // Solo personas activas para préstamos
+      });
+
+      console.log(`✅ PersonService: Búsqueda completada, ${response.data.length} resultados`);
+      return response.data;
+    } catch (error: any) {
+      console.error('❌ PersonService: Error en búsqueda simple:', error);
+      // En caso de error, devolver array vacío para que el componente no falle
+      return [];
+    }
   }
 
   /**
@@ -225,12 +403,24 @@ export class PersonService {
    */
   static async validateDocumentNumber(documentNumber: string, excludeId?: string): Promise<boolean> {
     try {
+      console.log('🔍 PersonService: Validando número de documento:', documentNumber);
+
       const person = await this.getPersonByDocument(documentNumber);
       // Si encuentra una persona y no es la que estamos excluyendo, el documento ya existe
-      return excludeId ? person._id !== excludeId : false;
+      const isValid = excludeId ? person._id !== excludeId : false;
+      
+      console.log('✅ PersonService: Validación completada:', { isValid });
+      return isValid;
     } catch (error) {
       // Si no encuentra la persona, el documento está disponible
+      console.log('✅ PersonService: Documento disponible (no encontrado)');
       return true;
     }
   }
 }
+
+// Exportar clase con métodos estáticos
+// The export statement is removed as PersonService is already exported as a class.
+
+// Exportar instancia única para compatibilidad con el código existente
+export const personService = PersonService;

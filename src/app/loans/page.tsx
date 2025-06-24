@@ -1,17 +1,27 @@
+// src/app/loans/page.tsx
+// ================================================================
+// PÁGINA PRINCIPAL DE GESTIÓN DE PRÉSTAMOS - SIMPLIFICADA
+// ================================================================
+
 'use client';
 
-import { FiBookOpen } from 'react-icons/fi';
-import { DashboardLayout } from '@/components/layout/DashboardLayout';
-import { ComingSoon } from '@/components/ui/ComingSoon';
+import React from 'react';
+import { Box } from '@chakra-ui/react';
 
-export default function LoansPage() {
+import { DashboardLayout } from '@/components/layout/DashboardLayout';
+import LoanManagement from '@/components/loans/LoanManagement';
+
+// ===== COMPONENTE PRINCIPAL DE LA PÁGINA =====
+
+const LoansPage: React.FC = () => {
   return (
     <DashboardLayout>
-      <ComingSoon
-        title="Gestión de Préstamos"
-        description="Aquí podrás registrar préstamos, devoluciones y gestionar préstamos vencidos. Esta funcionalidad está en desarrollo."
-        icon={FiBookOpen}
-      />
+      <Box maxW="full" mx="auto">
+        {/* ✅ SIMPLIFICADO: Solo gestión principal, sin redundancia */}
+        <LoanManagement />
+      </Box>
     </DashboardLayout>
   );
-}
+};
+
+export default LoansPage;

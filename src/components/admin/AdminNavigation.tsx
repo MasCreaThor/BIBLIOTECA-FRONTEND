@@ -36,6 +36,15 @@ export interface AdminQuickAction {
 
 const adminActions: AdminQuickAction[] = [
   {
+    title: 'Configuración del Sistema',
+    description: 'Personalizar título, subtítulo e icono',
+    icon: FiSettings,
+    href: '/admin/system-config',
+    color: 'teal',
+    badge: 'Sistema',
+    badgeColor: 'red',
+  },
+  {
     title: 'Categorías',
     description: 'Gestionar categorías de recursos',
     icon: FiGrid,
@@ -57,45 +66,6 @@ const adminActions: AdminQuickAction[] = [
     color: 'purple',
     badge: 'Sistema',
     badgeColor: 'red',
-  },
-  {
-    title: 'Estados de Recursos',
-    description: 'Gestionar estados de conservación',
-    icon: FiCheckCircle,
-    href: '/admin/resource-states',
-    color: 'orange',
-    badge: 'Sistema',
-    badgeColor: 'red',
-  },
-];
-
-const systemActions: AdminQuickAction[] = [
-  {
-    title: 'Usuarios del Sistema',
-    description: 'Gestionar bibliotecarios y admins',
-    icon: FiUsers,
-    href: '/admin/users',
-    color: 'red',
-    badge: 'Próximamente',
-    badgeColor: 'gray',
-  },
-  {
-    title: 'Configuración General',
-    description: 'Ajustes del sistema',
-    icon: FiSettings,
-    href: '/admin/settings',
-    color: 'gray',
-    badge: 'Próximamente',
-    badgeColor: 'gray',
-  },
-  {
-    title: 'Reportes Avanzados',
-    description: 'Analytics y estadísticas',
-    icon: FiBarChart,
-    href: '/admin/analytics',
-    color: 'cyan',
-    badge: 'Próximamente',
-    badgeColor: 'gray',
   },
 ];
 
@@ -188,12 +158,12 @@ export function AdminNavigation({
 
   return (
     <VStack spacing={6} align="stretch">
-      {/* Gestión de Recursos */}
+      {/* Gestión General */}
       <Box>
         <Text fontWeight="medium" color="gray.700" mb={3} fontSize="sm">
-          Gestión de Recursos
+          Gestión General
         </Text>
-        <SimpleGrid columns={{ base: 1, md: 2, lg: 2, xl: 4 }} spacing={4}>
+        <SimpleGrid columns={{ base: 1, sm: 2, md: 3, lg: 4 }} spacing={4}>
           {adminActions.map((action) => (
             <ActionCard
               key={action.href}
@@ -203,29 +173,6 @@ export function AdminNavigation({
             />
           ))}
         </SimpleGrid>
-        <Text fontSize="xs" color="gray.500" mt={2}>
-          * Los elementos marcados como "Sistema" requieren permisos especiales
-        </Text>
-      </Box>
-
-      {/* Administración del Sistema */}
-      <Box>
-        <Text fontWeight="medium" color="gray.700" mb={3} fontSize="sm">
-          Administración del Sistema
-        </Text>
-        <SimpleGrid columns={{ base: 1, md: 2, lg: 3 }} spacing={4}>
-          {systemActions.map((action) => (
-            <ActionCard
-              key={action.href}
-              action={action}
-              onClick={() => handleActionClick(action)}
-              isDisabled={action.badge === 'Próximamente'}
-            />
-          ))}
-        </SimpleGrid>
-        <Text fontSize="xs" color="gray.500" mt={2}>
-          * Funcionalidades de sistema en desarrollo
-        </Text>
       </Box>
 
       {/* Información de ayuda */}
@@ -239,9 +186,9 @@ export function AdminNavigation({
                   Panel de Administración
                 </Text>
                 <Text fontSize="xs" color="blue.700" lineHeight="tall">
+                  • Configuración del Sistema: Personaliza la apariencia del menú lateral<br />
                   • Categorías y Ubicaciones: Gestionables por bibliotecarios<br />
-                  • Tipos y Estados: Solo administradores pueden modificar<br />
-                  • Los cambios afectan todo el sistema, úsalos con cuidado
+                  • Estados de Recursos: Se inicializan automáticamente al arrancar el sistema<br />
                 </Text>
               </VStack>
             </HStack>

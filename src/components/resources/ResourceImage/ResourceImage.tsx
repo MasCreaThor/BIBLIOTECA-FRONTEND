@@ -65,8 +65,14 @@ export function ResourceImage({
   // Determinar tipo de recurso para placeholder
   const resourceType = resource?.type?.name || 'book';
 
+  // Cast seguro para tipos permitidos
+  const allowedTypes = ['book', 'game', 'map', 'bible'] as const;
+  const safeResourceType = allowedTypes.includes(resourceType as any)
+    ? (resourceType as 'book' | 'game' | 'map' | 'bible')
+    : undefined;
+
   // Obtener placeholder
-  const placeholderUrl = ImageUtils.getPlaceholderImageUrl(resourceType);
+  const placeholderUrl = ImageUtils.getPlaceholderImageUrl(safeResourceType);
 
   // Texto alternativo
   const imageAlt = alt || resource?.title || googleBooksVolume?.title || 'Imagen del recurso';

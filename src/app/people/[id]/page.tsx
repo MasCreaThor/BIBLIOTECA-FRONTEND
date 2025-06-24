@@ -69,6 +69,7 @@ import { useConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { PersonTypeManager } from '@/lib/personType';
 import type { UpdatePersonRequest } from '@/types/api.types';
 import { DateUtils, TextUtils } from '@/utils';
+import { LoanHistoryTable } from '@/components/people/LoanHistoryTable';
 
 export default function PersonDetailPage() {
   const params = useParams();
@@ -415,74 +416,11 @@ export default function PersonDetailPage() {
               </Heading>
             </CardHeader>
             <CardBody pt={0}>
-              <VStack spacing={4}>
-                <SimpleGrid columns={2} spacing={4} w="full">
-                  <Stat textAlign="center">
-                    <StatLabel>Préstamos Totales</StatLabel>
-                    <StatNumber color="blue.600">-</StatNumber>
-                    <StatHelpText>Próximamente</StatHelpText>
-                  </Stat>
-                  
-                  <Stat textAlign="center">
-                    <StatLabel>Préstamos Activos</StatLabel>
-                    <StatNumber color="green.600">-</StatNumber>
-                    <StatHelpText>Próximamente</StatHelpText>
-                  </Stat>
-                </SimpleGrid>
-
-                <Alert status="info" size="sm" borderRadius="md">
-                  <AlertIcon />
-                  <Text fontSize="sm">
-                    Las estadísticas de préstamos estarán disponibles cuando se implemente el sistema de préstamos.
-                  </Text>
-                </Alert>
-              </VStack>
+              {/* Tabla de préstamos de la persona */}
+              <LoanHistoryTable personId={person._id} />
             </CardBody>
           </Card>
         </SimpleGrid>
-
-        {/* Acciones adicionales */}
-        <Card bg={cardBg} shadow="sm">
-          <CardBody>
-            <VStack spacing={4}>
-              <Text fontWeight="medium" color="gray.700">
-                Acciones Rápidas
-              </Text>
-              
-              <HStack spacing={3} wrap="wrap" justify="center">
-                <Button
-                  leftIcon={<FiBookOpen />}
-                  variant="outline"
-                  colorScheme="blue"
-                  isDisabled
-                >
-                  Nuevo Préstamo
-                </Button>
-                
-                <Button
-                  leftIcon={<FiClock />}
-                  variant="outline"
-                  colorScheme="orange"
-                  isDisabled
-                >
-                  Ver Historial
-                </Button>
-                
-                <Button
-                  leftIcon={<FiArrowLeft />}
-                  variant="outline"
-                  onClick={handleGoBack}
-                >
-                  Volver a la Lista
-                </Button>
-              </HStack>
-              
-              <Text fontSize="xs" color="gray.500" textAlign="center">
-                Las funciones de préstamos estarán disponibles próximamente
-              </Text>
-            </VStack>
-          </CardBody>
-        </Card>
       </VStack>
 
       {/* Modal de edición */}

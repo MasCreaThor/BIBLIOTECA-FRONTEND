@@ -34,7 +34,8 @@ import {
   FiList,
 } from 'react-icons/fi';
 import { useCategories, useLocations, useResourceTypes } from '@/hooks/useResources';
-import type { ResourceFilters } from '@/types/resource.types';
+import type { ResourceFilters, ResourceType } from '@/types/resource.types';
+import { PaginatedResponse } from '@/types/api.types';
 
 export interface ResourceFiltersState {
   search: string;
@@ -74,7 +75,7 @@ const RESOURCE_TYPE_CONFIGS = {
   bible: { label: '📖 Biblias', color: 'purple' },
 };
 
-export function ResourceFilters({
+export function ResourceFiltersComponent({
   filters,
   onFiltersChange,
   onRefresh,
@@ -91,7 +92,8 @@ export function ResourceFilters({
   // Queries para datos auxiliares
   const { data: categories = [] } = useCategories();
   const { data: locations = [] } = useLocations();
-  const { data: resourceTypes = [] } = useResourceTypes();
+  const { data: resourceTypesResponse } = useResourceTypes();
+  const resourceTypes = resourceTypesResponse?.data || [];
 
   const bg = useColorModeValue('white', 'gray.800');
   const borderColor = useColorModeValue('gray.200', 'gray.600');
@@ -170,7 +172,7 @@ export function ResourceFilters({
             <FiSearch color="gray.400" />
           </InputLeftElement>
           <Input
-            placeholder="Buscar por título, autor, ISBN..."
+            placeholder="Buscar por título"
             value={localFilters.search}
             onChange={(e) => handleSearchChange(e.target.value)}
             bg={bg}
@@ -280,7 +282,7 @@ export function ResourceFilters({
                     placeholder="Todos los tipos"
                     size="sm"
                   >
-                    {resourceTypes.map((type) => {
+                    {resourceTypes.map((type: ResourceType) => {
                       const config = RESOURCE_TYPE_CONFIGS[type.name as keyof typeof RESOURCE_TYPE_CONFIGS];
                       return (
                         <option key={type._id} value={type._id}>

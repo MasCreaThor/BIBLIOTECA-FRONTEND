@@ -80,6 +80,15 @@ const colors = {
     800: '#424242',
     900: '#212121',
   },
+  // Gradientes personalizados
+  gradient: {
+    primary: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+    secondary: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)',
+    info: 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)',
+    success: 'linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)',
+    warning: 'linear-gradient(135deg, #fa709a 0%, #fee140 100%)',
+    error: 'linear-gradient(135deg, #ff9a9e 0%, #fecfef 100%)',
+  },
 };
 
 // Fuentes personalizadas

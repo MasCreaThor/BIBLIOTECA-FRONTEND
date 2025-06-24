@@ -68,9 +68,39 @@ export function AuthProvider({ children }: AuthProviderProps) {
       
       // Obtener información completa del usuario
       const userData = await AuthService.getCurrentUser();
+      console.log('🔍 User data received from backend:', userData);
       setUser(userData);
       
-      toast.success(`¡Bienvenido, ${userData.email}!`);
+      // Obtener nombre para mostrar en la bienvenida
+      const getDisplayName = () => {
+        // Verificar si firstName y lastName existen y no están vacíos
+        const hasFirstName = userData.firstName && userData.firstName.trim() !== '';
+        const hasLastName = userData.lastName && userData.lastName.trim() !== '';
+        
+        if (hasFirstName && hasLastName) {
+          const fullName = `${userData.firstName.trim()} ${userData.lastName.trim()}`;
+          console.log('✅ Using full name:', fullName);
+          return fullName;
+        }
+        if (hasFirstName) {
+          console.log('✅ Using firstName:', userData.firstName.trim());
+          return userData.firstName.trim();
+        }
+        if (hasLastName) {
+          console.log('✅ Using lastName:', userData.lastName.trim());
+          return userData.lastName.trim();
+        }
+        // Fallback al email si no hay nombres válidos
+        const emailName = userData.email.split('@')[0];
+        // Capitalizar la primera letra para que se vea mejor
+        const friendlyName = emailName.charAt(0).toUpperCase() + emailName.slice(1);
+        console.log('✅ Using email fallback:', friendlyName);
+        return friendlyName;
+      };
+      
+      const displayName = getDisplayName();
+      console.log('🎉 Final display name:', displayName);
+      toast.success(`¡Bienvenido, ${displayName}!`);
     } catch (error) {
       console.error('Error en login:', error);
       throw error; // Re-lanzar para que el componente pueda manejar el error
