@@ -222,17 +222,6 @@ npm run dev
 - **Utilidades**: camelCase (`formatDate.ts`)
 - **Constantes**: UPPER_CASE (`API_ENDPOINTS.ts`)
 
-### Commit Messages
-
-```bash
-feat: agregar formulario de personas
-fix: corregir validación de email
-docs: actualizar README
-style: mejorar espaciado en header
-refactor: simplificar hook useAuth
-test: agregar pruebas para PersonForm
-```
-
 ---
 
 ## 📞 Soporte
