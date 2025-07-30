@@ -470,7 +470,8 @@ const LoanDetailsModal: React.FC<LoanDetailsModalProps> = ({
             </Button>
             
             <Spacer />
-            
+            {/* Pendiente para agilizar proceso de devoluciones
+
             {canReturn && (
               <Button
                 leftIcon={<FiRotateCcw />}
@@ -480,7 +481,8 @@ const LoanDetailsModal: React.FC<LoanDetailsModalProps> = ({
                 Procesar Devolución
               </Button>
             )}
-            
+             */}
+             
             <Button variant="outline" onClick={onClose}>
               Cerrar
             </Button>

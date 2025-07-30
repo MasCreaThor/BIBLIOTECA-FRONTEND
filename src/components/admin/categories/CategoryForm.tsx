@@ -27,9 +27,10 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { FiCheck, FiX, FiGrid } from 'react-icons/fi';
-import { MdPalette } from 'react-icons/md'; // ✅ CORREGIDO: Usar MdPalette desde react-icons/md
+import { MdPalette } from 'react-icons/md';
 import { useCreateCategory, useUpdateCategory } from '@/hooks/useCategories';
 import type { Category, CreateCategoryRequest, UpdateCategoryRequest } from '@/services/category.service';
+import { useEffect, useState } from 'react';
 
 // Schema de validación
 const categorySchema = z.object({
@@ -92,6 +93,9 @@ export function CategoryForm(props: CategoryFormProps) {
   const category = 'category' in props ? props.category : undefined;
   const isEdit = 'isEdit' in props ? props.isEdit : false;
 
+  // Estado local para el color
+  const [selectedColor, setSelectedColor] = useState(category?.color || '#3182CE');
+
   // Configurar formulario
   const form = useForm<CategoryFormData>({
     resolver: zodResolver(categorySchema),
@@ -106,13 +110,21 @@ export function CategoryForm(props: CategoryFormProps) {
 
   const { register, handleSubmit, watch, setValue, formState: { errors, isValid, isDirty } } = form;
   
-  const selectedColor = watch('color');
+  // Sincronizar el color del formulario con el estado local
+  useEffect(() => {
+    setValue('color', selectedColor, { shouldDirty: true, shouldValidate: true });
+  }, [selectedColor, setValue]);
+
+  // Debug: Log color changes
+  useEffect(() => {
+    console.log('Color seleccionado:', selectedColor);
+  }, [selectedColor]);
 
   const handleFormSubmit = handleSubmit(async (data: CategoryFormData) => {
     const cleanData = {
       name: data.name,
       description: data.description,
-      color: data.color,
+      color: selectedColor, // Usar el estado local
       ...(isEdit && { active: data.active }),
     };
 
@@ -126,7 +138,14 @@ export function CategoryForm(props: CategoryFormProps) {
   });
 
   const handleColorSelect = (color: string) => {
-    setValue('color', color, { shouldDirty: true, shouldValidate: true });
+    console.log('Seleccionando color:', color);
+    setSelectedColor(color);
+  };
+
+  const handleColorInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const color = e.target.value;
+    console.log('Cambio en input de color:', color);
+    setSelectedColor(color);
   };
 
   const canSubmit = isValid && isDirty;
@@ -182,17 +201,19 @@ export function CategoryForm(props: CategoryFormProps) {
                     <VStack spacing={3} align="stretch">
                       <HStack spacing={2}>
                         <Input
-                          {...register('color')}
                           type="color"
                           w="60px"
                           h="40px"
                           p={1}
                           borderRadius="md"
+                          value={selectedColor}
+                          onChange={handleColorInputChange}
                         />
                         <Input
-                          {...register('color')}
                           placeholder="#3182CE"
                           flex={1}
+                          value={selectedColor}
+                          onChange={handleColorInputChange}
                         />
                       </HStack>
                       <FormErrorMessage>{errors.color?.message}</FormErrorMessage>
@@ -220,6 +241,7 @@ export function CategoryForm(props: CategoryFormProps) {
                       _hover={{ transform: 'scale(1.1)' }}
                       transition="all 0.2s"
                       onClick={() => handleColorSelect(color)}
+                      title={`Seleccionar ${color}`}
                     />
                   ))}
                 </HStack>

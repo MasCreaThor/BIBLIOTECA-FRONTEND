@@ -732,6 +732,7 @@ export const ResourceForm: React.FC<ResourceFormProps> = ({
                 />
               </FormControl>
 
+              {/* ✅ Volúmenes pendiente de implementación
               <FormControl>
                 <FormLabel>Volúmenes</FormLabel>
                 <Controller
@@ -754,7 +755,11 @@ export const ResourceForm: React.FC<ResourceFormProps> = ({
                   )}
                 />
               </FormControl>
+
+              */}
             </HStack>
+
+            
 
             {/* ✅ NUEVO: Sección de Autores */}
             <AuthorsSection
