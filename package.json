@@ -4,9 +4,9 @@
   "description": "Sistema de Gestión de Biblioteca Escolar - Frontend",
   "private": true,
   "scripts": {
-    "dev": "next dev -p 3001",
+    "dev": "next dev -p 1157",
     "build": "next build",
-    "start": "next start -p 3001",
+    "start": "next start -p 1157",
     "lint": "next lint",
     "lint:fix": "next lint --fix",
     "type-check": "tsc --noEmit",
