@@ -151,14 +151,6 @@ export function SystemConfigProvider({ children }: SystemConfigProviderProps) {
       // Guardar en localStorage como backup
       localStorage.setItem('systemConfig', JSON.stringify(backendResponse));
       console.log('💾 Configuración actualizada en localStorage');
-
-      toast({
-        title: 'Configuración actualizada',
-        description: 'Los cambios se han guardado correctamente',
-        status: 'success',
-        duration: 3000,
-        isClosable: true,
-      });
     } catch (error) {
       console.error('❌ Error updating system config:', error);
       

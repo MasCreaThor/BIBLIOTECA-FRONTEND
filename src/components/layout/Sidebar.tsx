@@ -128,11 +128,11 @@ export function Sidebar({ onItemClick }: SidebarProps) {
             )}
           </Box>
           <VStack spacing={0} align="start">
-            <Text fontWeight="bold" fontSize="lg" color="gray.800">
+            <Text fontWeight="bold" fontSize="lg" color="red.800">
               {config.sidebarTitle}
             </Text>
             <HStack spacing={2}>
-              <Text fontSize="sm" color="gray.600">
+              <Text fontSize="sm" color="red.500">
                 {config.sidebarSubtitle}
               </Text>
               <ServerStatus variant="minimal" showText={false} />

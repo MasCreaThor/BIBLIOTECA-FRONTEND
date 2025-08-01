@@ -261,17 +261,61 @@ export function SystemConfigEditor() {
         }
       }
 
-      // Preparar datos para guardar
+      // Preparar datos para guardar (sin la imagen base64)
       const configData = {
         sidebarTitle: formData.sidebarTitle,
         sidebarSubtitle: formData.sidebarSubtitle,
         sidebarIcon: iconType === 'system' ? formData.sidebarIcon : 'FiImage',
         sidebarIconUrl: iconType === 'url' ? formData.sidebarIconUrl : '',
-        sidebarIconImage: iconType === 'upload' ? formData.sidebarIconImage : '',
       };
 
+      let hasImageUpload = false;
+
+      // Si hay una imagen subida, usar el endpoint específico de upload
+      if (iconType === 'upload' && formData.sidebarIconImage) {
+        try {
+          // Convertir base64 a File para usar el endpoint de upload
+          const base64Data = formData.sidebarIconImage;
+          const response = await fetch(base64Data);
+          const blob = await response.blob();
+          const file = new File([blob], 'logo.png', { type: 'image/png' });
+          
+          await systemConfigService.uploadLogo(file);
+          hasImageUpload = true;
+        } catch (uploadError) {
+          console.error('Error al subir imagen:', uploadError);
+          toast({
+            title: 'Error al subir imagen',
+            description: 'No se pudo subir la imagen. Los demás cambios se guardarán.',
+            status: 'warning',
+            duration: 5000,
+            isClosable: true,
+          });
+        }
+      }
+
+      // Actualizar la configuración general
       await systemConfigService.updateConfig(configData);
       await updateConfig(configData);
+      
+      // Mostrar mensaje de éxito apropiado
+      if (hasImageUpload) {
+        toast({
+          title: 'Configuración guardada',
+          description: 'La configuración y la imagen se han guardado exitosamente.',
+          status: 'success',
+          duration: 3000,
+          isClosable: true,
+        });
+      } else {
+        toast({
+          title: 'Configuración guardada',
+          description: 'Los cambios se han guardado exitosamente.',
+          status: 'success',
+          duration: 3000,
+          isClosable: true,
+        });
+      }
     } catch (error) {
       console.error('Error al guardar configuración:', error);
       toast({
