@@ -31,6 +31,8 @@ export class AuthService {
         expires: 1, // 1 día
         secure: process.env.NODE_ENV === 'production',
         sameSite: 'strict',
+        //secure: false,
+        //sameSite: 'lax',
       });
       
       return response.data.data;

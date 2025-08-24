@@ -5,7 +5,7 @@ import toast from 'react-hot-toast';
 
 // Configuración de variables de entorno con valores por defecto
 const API_CONFIG = {
-  baseURL: process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:3000/api',
+  baseURL: process.env.NEXT_PUBLIC_API_BASE_URL || 'http://107.190.135.66:3001/api',
   timeout: parseInt(process.env.NEXT_PUBLIC_API_TIMEOUT || '10000'),
   tokenKey: process.env.NEXT_PUBLIC_JWT_STORAGE_KEY || 'biblioteca_token',
   isDevelopment: process.env.NODE_ENV === 'development'

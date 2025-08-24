@@ -4,7 +4,7 @@ const nextConfig = {
     domains: ['localhost', 'books.google.com'],
   },
   env: {
-    API_BASE_URL: process.env.API_BASE_URL || 'http://localhost:3000/api',
+    NEXT_PUBLIC_API_BASE_URL: process.env.NEXT_PUBLIC_API_BASE_URL || 'http://107.190.135.66:3000/api',
   },
   compiler: {
     removeConsole: process.env.NODE_ENV === 'production',
