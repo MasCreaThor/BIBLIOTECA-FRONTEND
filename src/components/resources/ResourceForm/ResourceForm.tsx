@@ -1,7 +1,4 @@
-// src/components/resources/ResourceForm.tsx - FORMULARIO MEJORADO CON CANTIDADES
-// ================================================================
-// COMPONENTE DE FORMULARIO PARA CREAR/EDITAR RECURSOS CON STOCK
-// ================================================================
+// src/components/resources/ResourceForm.tsx
 
 import React, { useState, useEffect } from 'react';
 import {
@@ -61,6 +58,7 @@ import type {
 } from '@/types/api.types';
 import type { Author } from '@/types/resource.types';
 import { AuthorsSection } from './AuthorsSection';
+import { QuickCategoryModal } from './QuickCategoryModal';
 
 // Íconos
 import { 
@@ -70,7 +68,8 @@ import {
   FiPackage, 
   FiAlertCircle,
   FiCheckCircle,
-  FiInfo
+  FiInfo,
+  FiPlus
 } from 'react-icons/fi';
 
 // ===== ESQUEMAS DE VALIDACIÓN =====
@@ -167,6 +166,9 @@ export const ResourceForm: React.FC<ResourceFormProps> = ({
   
   // ✅ NUEVO: Estado para autores seleccionados
   const [selectedAuthors, setSelectedAuthors] = useState<Author[]>([]);
+  
+  // ✅ NUEVO: Estado para modal de categorías rápidas
+  const [isQuickCategoryModalOpen, setIsQuickCategoryModalOpen] = useState(false);
   
   // Determinar el modo basado en props
   const actualMode = isEdit ? 'edit' : mode;
@@ -477,6 +479,21 @@ export const ResourceForm: React.FC<ResourceFormProps> = ({
     }
   };
 
+  // ✅ NUEVO: Función para manejar la creación de categorías rápidas
+  const handleQuickCategoryCreated = (categoryId: string) => {
+    // Actualizar el campo de categoría con la nueva categoría creada
+    setValue('categoryId', categoryId);
+    
+    // Mostrar mensaje de éxito
+    toast({
+      title: 'Categoría creada',
+      description: 'La nueva categoría ha sido seleccionada automáticamente',
+      status: 'success',
+      duration: 3000,
+      isClosable: true,
+    });
+  };
+
   // ===== VALIDACIONES DINÁMICAS =====
   
   const quantityValidation = {
@@ -540,23 +557,36 @@ export const ResourceForm: React.FC<ResourceFormProps> = ({
 
               <FormControl isInvalid={!!errors.categoryId} isRequired>
                 <FormLabel>Categoría</FormLabel>
-                <Controller
-                  name="categoryId"
-                  control={control}
-                  render={({ field }) => (
-                    <Select
-                      {...field}
-                      placeholder="Seleccionar categoría"
-                      disabled={isLoading}
-                    >
-                      {categories?.map((category) => (
-                        <option key={category._id} value={category._id}>
-                          {category.name}
-                        </option>
-                      ))}
-                    </Select>
-                  )}
-                />
+                <VStack spacing={2} align="stretch">
+                  <Controller
+                    name="categoryId"
+                    control={control}
+                    render={({ field }) => (
+                      <Select
+                        {...field}
+                        placeholder="Seleccionar categoría"
+                        disabled={isLoading}
+                      >
+                        {categories?.map((category) => (
+                          <option key={category._id} value={category._id}>
+                            {category.name}
+                          </option>
+                        ))}
+                      </Select>
+                    )}
+                  />
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    colorScheme="blue"
+                    leftIcon={<FiPlus />}
+                    onClick={() => setIsQuickCategoryModalOpen(true)}
+                    disabled={isLoading}
+                    w="fit-content"
+                  >
+                    Crear Nueva Categoría
+                  </Button>
+                </VStack>
                 <FormErrorMessage>{errors.categoryId?.message}</FormErrorMessage>
               </FormControl>
             </HStack>
@@ -899,6 +929,13 @@ export const ResourceForm: React.FC<ResourceFormProps> = ({
             </HStack>
           </ModalFooter>
         </ModalContent>
+        
+        {/* ✅ NUEVO: Modal para creación rápida de categorías */}
+        <QuickCategoryModal
+          isOpen={isQuickCategoryModalOpen}
+          onClose={() => setIsQuickCategoryModalOpen(false)}
+          onCategoryCreated={handleQuickCategoryCreated}
+        />
       </Modal>
     );
   }
@@ -907,6 +944,13 @@ export const ResourceForm: React.FC<ResourceFormProps> = ({
   return (
     <Box>
       {formContent}
+      
+      {/* ✅ NUEVO: Modal para creación rápida de categorías */}
+      <QuickCategoryModal
+        isOpen={isQuickCategoryModalOpen}
+        onClose={() => setIsQuickCategoryModalOpen(false)}
+        onCategoryCreated={handleQuickCategoryCreated}
+      />
     </Box>
   );
 };

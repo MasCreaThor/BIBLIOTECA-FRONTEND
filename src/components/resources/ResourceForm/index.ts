@@ -8,3 +8,6 @@ export { BasicInfoSection } from './BasicInfoSection';
 export { AuthorsSection } from './AuthorsSection';
 export { PublisherSection } from './PublisherSection';
 export { MetadataSection } from './MetadataSection';
+
+// Modal para creación rápida de categorías
+export { QuickCategoryModal } from './QuickCategoryModal';
