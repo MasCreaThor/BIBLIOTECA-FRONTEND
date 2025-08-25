@@ -33,6 +33,7 @@ import { useState, useEffect } from 'react';
 import { FiArrowLeft, FiSearch, FiPlus, FiBook, FiCheckCircle, FiRefreshCw } from 'react-icons/fi';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { GoogleBooksSearch } from '@/components/resources/GoogleBooks/GoogleBooksSearch';
+import { QuickCategoryModal } from '@/components/resources/ResourceForm/QuickCategoryModal';
 import { useCategories, useLocations } from '@/hooks/useResources';
 import { useGoogleBooks } from '@/hooks/useGoogleBooks';
 import type { GoogleBooksVolume } from '@/types/resource.types';
@@ -45,6 +46,9 @@ export default function GoogleBooksPage() {
   const [selectedLocationId, setSelectedLocationId] = useState<string>('');
   const [addedResources, setAddedResources] = useState<number>(0);
   const [recentlyAdded, setRecentlyAdded] = useState<GoogleBooksVolume[]>([]);
+  
+  // ✅ NUEVO: Estado para modal de categorías rápidas
+  const [isQuickCategoryModalOpen, setIsQuickCategoryModalOpen] = useState(false);
 
   // Queries
   const { data: categories = [], isLoading: isLoadingCategories } = useCategories();
@@ -101,6 +105,21 @@ export default function GoogleBooksPage() {
     setSelectedLocationId('');
     setAddedResources(0);
     setRecentlyAdded([]);
+  };
+
+  // ✅ NUEVO: Función para manejar la creación de categorías rápidas
+  const handleQuickCategoryCreated = (categoryId: string) => {
+    // Actualizar el campo de categoría con la nueva categoría creada
+    setSelectedCategoryId(categoryId);
+    
+    // Mostrar mensaje de éxito
+    toast({
+      title: 'Categoría creada',
+      description: 'La nueva categoría ha sido seleccionada automáticamente',
+      status: 'success',
+      duration: 3000,
+      isClosable: true,
+    });
   };
 
   return (
@@ -221,18 +240,31 @@ export default function GoogleBooksPage() {
               <SimpleGrid columns={{ base: 1, md: 2 }} spacing={4}>
                 <FormControl isRequired>
                   <FormLabel>Categoría</FormLabel>
-                  <Select
-                    value={selectedCategoryId}
-                    onChange={(e) => setSelectedCategoryId(e.target.value)}
-                    placeholder="Selecciona una categoría"
-                    isDisabled={isLoadingCategories}
-                  >
-                    {categories.map((category) => (
-                      <option key={category._id} value={category._id}>
-                        {category.name}
-                      </option>
-                    ))}
-                  </Select>
+                  <VStack spacing={2} align="stretch">
+                    <Select
+                      value={selectedCategoryId}
+                      onChange={(e) => setSelectedCategoryId(e.target.value)}
+                      placeholder="Selecciona una categoría"
+                      isDisabled={isLoadingCategories}
+                    >
+                      {categories.map((category) => (
+                        <option key={category._id} value={category._id}>
+                          {category.name}
+                        </option>
+                      ))}
+                    </Select>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      colorScheme="blue"
+                      leftIcon={<FiPlus />}
+                      onClick={() => setIsQuickCategoryModalOpen(true)}
+                      disabled={isLoadingCategories}
+                      w="fit-content"
+                    >
+                      Crear Nueva Categoría
+                    </Button>
+                  </VStack>
                 </FormControl>
 
                 <FormControl isRequired>
@@ -337,6 +369,13 @@ export default function GoogleBooksPage() {
           </Box>
         </Alert>
       </VStack>
+      
+      {/* ✅ NUEVO: Modal para creación rápida de categorías */}
+      <QuickCategoryModal
+        isOpen={isQuickCategoryModalOpen}
+        onClose={() => setIsQuickCategoryModalOpen(false)}
+        onCategoryCreated={handleQuickCategoryCreated}
+      />
     </DashboardLayout>
   );
 }
