@@ -59,6 +59,7 @@ import type {
 import type { Author } from '@/types/resource.types';
 import { AuthorsSection } from './AuthorsSection';
 import { QuickCategoryModal } from './QuickCategoryModal';
+import { QuickPublisherModal } from './QuickPublisherModal';
 
 // Íconos
 import { 
@@ -69,7 +70,8 @@ import {
   FiAlertCircle,
   FiCheckCircle,
   FiInfo,
-  FiPlus
+  FiPlus,
+  FiHome
 } from 'react-icons/fi';
 
 // ===== ESQUEMAS DE VALIDACIÓN =====
@@ -169,6 +171,9 @@ export const ResourceForm: React.FC<ResourceFormProps> = ({
   
   // ✅ NUEVO: Estado para modal de categorías rápidas
   const [isQuickCategoryModalOpen, setIsQuickCategoryModalOpen] = useState(false);
+  
+  // ✅ NUEVO: Estado para modal de editoriales rápidas
+  const [isQuickPublisherModalOpen, setIsQuickPublisherModalOpen] = useState(false);
   
   // Determinar el modo basado en props
   const actualMode = isEdit ? 'edit' : mode;
@@ -494,6 +499,21 @@ export const ResourceForm: React.FC<ResourceFormProps> = ({
     });
   };
 
+  // ✅ NUEVO: Función para manejar la creación de editoriales rápidas
+  const handleQuickPublisherCreated = (publisherId: string) => {
+    // Actualizar el campo de editorial con la nueva editorial creada
+    setValue('publisherId', publisherId);
+    
+    // Mostrar mensaje de éxito
+    toast({
+      title: 'Editorial creada',
+      description: 'La nueva editorial ha sido seleccionada automáticamente',
+      status: 'success',
+      duration: 3000,
+      isClosable: true,
+    });
+  };
+
   // ===== VALIDACIONES DINÁMICAS =====
   
   const quantityValidation = {
@@ -743,23 +763,36 @@ export const ResourceForm: React.FC<ResourceFormProps> = ({
             <HStack spacing={4} w="full">
               <FormControl>
                 <FormLabel>Editorial</FormLabel>
-                <Controller
-                  name="publisherId"
-                  control={control}
-                  render={({ field }) => (
-                    <Select
-                      {...field}
-                      placeholder="Seleccionar editorial (opcional)"
-                      disabled={isLoading}
-                    >
-                      {publishers?.map((publisher) => (
-                        <option key={publisher._id} value={publisher._id}>
-                          {publisher.name}
-                        </option>
-                      ))}
-                    </Select>
-                  )}
-                />
+                <VStack spacing={2} align="stretch">
+                  <Controller
+                    name="publisherId"
+                    control={control}
+                    render={({ field }) => (
+                      <Select
+                        {...field}
+                        placeholder="Seleccionar editorial (opcional)"
+                        disabled={isLoading}
+                      >
+                        {publishers?.map((publisher) => (
+                          <option key={publisher._id} value={publisher._id}>
+                            {publisher.name}
+                          </option>
+                        ))}
+                      </Select>
+                    )}
+                  />
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    colorScheme="blue"
+                    leftIcon={<FiHome />}
+                    onClick={() => setIsQuickPublisherModalOpen(true)}
+                    disabled={isLoading}
+                    w="fit-content"
+                  >
+                    Crear Nueva Editorial
+                  </Button>
+                </VStack>
               </FormControl>
 
               {/* ✅ Volúmenes pendiente de implementación
@@ -936,6 +969,13 @@ export const ResourceForm: React.FC<ResourceFormProps> = ({
           onClose={() => setIsQuickCategoryModalOpen(false)}
           onCategoryCreated={handleQuickCategoryCreated}
         />
+        
+        {/* ✅ NUEVO: Modal para creación rápida de editoriales */}
+        <QuickPublisherModal
+          isOpen={isQuickPublisherModalOpen}
+          onClose={() => setIsQuickPublisherModalOpen(false)}
+          onPublisherCreated={handleQuickPublisherCreated}
+        />
       </Modal>
     );
   }
@@ -950,6 +990,13 @@ export const ResourceForm: React.FC<ResourceFormProps> = ({
         isOpen={isQuickCategoryModalOpen}
         onClose={() => setIsQuickCategoryModalOpen(false)}
         onCategoryCreated={handleQuickCategoryCreated}
+      />
+      
+      {/* ✅ NUEVO: Modal para creación rápida de editoriales */}
+      <QuickPublisherModal
+        isOpen={isQuickPublisherModalOpen}
+        onClose={() => setIsQuickPublisherModalOpen(false)}
+        onPublisherCreated={handleQuickPublisherCreated}
       />
     </Box>
   );

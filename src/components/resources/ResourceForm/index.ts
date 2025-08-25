@@ -9,5 +9,6 @@ export { AuthorsSection } from './AuthorsSection';
 export { PublisherSection } from './PublisherSection';
 export { MetadataSection } from './MetadataSection';
 
-// Modal para creación rápida de categorías
+// Modales para creación rápida
 export { QuickCategoryModal } from './QuickCategoryModal';
+export { QuickPublisherModal } from './QuickPublisherModal';
